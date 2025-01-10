@@ -1,4 +1,4 @@
-![MS3 Banner](./assets/banner.png)
+![MS3 Banner](./banner.png)
 
 # MS3 - Modular Web3 Suite
 
