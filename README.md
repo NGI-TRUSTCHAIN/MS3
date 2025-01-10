@@ -63,3 +63,11 @@ interface Module {
 Wallet Module (Web3Auth) → SC Interaction Module (Ethers)
 └── Provides Web3Provider  └── Uses provider for contract calls
 ```
+
+## Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+Apache License Version 2.0 - see [LICENSE](LICENSE) for details.
