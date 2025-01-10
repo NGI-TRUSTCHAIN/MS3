@@ -1,3 +1,5 @@
+![MS3 Banner](./assets/banner.png)
+
 # MS3 - Modular Web3 Suite
 
 > **IMPORTANT NOTE:** This project is under development and subject to changes over time.
