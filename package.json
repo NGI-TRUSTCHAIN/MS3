@@ -1,6 +1,6 @@
 {
   "name": "ms3-api",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "main": "dist/api.js",
   "types": "dist/api.d.ts",
   "scripts": {
