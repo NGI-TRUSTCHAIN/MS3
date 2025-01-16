@@ -1,11 +1,11 @@
 {
   "name": "ms3-api",
   "version": "1.0.8",
-  "main": "dist/api.js",
-  "types": "dist/api.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/api.js"
+    "start": "node dist/index.js"
   },
   "dependencies": {
     "express": "^4.0.0"
