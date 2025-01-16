@@ -17,7 +17,15 @@ try {
     execSync("git stash --include-untracked", { stdio: "inherit" });
   }
 
-  // Step 2: Build the library
+  // Step 2: Clean ./dist folder and build the library
+  console.log("Cleaning the ./dist folder...");
+  const distPath = path.join(process.cwd(), "dist");
+  if (fs.existsSync(distPath)) {
+    fs.rmSync(distPath, { recursive: true, force: true });
+    console.log("./dist folder deleted.");
+  } else {
+    console.log("No ./dist folder found, skipping deletion.");
+  }
   console.log("Building the library...");
   execSync("tsc", { stdio: "inherit" });
 
@@ -29,10 +37,18 @@ try {
   // Step 4: Commit changes and tag the version
   console.log("Committing the new version...");
   execSync(`git add package.json package-lock.json`, { stdio: "inherit" });
-  execSync(`git commit -m "Bump version to ${NEW_VERSION}"`, { stdio: "inherit" });
+  execSync(`git commit -m "Bump version to ${NEW_VERSION}"`, {
+    stdio: "inherit",
+  });
 
   console.log("Tagging the new version...");
-  execSync(`git tag -a v${NEW_VERSION} -m "Version ${NEW_VERSION}"`, { stdio: "inherit" });
+  execSync(`git tag -a v${NEW_VERSION} -m "Version ${NEW_VERSION}"`, {
+    stdio: "inherit",
+  });
+
+  // Step 5: Publish the library
+  console.log("Publishing the library...");
+  execSync("npm publish", { stdio: "inherit" });
 
   // Step 5: Package the library --- Not needed for this project it creates a .tgz file
   // console.log("Packing the library...");
