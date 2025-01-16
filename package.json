@@ -1,6 +1,7 @@
 {
-  "name": "ms3-test",
+  "name": "msuit3",
   "version": "1.0.0",
+  "private": true,
   "workspaces": [
     "packages/*"
   ],
