@@ -1,6 +1,6 @@
 {
   "name": "@m3s/wallet",
-  "version": "1.0.54",
+  "version": "1.0.55",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "commonjs",
@@ -9,8 +9,7 @@
   ],
   "scripts": {
     "build": "node ./build.js",
-    "publish": "node ./publish.js",
-    "prepublishOnly": "npm run build"
+    "publish": "node ./publish.js"
   },
   "publishConfig": {
     "access": "public"
