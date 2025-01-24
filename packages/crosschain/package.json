@@ -11,7 +11,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@m3s/utils": "^1.0.7",
+    "@m3s/utils": "^1.0.8",
     "@m3s/wallet": "^1.0.12"
   }
 }
