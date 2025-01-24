@@ -12,6 +12,6 @@
   },
   "dependencies": {
     "@m3s/utils": "^1.0.8",
-    "@m3s/wallet": "^1.0.12"
+    "@m3s/wallet": "^1.0.71"
   }
 }
