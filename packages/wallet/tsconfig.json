@@ -3,7 +3,7 @@
   "compilerOptions": {
     "declaration": true,
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "../../",
     "moduleResolution": "node",
     "target": "ES2020",
     "module": "commonjs",
@@ -19,6 +19,6 @@
   "references": [
     { "path": "../../utils" }
   ],
-  "include": ["src/**/*"],
+  "include": ["./src/**/*", "../../utils/**/*"],
   "exclude": ["node_modules", "dist"]
 }
