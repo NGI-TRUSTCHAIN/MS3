@@ -17,6 +17,6 @@
       "@utils/*": ["utils/*"]
     }
   },
-  "include": ["packages/wallet/src/**/*", "../../utils/**/*"],
+  "include": ["../../utils/**/*"],
   "exclude": ["node_modules"]
 }
