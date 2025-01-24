@@ -1,6 +1,6 @@
 {
   "name": "@m3s/wallet",
-  "version": "1.0.68",
+  "version": "1.0.69",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "commonjs",
