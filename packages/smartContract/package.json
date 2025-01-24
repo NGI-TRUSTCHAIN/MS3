@@ -1,11 +1,11 @@
 {
   "name": "@m3s/smart-contract",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "node ./build.js",
-    "publish:independent": "node ../../publishPackage.js"
+    "publish:independent": "node ./publish.js"
   },
   "publishConfig": {
     "access": "public"
