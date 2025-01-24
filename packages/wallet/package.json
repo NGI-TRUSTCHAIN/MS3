@@ -1,10 +1,16 @@
 {
   "name": "@m3s/wallet",
-  "version": "1.0.36",
+  "version": "1.0.37",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "!dist/utils",
+    "!dist/adapters"
+  ],
   "scripts": {
     "build": "node ./build.js",
+    "prepublishOnly": "npm run build",
     "publish:independent": "node ./publish.js"
   },
   "publishConfig": {
