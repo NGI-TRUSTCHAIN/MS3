@@ -1,6 +1,6 @@
 {
   "name": "@m3s/wallet",
-  "version": "1.0.69",
+  "version": "1.0.70",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "commonjs",
@@ -11,6 +11,6 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@m3s/utils": "1.0.0"
+    "@m3s/utils": "1.0.4"
   }
 }
