@@ -1,10 +1,11 @@
 {
   "name": "@m3s/crosschain",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "node ./build.js",
+    "publish:independent": "node ./publish.js"
   },
   "publishConfig": {
     "access": "public"
