@@ -1,11 +1,11 @@
 {
   "name": "@m3s/wallet",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "node ./build.js",
-    "publish": "node ./publish.js"
+    "publish:independent": "node ./publish.js"
   },
   "publishConfig": {
     "access": "public"
