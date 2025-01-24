@@ -1,4 +1,6 @@
+src/
 build.js
 publish.js
 tsconfig.json
-utils/*
+utils/
+adapters/
