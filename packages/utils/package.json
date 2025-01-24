@@ -1,0 +1,19 @@
+{
+  "name": "@m3s/utils",
+  "version": "1.0.3",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "publish:independent": "node ./publish.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "ethers": "^6.13.5"
+  }
+}
