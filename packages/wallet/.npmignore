@@ -1,5 +1,6 @@
+src/
 build.js
 publish.js
 tsconfig.json
-utils/
-adapters/
+dist/utils/**/*.test.js
+dist/utils/**/*.spec.js
