@@ -1,13 +1,14 @@
 {
   "name": "@m3s/utils",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc"
+    "build": "tsc && npm run copy-version-matrix",
+    "copy-version-matrix": "if not exist dist\\versions mkdir dist\\versions && copy /Y src\\versions\\versionMatrix.json dist\\versions\\"
   },
   "publishConfig": {
     "access": "public"

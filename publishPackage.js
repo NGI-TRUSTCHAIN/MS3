@@ -19,6 +19,26 @@ function updateDependentPackages(packageName, version) {
   });
 }
 
+function updateVersionMatrix(packageName, version) {
+  const utilsPath = path.resolve(__dirname, 'packages/utils');
+  const matrixPath = path.join(utilsPath, 'src/versions/versionMatrix.json');
+  
+  if (fs.existsSync(matrixPath)) {
+    const matrix = JSON.parse(fs.readFileSync(matrixPath, 'utf8'));
+    
+    matrix[packageName] = {
+      mockedAdapter: {
+        supported: true,
+        minVersion: version,
+        maxVersion: "*"
+      }
+    };
+
+    fs.writeFileSync(matrixPath, JSON.stringify(matrix, null, 2));
+    console.log(`Updated version matrix for ${packageName}@${version}`);
+  }
+}
+
 function publishPackage(packageName) {
   try {
     const pkgPath = path.resolve(__dirname, `packages/${packageName}`);
@@ -32,25 +52,32 @@ function publishPackage(packageName) {
     const currentPkg = JSON.parse(fs.readFileSync(path.join(pkgPath, "package.json"), 'utf8'));
     const currentVersion = currentPkg.version;
 
-    // Update dependencies in other packages BEFORE version bump
+    // Update version matrix if publishing utils
+    if (packageName === 'utils') {
+      updateVersionMatrix('wallet', currentVersion);
+      updateVersionMatrix('smartContract', currentVersion);
+      updateVersionMatrix('crosschain', currentVersion);
+    }
+
+    // Update dependencies in other packages
     console.log("Updating dependent packages...");
     updateDependentPackages(packageName, currentVersion);
 
     // Version bump
     console.log("Bumping version...");
     execSync("npm version patch --no-git-tag-version", { stdio: "inherit", cwd: pkgPath });
-    
+
     // Git commit all changes
     execSync("git add .", { stdio: "inherit", cwd: __dirname });
     execSync(`git commit -m "chore: prepare ${packageName} ${currentVersion} for publish"`, {
-      stdio: "inherit", 
+      stdio: "inherit",
       cwd: __dirname
     });
 
-    // Publish current version
+    // Publish
     console.log(`Publishing version ${currentVersion}...`);
     execSync("npm publish --access public", { stdio: "inherit", cwd: pkgPath });
-    
+
     console.log(`Successfully published ${packageName}@${currentVersion}`);
 
   } catch (error) {
