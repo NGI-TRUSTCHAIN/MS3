@@ -1,4 +1,4 @@
-import { getAdapterFactory } from '@utils/getter';
+import { getAdapterFactory } from '@m3s/utils';
 
 export class Wallet {
   private adapter: any;

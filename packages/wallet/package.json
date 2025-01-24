@@ -1,6 +1,6 @@
 {
   "name": "@m3s/wallet",
-  "version": "1.0.66",
+  "version": "1.0.68",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "commonjs",
@@ -8,13 +8,9 @@
     "dist"
   ],
   "scripts": {
-    "build": "node ./build.js",
-    "publish:independent": "node ./publish.js"
-  },
-  "publishConfig": {
-    "access": "public"
+    "build": "tsc"
   },
   "dependencies": {
-    "ethers": "^6.13.5"
+    "@m3s/utils": "1.0.0"
   }
 }
