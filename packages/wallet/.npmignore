@@ -2,5 +2,5 @@ src/
 build.js
 publish.js
 tsconfig.json
-dist/utils/**/*.test.js
-dist/utils/**/*.spec.js
+tsconfig.tsbuildinfo
+node_modules/
