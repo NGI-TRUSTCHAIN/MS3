@@ -1,0 +1,9 @@
+{
+    "files": [],
+    "references": [
+      { "path": "./packages/utils" },
+      { "path": "./packages/wallet" },
+      { "path": "./packages/smartContract" },
+      { "path": "./packages/crosschain" }
+    ]
+  }

@@ -10,5 +10,8 @@
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@m3s/utils": "^1.0.7",
+    "@m3s/wallet": "^1.0.12"
+  }
 }

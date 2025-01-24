@@ -1,2 +1,2 @@
 const { buildPackage } = require("../../buildHelper");
-buildPackage("cross-chain");
+buildPackage("crosschain");
