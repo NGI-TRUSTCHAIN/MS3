@@ -19,6 +19,6 @@
   "references": [
     { "path": "../../utils" }
   ],
-  "include": ["src/**/*", "../../utils/**/*"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }
