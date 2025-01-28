@@ -102,10 +102,4 @@ export class Wallet implements CoreWallet {
   signMessage(message: string): Promise<string> {
     return this.adapter.signMessage(message);
   }
-
 }
-
-
-// Test the mock adapter works.
-const wallet = new Wallet('mock');
-console.log('Wallet name:', wallet.getWalletName());
