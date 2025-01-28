@@ -6,15 +6,19 @@ export class WalletAdapterFactory {
   public instance: any;
 
   constructor(args: any) {
-    this.versionRepo = new VersionRepository(); // or true for DB
-
-    this.instance = this.initAdapter(args);
+    this.versionRepo = new VersionRepository();
+    console.log("Creating adapter instance...");
+    const adapter = this.initAdapter(args);
+    console.log("Adapter methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(adapter)));
+    this.instance = adapter;
   }
 
   initAdapter(args: any) {
     switch (args.adapterName) {
       case "mockedAdapter":
-        return new MockedWalletAdapter();
+        const instance = new MockedWalletAdapter();
+        console.log("Created MockedWalletAdapter:", instance);
+        return instance;
       default:
         throw new Error(`Unknown adapter: ${args.adapterName}`);
     }
