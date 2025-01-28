@@ -7,6 +7,20 @@ export class MockedWalletAdapter {
   constructor() {
     // Generate a random wallet instance using ethers
     this.wallet = ethers.Wallet.createRandom();
+    
+    // Bind methods to instance
+    this.getWalletName = this.getWalletName.bind(this);
+    this.getWalletVersion = this.getWalletVersion.bind(this);
+    this.isConnected = this.isConnected.bind(this);
+    this.requestAccounts = this.requestAccounts.bind(this);
+    this.getAccounts = this.getAccounts.bind(this);
+    this.on = this.on.bind(this);
+    this.off = this.off.bind(this);
+    this.getNetwork = this.getNetwork.bind(this);
+    this.switchNetwork = this.switchNetwork.bind(this);
+    this.sendTransaction = this.sendTransaction.bind(this);
+    this.signTransaction = this.signTransaction.bind(this);
+    this.signMessage = this.signMessage.bind(this);
   }
 
   // CoreWallet-like methods
