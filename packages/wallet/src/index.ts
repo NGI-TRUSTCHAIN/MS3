@@ -59,8 +59,9 @@ export class Wallet implements CoreWallet {
   private implementsCoreWalletMethods(): boolean {
     const requiredMethods = Object.values(IRequiredMethods);
     console.log('requiredMethods:', requiredMethods);
+
     return requiredMethods.every(method => 
-      typeof this.adapter[method] === "function"
+      this.adapter[method]
     );
   }
 
