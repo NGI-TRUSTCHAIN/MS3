@@ -1,14 +1,14 @@
 export enum IRequiredMethods {
-    getWalletName = "getWalletName",
-    getWalletVersion = "getWalletVersion",
-    isConnected = "isConnected",
-    requestAccounts = "requestAccounts",
-    getAccounts = "getAccounts",
-    on = "on",
-    off = "off",
-    getNetwork = "getNetwork",
-    switchNetwork = "switchNetwork",
-    sendTransaction = "sendTransaction",
-    signTransaction = "signTransaction",
-    signMessage = "signMessage"
-  }
+  GET_WALLET_NAME = "getWalletName",
+  GET_WALLET_VERSION = "getWalletVersion", 
+  IS_CONNECTED = "isConnected",
+  REQUEST_ACCOUNTS = "requestAccounts",
+  GET_ACCOUNTS = "getAccounts",
+  ON = "on",
+  OFF = "off",
+  GET_NETWORK = "getNetwork",
+  SWITCH_NETWORK = "switchNetwork",
+  SEND_TRANSACTION = "sendTransaction",
+  SIGN_TRANSACTION = "signTransaction",
+  SIGN_MESSAGE = "signMessage"
+}

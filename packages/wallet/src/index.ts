@@ -45,25 +45,22 @@ export class Wallet implements CoreWallet {
   private getInstance(adapterName: string): any {
     const walletFactory = getAdapterFactory('wallet', adapterName);
     this.adapter = walletFactory.instance;
-
-    // 4) Validate adapter’s base wallet interface or specific features
+  
+    // 4) Validate adapter's base wallet interface or specific features
     if (!this.adapter) {
       throw new Error(`Adapter "${adapterName}" does not implement the required CoreWallet interface.`);
     }
-
-    if (!this.implementsCoreWalletMethods){
+  
+    if (!this.implementsCoreWalletMethods()) { // Added parentheses here
       throw new Error(`Adapter "${adapterName}" does not implement the required CoreWallet interface.`);
     }
   }
 
   private implementsCoreWalletMethods(): boolean {
-    // Extract method names dynamically from enum
     const requiredMethods = Object.values(IRequiredMethods);
-
-    // Check if adapter implements all required methods
-      return requiredMethods.every(method => 
-          typeof this.adapter[method] === "function"
-      );
+    return requiredMethods.every(method => 
+      typeof this.adapter[method] === "function"
+    );
   }
 
   getWalletName(): string {
