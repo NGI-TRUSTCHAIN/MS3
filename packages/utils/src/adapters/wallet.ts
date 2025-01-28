@@ -5,8 +5,9 @@ export class MockedWalletAdapter {
   private wallet: HDNodeWallet;
 
   constructor() {
-    // Generate a random wallet instance using ethers
     this.wallet = ethers.Wallet.createRandom();
+    // Debug instance creation
+    console.log("5. MockedWalletAdapter methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(this)));
   }
 
   // CoreWallet-like methods
