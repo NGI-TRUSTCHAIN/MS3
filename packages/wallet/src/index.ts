@@ -48,7 +48,7 @@ export class Wallet implements CoreWallet {
   
     // 4) Validate adapter's base wallet interface or specific features
     if (!this.adapter) {
-      throw new Error(`Adapter "${adapterName}" does not implement the required CoreWallet interface.`);
+      throw new Error(`Adapter "${adapterName}" initialization error.`);
     }
   
     if (!this.implementsCoreWalletMethods()) { // Added parentheses here
@@ -58,6 +58,7 @@ export class Wallet implements CoreWallet {
 
   private implementsCoreWalletMethods(): boolean {
     const requiredMethods = Object.values(IRequiredMethods);
+    console.log('requiredMethods:', requiredMethods);
     return requiredMethods.every(method => 
       typeof this.adapter[method] === "function"
     );
