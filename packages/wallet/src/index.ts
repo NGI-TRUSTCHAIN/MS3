@@ -58,11 +58,21 @@ export class Wallet implements CoreWallet {
 
   private implementsCoreWalletMethods(): boolean {
     const requiredMethods = Object.values(IRequiredMethods);
-    console.log('requiredMethods:', requiredMethods);
-
-    return requiredMethods.every(method => 
-      this.adapter[method]
-    );
+    const missingMethods: string[] = [];
+  
+    requiredMethods.forEach(method => {
+      if (typeof this.adapter[method] !== 'function') {
+        missingMethods.push(method);
+        console.warn(`Missing required method: ${method}`);
+      }
+    });
+  
+    if (missingMethods.length > 0) {
+      console.error('Adapter is missing required methods:', missingMethods);
+      return false;
+    }
+  
+    return true;
   }
 
   getWalletName(): string {
