@@ -6,10 +6,8 @@ export class WalletAdapterFactory {
   public instance: any;
 
   constructor(args: any) {
-    this.versionRepo = new VersionRepository(false); // or true for DB
-    if (!this.versionRepo.isCompatible('wallet', args.adapterName)) {
-      throw new Error(`Incompatible adapter version: ${args.adapterName}`);
-    }
+    this.versionRepo = new VersionRepository(); // or true for DB
+    
     this.instance = this.initAdapter(args);
   }
 

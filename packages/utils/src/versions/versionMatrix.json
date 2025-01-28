@@ -1,23 +1,15 @@
 {
   "wallet": {
-    "mockedAdapter": {
-      "supported": true,
-      "minVersion": "1.0.10",
-      "maxVersion": "*"
+    "1.0.0": {
+      "features": ["basic", "privateFeatures"]
+    },
+    "1.1.0": {
+      "features": ["basic", "privateFeatures", "accountAbstraction"]
     }
   },
   "smartContract": {
-    "mockedAdapter": {
-      "supported": true,
-      "minVersion": "1.0.10",
-      "maxVersion": "*"
-    }
-  },
-  "crosschain": {
-    "mockedAdapter": {
-      "supported": true,
-      "minVersion": "1.0.10",
-      "maxVersion": "*"
+    "1.0.0": {
+      "features": ["basic"]
     }
   }
 }
