@@ -61,7 +61,7 @@ export class Wallet implements CoreWallet {
     const missingMethods: string[] = [];
   
     requiredMethods.forEach(method => {
-      if (typeof this.adapter[method] !== 'function') {
+      if (!this.adapter[method]) {
         missingMethods.push(method);
         console.warn(`Missing required method: ${method}`);
       }
