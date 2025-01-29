@@ -2,7 +2,7 @@ import { Wallet } from '@m3s/wallet';
 
 async function test() {
   const wallet = new Wallet('mockedAdapter');
-  const provider = 'https://sepolia.infura.io/v3/97851b45f6a6423593cbc26793a738a8';
+  const provider = new JsonRpcProvider('https://sepolia.infura.io/v3/97851b45f6a6423593cbc26793a738a8');
   wallet.setProvider(provider);
 
   try {

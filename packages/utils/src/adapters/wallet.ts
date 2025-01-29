@@ -1,9 +1,9 @@
-import { ethers, HDNodeWallet, Provider } from "ethers";
+import { ethers, HDNodeWallet, JsonRpcProvider, Provider } from "ethers";
 // Adjust import paths as needed
 
 export class MockedWalletAdapter {
   private wallet: HDNodeWallet;
-  private provider?: Provider;
+  private provider?: JsonRpcProvider;
 
   constructor(provider?: Provider) {
     this.wallet = ethers.Wallet.createRandom();
@@ -16,9 +16,13 @@ export class MockedWalletAdapter {
     console.log("5. MockedWalletAdapter methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(this)));
   }
 
-  setProvider(provider: Provider) {
-    this.provider = provider;
-    this.wallet = this.wallet.connect(provider);
+  setProvider(provider: any): void {
+    if (!(provider instanceof JsonRpcProvider)) {
+      this.provider = new JsonRpcProvider(provider);
+    } else {
+      this.provider = provider;
+    }
+    this.wallet = this.wallet.connect(this.provider);
   }
   
   // CoreWallet-like methods
@@ -69,30 +73,17 @@ export class MockedWalletAdapter {
     }
 
     try {
-      // Ensure we have a connected wallet with provider
-      const signer = this.wallet.connect(this.provider);
-      
-      // Get nonce
-      const nonce = await this.provider.getTransactionCount(signer.address);
-
-      // Build transaction
       const transaction = {
         to: tx.to,
         value: tx.value ? ethers.parseEther(tx.value) : 0n,
-        data: tx.data || '0x',
-        nonce: nonce,
-        gasLimit: 21000n, // Basic ETH transfer
-        chainId: (await this.provider.getNetwork()).chainId
+        data: tx.data || '0x'
       };
 
-      // Send transaction
-      const response = await signer.sendTransaction(transaction);
-      console.log('Transaction sent:', response.hash);
-      
+      const response = await this.wallet.sendTransaction(transaction);
       return response.hash;
     } catch (error) {
       console.error('Error sending transaction:', error);
-      throw error; // Re-throw to handle in caller
+      throw error;
     }
   }
 
