@@ -1,4 +1,5 @@
 import { Wallet } from '@m3s/wallet';
+import { JsonRpcProvider } from "ethers";
 
 async function test() {
   const wallet = new Wallet('mockedAdapter');

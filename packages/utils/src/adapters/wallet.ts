@@ -17,16 +17,11 @@ export class MockedWalletAdapter {
   }
 
   setProvider(provider: any): void {
-    if (!(provider instanceof JsonRpcProvider)) {
-      this.provider = new JsonRpcProvider(provider);
-    } else {
-      this.provider = provider;
-    }
-    this.wallet = this.wallet.connect(this.provider);
+    this.provider = provider;
+    this.wallet = this.wallet.connect(provider);
   }
   
   // CoreWallet-like methods
-
   getWalletName(): string {
     return "MockedWalletAdapter";
   }
