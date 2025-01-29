@@ -64,17 +64,36 @@ export class MockedWalletAdapter {
   }
 
   async sendTransaction(tx: any): Promise<string> {
-    // Minimal example of sending a transaction with ethers
-    const response = await this.wallet.sendTransaction({
-      to: tx.to,
-      value: tx.value ? ethers.parseEther(tx.value) : 0n,
-      data: tx.data
-    });
+    if (!this.provider) {
+      throw new Error("Provider not set. Call setProvider first.");
+    }
 
-    console.log('Transaction:', response);
-    console.log('Transaction hash:', response.hash);
+    try {
+      // Ensure we have a connected wallet with provider
+      const signer = this.wallet.connect(this.provider);
+      
+      // Get nonce
+      const nonce = await this.provider.getTransactionCount(signer.address);
 
-    return response.hash;
+      // Build transaction
+      const transaction = {
+        to: tx.to,
+        value: tx.value ? ethers.parseEther(tx.value) : 0n,
+        data: tx.data || '0x',
+        nonce: nonce,
+        gasLimit: 21000n, // Basic ETH transfer
+        chainId: (await this.provider.getNetwork()).chainId
+      };
+
+      // Send transaction
+      const response = await signer.sendTransaction(transaction);
+      console.log('Transaction sent:', response.hash);
+      
+      return response.hash;
+    } catch (error) {
+      console.error('Error sending transaction:', error);
+      throw error; // Re-throw to handle in caller
+    }
   }
 
   async signTransaction(tx: any): Promise<string> {
