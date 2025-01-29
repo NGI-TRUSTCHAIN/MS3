@@ -70,6 +70,10 @@ export class MockedWalletAdapter {
       value: tx.value ? ethers.parseEther(tx.value) : 0n,
       data: tx.data
     });
+
+    console.log('Transaction:', response);
+    console.log('Transaction hash:', response.hash);
+
     return response.hash;
   }
 

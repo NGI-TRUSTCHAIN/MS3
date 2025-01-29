@@ -4,3 +4,4 @@ publish.js
 tsconfig.json
 tsconfig.tsbuildinfo
 node_modules/
+tests/
