@@ -13,9 +13,16 @@ export class VersionRepository {
   private matrix: VersionMatrix;
 
   constructor() {
-    const matrixPath = path.join(__dirname, 'versionMatrix.json');
+    // Move up from dist/persistence to dist/versions
+    const matrixPath = path.join(__dirname, '..', 'versions', 'versionMatrix.json');
     console.info('Loading version matrix from:', matrixPath);
-    this.matrix = JSON.parse(fs.readFileSync(matrixPath, 'utf-8'));
+    
+    try {
+      this.matrix = JSON.parse(fs.readFileSync(matrixPath, 'utf-8'));
+    } catch (error) {
+      console.error('Failed to load version matrix:', error);
+      this.matrix = {}; // Fallback empty matrix
+    }
   }
 
   /** Check if a specific module version supports a given feature */

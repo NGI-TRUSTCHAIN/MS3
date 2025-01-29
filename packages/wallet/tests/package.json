@@ -1,0 +1,11 @@
+{
+    "name": "wallet-tests",
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+      "test": "node index.mjs"
+    },
+    "dependencies": {
+      "@m3s/wallet": "file:../"
+    }
+  }

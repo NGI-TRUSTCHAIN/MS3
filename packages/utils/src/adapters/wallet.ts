@@ -1,15 +1,26 @@
-import { ethers, HDNodeWallet } from "ethers";
+import { ethers, HDNodeWallet, Provider } from "ethers";
 // Adjust import paths as needed
 
 export class MockedWalletAdapter {
   private wallet: HDNodeWallet;
+  private provider?: Provider;
 
-  constructor() {
+  constructor(provider?: Provider) {
     this.wallet = ethers.Wallet.createRandom();
+
+    if (provider) {
+      this.setProvider(provider);
+    }
+
     // Debug instance creation
     console.log("5. MockedWalletAdapter methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(this)));
   }
 
+  setProvider(provider: Provider) {
+    this.provider = provider;
+    this.wallet = this.wallet.connect(provider);
+  }
+  
   // CoreWallet-like methods
 
   getWalletName(): string {

@@ -9,8 +9,9 @@ export class Wallet implements CoreWallet {
   private adapter: any;
   private versionRepo: VersionRepository;
   private walletVersion: string;
+  private provider?: any;
 
-  constructor(adapterName: string, neededFeature?: string) {
+  constructor(adapterName: string, neededFeature?: string, provider?: any) {
     this.walletVersion = this.getCurrentVersion();
 
     // 2) Load version matrix and check feature support
@@ -21,8 +22,27 @@ export class Wallet implements CoreWallet {
 
     // 3) Instantiate adapter
     this.getInstance(adapterName);
+  
+    if (provider) {
+      this.setProvider(provider);
+    }
   }
  
+  setProvider(provider?: any): void {
+    if (!provider) {
+      throw new Error("Provider cannot be null/undefined");
+    }
+
+    this.provider = provider;
+    if (this.adapter?.setProvider) {
+      this.adapter.setProvider(provider);
+    }
+  }
+
+  getProvider(): any | undefined {
+    return this.provider;
+  }
+
   private getCurrentVersion(): string {
     const pkgJsonPath = path.join(__dirname, '../package.json');
     console.log('Reading wallet version from:', pkgJsonPath);
@@ -81,9 +101,11 @@ export class Wallet implements CoreWallet {
   getWalletName(): string {
     return this.adapter.getWalletName();
   }
+
   getWalletVersion(): string {
     return this.adapter.getWalletVersion();
   }
+
   isConnected(): boolean {
     return this.adapter.isConnected();
   }
@@ -91,12 +113,15 @@ export class Wallet implements CoreWallet {
   requestAccounts(): Promise<string[]> {
     return this.adapter.requestAccounts();
   }
+
   getAccounts(): Promise<string[]> {
     return this.adapter.getAccounts();
   }
+
   on(event: WalletEvent, callback: (...args: any[]) => void): void {
     return this.adapter.on(event, callback);
   }
+
   off(event: WalletEvent, callback: (...args: any[]) => void): void {
     return this.adapter.off(event, callback);
   }
@@ -104,6 +129,7 @@ export class Wallet implements CoreWallet {
   getNetwork(): Promise<{ chainId: string; name?: string }> {
     return this.adapter.getNetwork();
   }
+
   switchNetwork(chainId: string): Promise<boolean> {
     return this.adapter.switchNetwork(chainId);
   }
@@ -111,9 +137,11 @@ export class Wallet implements CoreWallet {
   sendTransaction(tx: TransactionData): Promise<string> {
     return this.adapter.sendTransaction(tx);
   }
+
   signTransaction(tx: TransactionData): Promise<string> {
     return this.adapter.signTransaction(tx);
   }
+  
   signMessage(message: string): Promise<string> {
     return this.adapter.signMessage(message);
   }
