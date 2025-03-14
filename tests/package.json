@@ -3,19 +3,19 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "clean": "rimraf packages/*/dist",
-    "build": "node scripts/build-all.js",
-    "build:utils": "node scripts/build-package.js utils",
-    "build:wallet": "node scripts/build-package.js wallet", 
-    "build:crosschain": "node scripts/build-package.js crosschain",
-    "build:smartContract": "node scripts/build-package.js smartContract",
-    "publish:utils": "node scripts/publish-package.js utils",
-    "publish:wallet": "node scripts/publish-package.js wallet",
-    "publish:crosschain": "node scripts/publish-package.js crosschain",
-    "publish:smartContract": "node scripts/publish-package.js smartContract",
-    "publish:all": "node scripts/publish-all.js",
-    "release": "npm run build && npm run publish:all",
-    "test": "cd tests && npm run test:unit"
+    "test": "node run-unit-tests.js",
+    "test:unit": "node run-unit-tests.js",
+    "test:wallet": "node run-unit-tests.js wallet",
+    "test:crosschain": "node run-unit-tests.js crosschain",
+    "test:smartContract": "node run-unit-tests.js smartContract",
+    
+    "build:integration": "webpack --config webpack.conf.cjs",
+    "test:integration": "npx playwright test integration",
+    "test:integration:debug": "npx playwright test integration --headed --debug",
+    "test:web3auth": "npx playwright test integration/wallet/02__web3auth.spec.ts",
+    "test:evmwallet": "npx playwright test integration/wallet/01__evmWallet.spec.ts",
+    
+    "test:all": "npm run test && npm run test:integration"
   },
   "devDependencies": {
     "@playwright/test": "^1.42.0",
