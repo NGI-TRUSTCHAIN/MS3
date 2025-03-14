@@ -16,7 +16,7 @@
     "publish:wallet": "node scripts/publish-package.js wallet",
     "publish:crosschain": "node scripts/publish-package.js crosschain",
     "publish:smartContract": "node scripts/publish-package.js smartContract",
-    "release": "npm run publish:utils && npm run publish:wallet && npm run publish:crosschain && npm run publish:smartContract",
+    "release": "npm run build && npm run publish:utils && npm run publish:wallet && npm run publish:crosschain && npm run publish:smartContract",
     "test": "cd tests && npm run test:unit"
   },
   "devDependencies": {

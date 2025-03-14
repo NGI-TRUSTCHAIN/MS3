@@ -1,13 +1,12 @@
 {
   "name": "@m3s/smart-contract",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "main": "dist/index.js",
   "description": "M3S Smart Contract Module",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "node ./build.js",
-    "prepublishOnly": "npm run build",
-    "publish:independent": "node ./publish.js"
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
   },
   "publishConfig": {
     "access": "public"
