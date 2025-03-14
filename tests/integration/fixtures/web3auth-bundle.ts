@@ -1,4 +1,4 @@
-import { Wallet } from '@m3s/wallet';
+import { createWallet } from '@m3s/wallet';
 
 // When the page loads, set up the test fixtures
 document.addEventListener('DOMContentLoaded', () => {
@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       
       // Create the wallet
-      wallet = new Wallet("web3auth", undefined, null, { web3authConfig });
+      wallet = createWallet("web3auth", undefined, null, { web3authConfig });
       await wallet.initialize();
       
       log('Web3Auth initialized. Requesting accounts...');

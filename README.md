@@ -163,7 +163,7 @@ const provider = new JsonRpcProvider('https://ethereum-sepolia-rpc.publicnode.co
 
 // Initialize wallet with private key (for development/testing only)
 const privateKey = '0x...'; // Your private key
-const wallet = new Wallet('evmWallet', undefined, provider, privateKey);
+const wallet = createWallet('evmWallet', undefined, provider, privateKey);
 await wallet.initialize();
 
 // Get accounts
@@ -238,7 +238,7 @@ const web3authConfig = {
 };
 
 // Create the wallet with Web3Auth config
-const wallet = new Wallet("web3auth", undefined, null, { web3authConfig });
+const wallet = createWallet("web3auth", undefined, null, { web3authConfig });
 await wallet.initialize();
 
 // This will trigger the Web3Auth login popup

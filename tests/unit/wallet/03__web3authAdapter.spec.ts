@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { Wallet } from "@m3s/wallet";
+import { createWallet } from "@m3s/wallet";
 import sinon from "sinon";
 
 describe("Web3AuthWalletAdapter", function() {
@@ -30,7 +30,7 @@ describe("Web3AuthWalletAdapter", function() {
       //     loginProvider: "google"
       //   }
       // };
-      // const walletInstance = new Wallet("web3auth", undefined, null, { web3authConfig });
+      // const walletInstance = createWallet("web3auth", undefined, null, { web3authConfig });
       
       // Skip actual instantiation but document requirements
       console.log("Web3Auth adapter should implement all CoreWallet methods:");
@@ -49,7 +49,7 @@ describe("Web3AuthWalletAdapter", function() {
   
   it("should configure Web3Auth with provided options", function() {
     // Document expected configuration behavior
-    console.log("Web3Auth should be configured with:");
+    console.log(" Web3Auth should be configured with: ");
     console.log("- clientId: OAuth client ID");
     console.log("- chainConfig: EVM chain configuration");
     console.log("- loginConfig: OAuth provider settings");

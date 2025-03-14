@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { Wallet } from "@m3s/wallet";
+import { createWallet } from "@m3s/wallet";
 import { JsonRpcProvider } from "ethers";
 
 describe("Core Wallet API", function() {
@@ -7,23 +7,23 @@ describe("Core Wallet API", function() {
 
   it("should expose factory method for wallet types", function() {
     // Test that the wallet class is a constructor
-    expect(Wallet).to.be.a('function');
+    expect(createWallet).to.be.a('function');
   });
 
   it("should create appropriate wallet instance based on adapter type", async function() {
     // Create different wallet types and verify they have the right class
-    const evmWallet: any = new Wallet("evmWallet");
+    const evmWallet: any = createWallet("evmWallet");
     expect(await evmWallet.getWalletName()).to.equal("EvmWalletAdapter");
   
     // Create with provider
     const provider: any = new JsonRpcProvider("https://ethereum-sepolia-rpc.publicnode.com");
-    const evmWalletWithProvider: any = new Wallet("evmWallet", undefined, provider);
+    const evmWalletWithProvider: any = createWallet("evmWallet", undefined, provider);
     expect(await evmWalletWithProvider.isConnected()).to.be.true;
   });
 
   it("should enforce CoreWallet interface on all adapters", function() {
     // Create an EVM wallet to test interface compliance
-    const wallet : any= new Wallet("evmWallet");
+    const wallet : any= createWallet("evmWallet");
     
     // General Initialization
     expect(wallet).to.have.property('initialize');
@@ -63,7 +63,7 @@ describe("Core Wallet API", function() {
   });
 
   it("should enforce EVM-specific interface on EVM wallets", function() {
-    const wallet: any = new Wallet("evmWallet");
+    const wallet: any = createWallet("evmWallet");
     
     // EVM-specific methods
     expect(wallet).to.have.property('signTypedData');
@@ -80,7 +80,7 @@ describe("Core Wallet API", function() {
     // validates that adapters implement the required methods
     expect(() => {
       // A proper implementation would throw if these methods were missing
-      const wallet = new Wallet("evmWallet");
+      const wallet = createWallet("evmWallet");
     }).not.to.throw();
   });
 });

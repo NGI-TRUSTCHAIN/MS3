@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { Wallet } from "@m3s/wallet";
+import { createWallet } from "@m3s/wallet";
 import { JsonRpcProvider } from "ethers";
 
 describe("EVMWalletAdapter", function() {
@@ -11,7 +11,7 @@ describe("EVMWalletAdapter", function() {
     // Use a deterministic private key for tests
     const privateKey = "0x0123456789012345678901234567890123456789012345678901234567890123";
     provider = new JsonRpcProvider("https://ethereum-sepolia-rpc.publicnode.com");
-    walletInstance = new Wallet("evmWallet", undefined, provider, privateKey);
+    walletInstance = createWallet("evmWallet", undefined, provider, privateKey);
     
     await walletInstance.initialize();
   });
