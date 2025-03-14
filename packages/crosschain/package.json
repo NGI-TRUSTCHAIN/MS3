@@ -1,17 +1,23 @@
 {
   "name": "@m3s/crosschain",
   "version": "1.0.2",
+  "description": "M3S Cross Chain Module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "node ./build.js",
-    "publish:independent": "node ./publish.js"
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
   },
   "publishConfig": {
     "access": "public"
   },
   "dependencies": {
-    "@m3s/utils": "^1.0.10",
-    "@m3s/wallet": "^1.0.89"
-  }
+    "@m3s/utils": "^1.0.11",
+    "@m3s/wallet": "^1.0.92"
+  },
+  "references": [
+    {
+      "path": "../utils"
+    }
+  ]
 }

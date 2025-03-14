@@ -3,8 +3,9 @@ import { TypedData, SignTypedDataVersion, TransactionData, UserOperation, Paymas
 
 export interface EVMWallet extends CoreWallet {
   /** EVM-Specific Features */
+  getNetwork(): Promise<{ chainId: string; name?: string }>;
+  switchNetwork(chainId: string): Promise<boolean>;
   signTypedData(data: TypedData, version?: SignTypedDataVersion): Promise<string>;
-  executeContractMethod(contractAddress: string, method: string, params: any[]): Promise<string>;
   getGasPrice(): Promise<string>;
   estimateGas(tx: TransactionData): Promise<string>;
 }

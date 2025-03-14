@@ -1,6 +1,9 @@
 import { WalletEvent, TransactionData } from "../types";
 
 export interface CoreWallet {
+  /** General Initialization */
+  initialize(args?:any): Promise<void>;
+
   /** Wallet Metadata */
   getWalletName(): string;
   getWalletVersion(): string;
@@ -20,14 +23,6 @@ export interface CoreWallet {
   sendTransaction(tx: TransactionData): Promise<string>;
   signTransaction(tx: TransactionData): Promise<string>;
   signMessage(message: string): Promise<string>;
-}
-
-////////////////////////////////////////////////////////
-// PRIVATE FEATURES (would be in privateFeatures.ts)
-////////////////////////////////////////////////////////
-export interface PrivateFeaturesWallet {
-  hasPrivateFeature(featureName: string): boolean;
-  invokePrivateFeature(featureName: string, ...args: any[]): Promise<any>;
 }
 
 

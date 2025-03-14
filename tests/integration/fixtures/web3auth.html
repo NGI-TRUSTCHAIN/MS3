@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web3Auth Integration Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    button {
+      margin: 10px 0;
+      padding: 8px 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    .test-status {
+      padding: 10px;
+      border-radius: 4px;
+      background-color: #f8f8f8;
+      border-left: 4px solid #ccc;
+      margin: 10px 0;
+    }
+    .test-status.pass {
+      border-left: 4px solid #4CAF50;
+      background-color: #f1f8e9;
+    }
+    .section {
+      margin: 20px 0;
+      padding: 10px;
+      border: 1px solid #eee;
+    }
+    #output {
+      max-height: 200px;
+      overflow-y: auto;
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>Web3Auth Integration Test</h1>
+  
+  <div class="section">
+    <h2>Wallet Status</h2>
+    <div id="wallet-status" class="test-status">Not connected</div>
+    <p>Wallet Address: <span id="walletAddress"></span></p>
+  </div>
+
+  <div class="section">
+    <h2>Actions</h2>
+    <button id="loginButton">Connect Web3Auth</button>
+    <button id="signButton" disabled>Sign Message</button>
+    <button id="disconnectButton" disabled>Disconnect</button>
+  </div>
+
+  <div class="section">
+    <h2>Signature</h2>
+    <div id="signature" style="word-break: break-all; font-family: monospace;"></div>
+  </div>
+
+  <div class="section">
+    <h2>Log</h2>
+    <div id="output"></div>
+  </div>
+
+  <script src="dist/bundle.js"></script>
+</body>
+</html>

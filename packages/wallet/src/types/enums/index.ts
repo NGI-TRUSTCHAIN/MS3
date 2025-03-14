@@ -12,3 +12,4 @@ export enum IRequiredMethods {
   SIGN_TRANSACTION = "signTransaction",
   SIGN_MESSAGE = "signMessage"
 }
+

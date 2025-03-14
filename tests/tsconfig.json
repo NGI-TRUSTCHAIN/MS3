@@ -1,0 +1,21 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": "../",
+    "target": "es2020",
+    "module": "NodeNext", 
+    "moduleResolution": "NodeNext",
+    "outDir": "./dist",
+    "rootDir": "./",
+    "declaration": true,
+    "esModuleInterop": true,
+    "paths": {
+      "@m3s/utils": ["packages/utils/dist"],
+      "@m3s/utils/*": ["packages/utils/dist/*"],
+      "@m3s/wallet": ["packages/wallet/dist"],
+      "@m3s/wallet/*": ["packages/wallet/dist/*"]
+    }
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}
