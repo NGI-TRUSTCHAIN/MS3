@@ -1,6 +1,6 @@
 {
   "name": "@m3s/smart-contract",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "main": "dist/index.js",
   "description": "M3S Smart Contract Module",
   "types": "dist/index.d.ts",
