@@ -3,6 +3,7 @@ import { CustomChainConfig, WEB3AUTH_NETWORK_TYPE, WALLET_ADAPTERS } from "@web3
 import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
 import { ethers, BrowserProvider } from "ethers";
 import { AuthAdapter } from "@web3auth/auth-adapter";
+import { EVMWallet } from "../types/interfaces/EVM";
 
 export type Web3AuthConfig = {
   clientId: string;
@@ -11,7 +12,7 @@ export type Web3AuthConfig = {
   loginConfig: Record<string, any>;
 };
 
-export class Web3AuthWalletAdapter {
+export class Web3AuthWalletAdapter implements EVMWallet {
   private web3auth: Web3AuthNoModal | null = null;
   private provider: any = null;
   private ethersProvider: BrowserProvider | null = null;

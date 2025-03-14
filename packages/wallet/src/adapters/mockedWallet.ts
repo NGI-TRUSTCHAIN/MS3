@@ -1,6 +1,7 @@
-import { ethers, HDNodeWallet, JsonRpcProvider, Provider } from "ethers";
+import { ethers, HDNodeWallet, Provider } from "ethers";
+import { CoreWallet } from "../types/interfaces";
 
-export class MockedWalletAdapter {
+export class MockedWalletAdapter implements CoreWallet{
   private wallet: HDNodeWallet;
   private provider?: Provider;
   private privateKey: string;

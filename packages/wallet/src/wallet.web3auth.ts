@@ -1,12 +1,13 @@
 import { BaseWallet } from "./wallet.core";
 import { Web3AuthWalletAdapter, Web3AuthConfig } from "./adapters";
+import { EVMWallet } from "./types/interfaces/EVM";
 
 export interface Web3AuthWalletOptions {
   // All configuration options required by the adapter.
   web3authConfig: Web3AuthConfig;
 }
 
-export class Web3AuthWallet extends BaseWallet {
+export class Web3AuthWallet extends BaseWallet implements EVMWallet {
   protected adapter: Web3AuthWalletAdapter;
 
   constructor(
@@ -58,6 +59,14 @@ export class Web3AuthWallet extends BaseWallet {
     return await this.adapter.signTypedData(data);
   }
 
+  async getGasPrice(): Promise<string> {
+    return await this.adapter.getGasPrice();
+  }
+
+  async estimateGas(tx: any): Promise<string> {
+    return await this.adapter.estimateGas(tx);
+  }
+  
   async disconnect(): Promise<void> {
     return await this.adapter.disconnect();
   }

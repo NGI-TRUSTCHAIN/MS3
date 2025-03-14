@@ -1,7 +1,8 @@
 import { BaseWallet } from './wallet.core';
 import { TransactionData } from './types/types';
+import { EVMWallet } from './types/interfaces/EVM';
 
-export class EvmWallet extends BaseWallet {
+export class EvmWallet extends BaseWallet implements EVMWallet{
     constructor(adapterName: string, neededFeature?: string, provider?: any, options?: any) {
         // Pass options to the BaseWallet so it is used when initializing the adapter.
         super(adapterName, neededFeature, provider, options);

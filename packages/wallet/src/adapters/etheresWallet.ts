@@ -1,8 +1,9 @@
 import { ethers, Provider, Wallet as EthersWallet } from "ethers";
+import { EVMWallet } from "../types/interfaces/EVM";
 
 type TransactionData = { from: string; to: string; value: string; data?: string };
 
-export class EvmWalletAdapter {
+export class EvmWalletAdapter implements EVMWallet{
   private wallet: EthersWallet;
   private provider?: Provider;
   private privateKey: string;
@@ -62,12 +63,12 @@ export class EvmWalletAdapter {
     console.warn("Event handling not implemented in EvmWalletAdapter");
   }
 
-  async getNetwork(): Promise<{ chainId: number; name?: string }> {
+  async getNetwork(): Promise<{ chainId: string; name?: string }> {
     if (!this.provider) {
       throw new Error("Provider not set");
     }
     const network = await this.provider.getNetwork();
-    return { chainId: Number(network.chainId), name: network.name };
+    return { chainId: String(network.chainId), name: network.name };
   }
 
   async switchNetwork(_chainId: string): Promise<boolean> {
