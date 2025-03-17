@@ -62,4 +62,3 @@ jobs:
           target_repo_url: ${{ secrets.BITBUCKET_REPO_URL }}
           ssh_private_key: ${{ secrets.BITBUCKET_SSH_KEY }}
           ssh_username: ${{ secrets.BITBUCKET_USERNAME }}
-          target_branch: "github/${{ steps.extract.outputs.adapter_name }}"
