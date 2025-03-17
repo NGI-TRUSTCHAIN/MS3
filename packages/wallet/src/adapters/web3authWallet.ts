@@ -31,14 +31,17 @@ export class Web3AuthWalletAdapter implements EVMWallet {
     console.log("Web3AuthWalletAdapter created (no-modal)", config);
   }
 
+  /**
+   * Initialize the Web3AuthNoModal instance with the provided configuration.
+   */
   async initialize(): Promise<void> {
     if (this.initialized) return;
-  
+
     // Create the private key provider.
     const privateKeyProvider = new EthereumPrivateKeyProvider({
       config: { chainConfig: this.config.chainConfig }
     });
-  
+
     console.log("Initializing Web3AuthNoModal...");
     this.web3auth = new Web3AuthNoModal({
       clientId: this.config.clientId,
@@ -46,7 +49,7 @@ export class Web3AuthWalletAdapter implements EVMWallet {
       chainConfig: this.config.chainConfig,
       privateKeyProvider
     });
-  
+
     // Configure the openlogin adapter.
     const authAdapter = new AuthAdapter({
       adapterSettings: {
@@ -54,9 +57,9 @@ export class Web3AuthWalletAdapter implements EVMWallet {
         loginConfig: this.config.loginConfig
       }
     });
-    
+
     this.web3auth.configureAdapter(authAdapter);
-  
+
     await this.web3auth.init();
     this.initialized = true;
   }
@@ -95,7 +98,7 @@ export class Web3AuthWalletAdapter implements EVMWallet {
         throw new Error("Web3Auth did not return a provider after login.");
       }
       this.provider = web3authProvider;
-      (this.ethersProvider as any)  =
+      (this.ethersProvider as any) =
         web3authProvider instanceof ethers.JsonRpcProvider
           ? web3authProvider
           : new ethers.BrowserProvider(web3authProvider);
