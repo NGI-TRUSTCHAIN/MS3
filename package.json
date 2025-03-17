@@ -1,0 +1,32 @@
+{
+  "name": "test",
+  "version": "1.0.0",
+  "description": "Repository to test Pipelines on GitHub.",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha -r ts-node/register tests/unit/**/*.spec.ts",
+    "test:wallet": "mocha -r ts-node/register tests/unit/wallet/**/*.spec.ts",
+    "validate-adapter": "node scripts/validate-adapter.js",
+    "lint": "eslint packages/**/*.ts"
+  },
+  "dependencies": {
+    "@web3auth/base": "^9.7.0",
+    "@web3auth/no-modal": "^9.7.0",
+    "@web3auth/ethereum-provider": "^9.7.0",
+    "ethers": "^6.13.5"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.3.5",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^20.4.5",
+    "@typescript-eslint/eslint-plugin": "^6.2.0",
+    "@typescript-eslint/parser": "^6.2.0",
+    "chai": "^4.3.7",
+    "eslint": "^8.46.0",
+    "mocha": "^10.2.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.1.6"
+  },
+  "author": "",
+  "license": "ISC"
+}
