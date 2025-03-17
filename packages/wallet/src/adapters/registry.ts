@@ -2,7 +2,7 @@
 
 import { WalletType } from "../types/enums";
 
-// Type definitions for adapter metadata.
+// Type definitions for adapter metadata
 export interface AdapterMetadata {
   name: string;
   adapterType: WalletType;  // Explicit adapter type
