@@ -3,7 +3,7 @@ import { adapterRegistry } from './registry';
 import { Web3AuthWalletAdapter } from './web3authWallet';
 
 /**
- * Register the Web3AuthWalletAdapter with the adapter registry
+ * Register the Web3AuthWalletAdapter with the adapter registry.
  */
 adapterRegistry.register({
   name: "web3auth",
