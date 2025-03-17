@@ -5,7 +5,7 @@ import { Web3AuthWalletAdapter } from "../../../../packages/wallet/src/adapters/
 describe("Web3AuthWalletAdapter", function() {
   this.timeout(5000);
   let adapter: any;
-  const mockConfig = {
+  const mockConfig: any = {
     clientId: "test-client-id",
     web3AuthNetwork: "testnet",
     chainConfig: {
