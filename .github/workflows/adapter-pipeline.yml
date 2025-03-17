@@ -46,22 +46,16 @@ jobs:
       
       - name: Push to Bitbucket
         run: |
-          # Configure Git with token-based auth
-          git config --global user.email "s8zi8hu1vqkcxcn63kpbi6jl6awsk4@bots.bitbucket.org"
+          # Configure Git with the bot email from secrets
+          git config --global user.email "${{ secrets.BITBUCKET_BOT_EMAIL }}"
           git config --global user.name "GitHub Actions Bot"
           
           # Extract adapter name 
           ADAPTER_NAME="${{ steps.extract.outputs.adapter_name }}"
           
-          # Set up remote with token authentication
-          BITBUCKET_URL="https://x-token-auth:${{ secrets.BITBUCKET_ACCESS_TOKEN }}@bitbucket.org/ctb-marisca/ms3-package.git"
+          # Set up remote with Repository Access Token authentication
+          BITBUCKET_URL="https://x-token-auth:${{ secrets.BITBUCKET_ACCESS_TOKEN }}@bitbucket.org/${{ secrets.BITBUCKET_REPO_PATH }}"
           git remote add bitbucket $BITBUCKET_URL
-          
-          # Check if branch exists (prevents overwriting)
-          if git ls-remote --heads bitbucket github/$ADAPTER_NAME | grep -q github/$ADAPTER_NAME; then
-            echo "Branch github/$ADAPTER_NAME already exists on BitBucket. Skipping push."
-            exit 1
-          fi
           
           # Push to BitBucket
           echo "Pushing to BitBucket branch: github/$ADAPTER_NAME"
