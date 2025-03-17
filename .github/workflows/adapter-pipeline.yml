@@ -53,9 +53,8 @@ jobs:
           # Extract adapter name 
           ADAPTER_NAME="${{ steps.extract.outputs.adapter_name }}"
           
-          # Set up remote with Repository Access Token authentication
-          BITBUCKET_URL="https://x-token-auth:${{ secrets.BITBUCKET_ACCESS_TOKEN }}@bitbucket.org/${{ secrets.BITBUCKET_REPO_PATH }}"
-          git remote add bitbucket $BITBUCKET_URL
+          # Fix: Ensure URL doesn't contain newlines by using variables separately
+          git remote add bitbucket https://x-token-auth:${{ secrets.BITBUCKET_ACCESS_TOKEN }}@bitbucket.org/${{ secrets.BITBUCKET_REPO_PATH }}
           
           # Push to BitBucket
           echo "Pushing to BitBucket branch: github/$ADAPTER_NAME"
