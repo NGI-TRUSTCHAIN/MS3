@@ -1,6 +1,6 @@
 import { CoreWallet } from "..";
 import { TypedData, SignTypedDataVersion, TransactionData, UserOperation, PaymasterData, DIDDocument, VerifiableCredential } from "../../types";
-
+// TODO: Add EVM-specific types y separar en carpetas. 
 export interface EVMWallet extends CoreWallet {
   /** EVM-Specific Features */
   getNetwork(): Promise<{ chainId: string; name?: string }>;

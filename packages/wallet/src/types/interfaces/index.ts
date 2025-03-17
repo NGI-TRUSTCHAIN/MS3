@@ -1,5 +1,6 @@
 import { WalletEvent, TransactionData } from "../types";
 
+// TODO: Add ESTE WALLET TIENE QUE SER GENERICO Y NO ESPECIFICO DE EVM, ASEGURARSE.
 export interface CoreWallet {
   /** General Initialization */
   initialize(args?:any): Promise<void>;

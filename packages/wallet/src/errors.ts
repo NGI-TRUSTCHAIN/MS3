@@ -6,6 +6,7 @@ class AdapterError extends Error {
     }
 }
 
+// TODO: Revisar y plantear como manejar los errores y presentarlos al usuario, y si esto es necesario.
 export function createErrorHandlingProxy<T extends object>(adapter: T): T {
     return new Proxy(adapter, {
         get(target, prop, receiver) {

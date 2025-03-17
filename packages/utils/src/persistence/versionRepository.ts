@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
+// TODO: Mejorar el interfaz añadiendo otro anidado para los adapters y sus versiones.
 interface VersionMatrix {
   [moduleName: string]: {
     [versionString: string]: {

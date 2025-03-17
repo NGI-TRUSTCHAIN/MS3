@@ -1,3 +1,5 @@
+// LOS METODOS DEL BASE WALLET
+// TODO: Meter todos los metodos enumerados y organizar en carpetas.
 export enum IRequiredMethods {
   GET_WALLET_NAME = "getWalletName",
   GET_WALLET_VERSION = "getWalletVersion", 
@@ -13,3 +15,4 @@ export enum IRequiredMethods {
   SIGN_MESSAGE = "signMessage"
 }
 
+ 

@@ -1,14 +1,11 @@
-import { VersionRepository } from "@m3s/utils";
 import { MockedWalletAdapter, EvmWalletAdapter } from "../adapters";
 import { Web3AuthWalletAdapter } from "../adapters/web3authWallet";
 
 
 export class WalletAdapterFactory {
-  private versionRepo: VersionRepository;
   public instance: any;
 
   constructor(args: any) {
-    this.versionRepo = new VersionRepository();
     const adapter = this.initAdapter(args);
     this.instance = adapter;
   }

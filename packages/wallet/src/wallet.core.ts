@@ -38,6 +38,7 @@ export class BaseWallet implements CoreWallet {
   }
   
   private getInstance(adapterName: string, options?: any): void {
+    // TODO: Type options better.
     const walletFactory = new WalletAdapterFactory({ adapterName, ...options });
     this.adapter = walletFactory.instance;
     if (!this.adapter) {
