@@ -11,17 +11,17 @@
   },
   "dependencies": {
     "@web3auth/base": "^9.7.0",
-    "@web3auth/no-modal": "^9.7.0",
     "@web3auth/ethereum-provider": "^9.7.0",
+    "@web3auth/no-modal": "^9.7.0",
     "ethers": "^6.13.5"
   },
   "devDependencies": {
-    "@types/chai": "^4.3.5",
+    "@types/chai": "^4.3.20",
     "@types/mocha": "^10.0.1",
     "@types/node": "^20.4.5",
     "@typescript-eslint/eslint-plugin": "^6.2.0",
     "@typescript-eslint/parser": "^6.2.0",
-    "chai": "^4.3.7",
+    "chai": "^4.5.0",
     "eslint": "^8.46.0",
     "mocha": "^10.2.0",
     "ts-node": "^10.9.1",
