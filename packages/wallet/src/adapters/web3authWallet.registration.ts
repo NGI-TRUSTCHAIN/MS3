@@ -1,6 +1,6 @@
 import { WalletType } from '../types/enums';
 import { adapterRegistry } from './registry';
-import { Web3AuthWalletAdapter } from './web3auth-newWallet';
+import { Web3AuthWalletAdapter } from './web3authWallet';
 
 /**
  * Register the Web3AuthWalletAdapter with the adapter registry
