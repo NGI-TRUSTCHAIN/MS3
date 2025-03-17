@@ -12,6 +12,11 @@ export type Web3AuthConfig = {
   loginConfig: Record<string, any>;
 };
 
+/**
+ * Web3AuthWalletAdapter is an implementation of the EVMWallet interface using Web3AuthNoModal.
+ * It provides methods to initialize the wallet, connect to a provider, and perform various
+ * wallet operations such as sending transactions, signing messages, and retrieving account information.
+ */
 export class Web3AuthWalletAdapter implements EVMWallet {
   private web3auth: Web3AuthNoModal | null = null;
   private provider: any = null;
