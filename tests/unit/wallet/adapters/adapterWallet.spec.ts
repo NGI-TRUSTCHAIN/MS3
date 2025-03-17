@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { adapterRegistry } from "packages/wallet/src/adapters";
+import { adapterRegistry } from "../../../../packages/wallet/src/adapters";
 
 describe("Adapter Validation", function() {
   this.timeout(5000); // Set timeout to 5s to match other tests
