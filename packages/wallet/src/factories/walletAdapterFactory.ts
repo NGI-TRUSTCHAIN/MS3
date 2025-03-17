@@ -1,6 +1,4 @@
-import { MockedWalletAdapter, EvmWalletAdapter } from "../adapters";
-import { Web3AuthWalletAdapter } from "../adapters/web3authWallet";
-
+import { adapterRegistry } from '../adapters/registry';
 
 export class WalletAdapterFactory {
   public instance: any;
@@ -11,16 +9,33 @@ export class WalletAdapterFactory {
   }
 
   initAdapter(args: any): any {
-    if (args.adapterName === "mockedAdapter") {
-      return new MockedWalletAdapter(args.privateKey);
-    } else if (args.adapterName === "evmWallet") {
-      return new EvmWalletAdapter(args.privateKey);
-    } else if (args.adapterName === "web3auth") {
-      if (!args.web3authConfig) {
-        throw new Error("web3authConfig is required for web3auth adapter");
-      }
-      return new Web3AuthWalletAdapter(args.web3authConfig);
+    const adapterInfo = adapterRegistry.getAdapter(args.adapterName);
+
+    if (!adapterInfo) {
+      throw new Error(`Unknown adapter: ${args.adapterName}`);
     }
-    throw new Error(`Unknown adapter: ${args.adapterName}`);
+
+    // Check requirements
+    if (adapterInfo.requirements) {
+      for (const req of adapterInfo.requirements) {
+        if (!args[req]) {
+          throw new Error(`${req} is required for ${args.adapterName} adapter`);
+        }
+      }
+    }
+
+    // Create the appropriate adapter instance based on the registration
+    const AdapterClass = adapterInfo.adapterClass;
+
+    // Handle different constructor signatures based on adapter type
+    switch (adapterInfo.adapterType) {
+      case 'evm':
+        return new AdapterClass(args.privateKey, args.provider);
+      case 'web3auth':
+        return new AdapterClass(args.web3authConfig);
+      default:
+        // Generic adapter initialization
+        return new AdapterClass(args);
+    }
   }
 }

@@ -1,4 +1,5 @@
-import { WalletEvent, TransactionData } from "../types";
+import { WalletEvent } from "../enums";
+import { TransactionData } from "../types";
 
 // TODO: Add ESTE WALLET TIENE QUE SER GENERICO Y NO ESPECIFICO DE EVM, ASEGURARSE.
 export interface CoreWallet {
@@ -25,6 +26,5 @@ export interface CoreWallet {
   signTransaction(tx: TransactionData): Promise<string>;
   signMessage(message: string): Promise<string>;
 }
-
 
 

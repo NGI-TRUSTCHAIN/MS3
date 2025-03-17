@@ -35,7 +35,10 @@
     "build:integration": "cd tests && npm run build:integration",
     
     "test:all": "npm run test && npm run test:integration",
-    "build:test": "npm run build && npm run test:all"
+    "build:test": "npm run build && npm run test:all",
+
+    "merge-adapter": "node scripts/mergeHelper.js"
+
   },
   "devDependencies": {
     "@babel/core": "^7.26.9",

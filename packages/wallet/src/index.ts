@@ -1,49 +1,27 @@
-import { BaseWallet } from "./wallet.core";
-import { EvmWallet } from "./wallet.evm";
-import { Web3AuthWallet } from "./wallet.web3auth";
+import { adapterRegistry } from './adapters/registry';
+import { BaseWallet } from './wallet.core';
+import { CoreWallet } from './types/interfaces';
 
-export * from "./types/interfaces";
-export { BaseWallet, EvmWallet, Web3AuthWallet };
+// Export main components
+export { BaseWallet } from './wallet.core';
+export * from './types/interfaces';
+export * from './adapters';
 
-// Define a union type for all possible wallet types
-export type WalletInstance = BaseWallet | EvmWallet | Web3AuthWallet;
-
-// Factory function instead of a class constructor
-export function createWallet(
+export function createWallet<T extends CoreWallet = CoreWallet>(
   adapterName: string,
   neededFeature?: string,
   provider?: any,
   options?: any
-): WalletInstance {
-  if (adapterName === "evmWallet") {
-    return new EvmWallet(adapterName, neededFeature, provider, options);
-  } else if (adapterName === "web3auth") {
-    return new Web3AuthWallet(adapterName, neededFeature, provider, options);
-  } else {
-    return new BaseWallet(adapterName, neededFeature, provider, options);
-  }
-}
-
-// Backward compatibility: Keep the Wallet class but with proper typing
-// export class Wallet {
-//   static create(
-//     adapterName: string,
-//     neededFeature?: string,
-//     provider?: any,
-//     options?: any
-//   ): WalletInstance {
-//     return createWallet(adapterName, neededFeature, provider, options);
-//   }
+): T {
+  const adapterInfo = adapterRegistry.getAdapter(adapterName);
   
-//   // Constructor that makes TypeScript happy
-//   constructor(
-//     adapterName: string,
-//     neededFeature?: string,
-//     provider?: any,
-//     options?: any
-//   ) {
-//     // This is a workaround for TypeScript's constructor limitations
-//     // It won't actually return, but we'll use the static method in practice
-//     return createWallet(adapterName, neededFeature, provider, options) as any;
-//   }
-// }
+  if (!adapterInfo) {
+    throw new Error(`Unknown adapter: ${adapterName}`);
+  }
+  
+  // Create a wallet with the adapter
+  const wallet = new BaseWallet(adapterName, neededFeature, provider, options);
+  
+  // Return it with the appropriate type based on what the caller expects
+  return wallet as unknown as T;
+}

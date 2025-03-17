@@ -1,11 +1,11 @@
-import { VersionRepository } from '@m3s/utils';
 import { CoreWallet } from './types/interfaces';
-import { WalletEvent, TransactionData } from './types/types';
+import { TransactionData } from './types/types';
 import * as fs from 'fs';
 import * as path from 'path';
-import { IRequiredMethods } from './types/enums';
+import { IRequiredMethods, WalletEvent } from './types/enums';
 import { createErrorHandlingProxy } from './errors';
 import { WalletAdapterFactory } from './factories/walletAdapterFactory';
+import { VersionRepository } from '@m3s/utils';
 
 export class BaseWallet implements CoreWallet {
   protected adapter: any;
@@ -27,8 +27,8 @@ export class BaseWallet implements CoreWallet {
     if (provider) {
       this.setProvider(provider);
     }
-    
-    return createErrorHandlingProxy(this); 
+
+    return createErrorHandlingProxy(this);
   }
 
   async initialize(args?: any): Promise<void> {
@@ -36,7 +36,7 @@ export class BaseWallet implements CoreWallet {
       await this.adapter.initialize(args);
     }
   }
-  
+
   private getInstance(adapterName: string, options?: any): void {
     // TODO: Type options better.
     const walletFactory = new WalletAdapterFactory({ adapterName, ...options });
@@ -163,5 +163,27 @@ export class BaseWallet implements CoreWallet {
 
   signMessage(message: string): Promise<string> {
     return this.adapter.signMessage(message);
+  }
+
+  // EVM-specific methods - These will be called when the adapter is EVM-compatible
+  async signTypedData(data: any): Promise<string> {
+    if (typeof this.adapter.signTypedData !== 'function') {
+      throw new Error('Adapter does not implement signTypedData');
+    }
+    return this.adapter.signTypedData(data);
+  }
+
+  async getGasPrice(): Promise<string> {
+    if (typeof this.adapter.getGasPrice !== 'function') {
+      throw new Error('Adapter does not implement getGasPrice');
+    }
+    return this.adapter.getGasPrice();
+  }
+
+  async estimateGas(tx: any): Promise<string> {
+    if (typeof this.adapter.estimateGas !== 'function') {
+      throw new Error('Adapter does not implement estimateGas');
+    }
+    return this.adapter.estimateGas(tx);
   }
 }

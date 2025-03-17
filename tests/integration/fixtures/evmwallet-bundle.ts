@@ -1,4 +1,5 @@
 import { createWallet } from '@m3s/wallet';
+import { EVMWallet } from '@m3s/wallet/types/interfaces/EVM/index.js';
 import { JsonRpcProvider } from 'ethers';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -44,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const provider = new JsonRpcProvider('https://ethereum-sepolia-rpc.publicnode.com');
 
       // Create the wallet
-      wallet = createWallet('evmWallet', undefined, provider, privateKey);
+      wallet = createWallet<EVMWallet>('evmWallet', undefined, provider, privateKey);
       await wallet.initialize();
       
       log('EVM wallet initialized. Requesting accounts...');

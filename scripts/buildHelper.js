@@ -30,6 +30,7 @@ function buildPackage(packageName) {
 function buildAllPackages() {
   // Always build utils first
   buildPackage('utils');
+  
   ['wallet', 'crosschain', 'smartContract'].forEach(buildPackage);
 }
 

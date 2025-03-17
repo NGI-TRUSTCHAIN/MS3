@@ -1,6 +1,13 @@
-export * from './mockedWallet'; 
+// adapters/index.ts
+export * from './mockedWallet';
 export * from './etheresWallet';
 export * from './web3authWallet';
+export * from './registry';  // Export the registry
+
+// Load all registrations
+import './mockedWallet.registration';
+import './ethersWallet.registration';
+import './web3authWallet.registration';
 
 // TODO: Estos adapters deberían venir del github.
 // Paso 1: Alguien sube el pull request a la rama adecuada (collaborate/adapter/<adapter-name>)
