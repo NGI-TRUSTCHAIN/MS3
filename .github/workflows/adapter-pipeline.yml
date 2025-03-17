@@ -53,8 +53,12 @@ jobs:
           # Extract adapter name 
           ADAPTER_NAME="${{ steps.extract.outputs.adapter_name }}"
           
-          # Fix: Ensure URL doesn't contain newlines by using variables separately
-          git remote add bitbucket https://x-token-auth:${{ secrets.BITBUCKET_ACCESS_TOKEN }}@bitbucket.org/${{ secrets.BITBUCKET_REPO_PATH }}
+          # Remove any newlines from secrets and create the URL
+          TOKEN=$(echo "${{ secrets.BITBUCKET_ACCESS_TOKEN }}" | tr -d '\n\r')
+          REPO_PATH=$(echo "${{ secrets.BITBUCKET_REPO_PATH }}" | tr -d '\n\r')
+          
+          # Use sanitized variables for the URL
+          git remote add bitbucket "https://x-token-auth:${TOKEN}@bitbucket.org/${REPO_PATH}"
           
           # Push to BitBucket
           echo "Pushing to BitBucket branch: github/$ADAPTER_NAME"
