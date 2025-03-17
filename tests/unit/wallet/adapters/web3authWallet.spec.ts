@@ -1,6 +1,6 @@
 import { expect } from "chai";
+import { Web3AuthWalletAdapter } from "packages/wallet/src/adapters/web3authWallet";
 import sinon from "sinon";
-import { Web3AuthWalletAdapter } from "../../../../packages/wallet/src/adapters/web3authWallet";
 
 describe("Web3AuthWalletAdapter", function() {
   this.timeout(5000);
