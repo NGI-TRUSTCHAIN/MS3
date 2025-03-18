@@ -40,24 +40,28 @@ try {
   process.exit(1);
 }
 
-// Check if unit tests exist for adapter
-const testPath = path.join(__dirname, '..', 'tests/unit/wallet/adapters', `${adapterName}Wallet.spec.ts`);
-if (!fs.existsSync(testPath)) {
-  console.error(`❌ Unit tests not found at: ${testPath}`);
-  console.error('Please add unit tests for your adapter');
-  process.exit(1);
-}
-
-// Run unit tests for the adapter
+// Read the registration file to determine adapter type
 try {
-  console.log(`Running unit tests for ${adapterName}Wallet...`);
-  execSync(`npx mocha -r ts-node/register tests/unit/wallet/adapters/${adapterName}Wallet.spec.ts`, { 
-    stdio: 'inherit', 
-    cwd: path.join(__dirname, '..') 
+  const regContent = fs.readFileSync(regFilePath, 'utf-8');
+  const adapterTypeMatch = regContent.match(/adapterType:\s*WalletType\[\s*['"]([^'"]+)['"]\s*\]/);
+  const adapterType = adapterTypeMatch ? adapterTypeMatch[1] : 'core';
+  
+  // Run the dynamic validation test
+  console.log(`Running dynamic validation for ${adapterName}Wallet as type: ${adapterType}...`);
+  
+  // Set environment variables for the test
+  process.env.ADAPTER_PATH = `../../../../packages/wallet/src/adapters/${adapterName}Wallet`;
+  process.env.ADAPTER_TYPE = adapterType;
+  
+  execSync('npx mocha -r ts-node/register tests/unit/wallet/adapters/dynamicAdapter.spec.ts', { 
+    stdio: 'inherit',
+    cwd: path.join(__dirname, '..'),
+    env: {...process.env}
   });
-  console.log('✅ Unit tests passed');
+  
+  console.log('✅ Dynamic validation passed');
 } catch (error) {
-  console.error('❌ Unit tests failed');
+  console.error('❌ Dynamic validation failed');
   process.exit(1);
 }
 

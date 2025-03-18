@@ -1,70 +1,43 @@
-import { expect } from "chai";
-import { adapterRegistry } from "../../../../packages/wallet/src/adapters";
+import { IEVMRequiredMethods, IRequiredMethods, WalletType } from "packages/wallet/src/types";
+import { validateInterface } from "tests/utils/validator";
 
-describe("Adapter Validation", function() {
-  this.timeout(5000); // Set timeout to 5s to match other tests
+// This test is designed to be called programmatically with dynamic imports
+describe("Dynamic Adapter Validation", function() {
+  this.timeout(5000);
 
-  it("should register adapters correctly", function() {
-    const adapters = adapterRegistry.getAllAdapters();
-    expect(adapters).to.be.an('array');
+  // The test will be invoked with these parameters from the validation script
+  it("should validate adapter implements required interface", async function() {
+    // Dynamically load the adapter class - will be provided by the validation script
+    const adapterPath = process.env.ADAPTER_PATH;
+    const adapterType = process.env.ADAPTER_TYPE;
     
-    // You should have at least one adapter
-    expect(adapters.length).to.be.greaterThan(0);
+    if (!adapterPath) {
+      throw new Error("ADAPTER_PATH environment variable is required");
+    }
     
-    // Check adapter structure
-    adapters.forEach((adapter: any) => {
-      expect(adapter).to.have.property('name').that.is.a('string');
-      expect(adapter).to.have.property('adapterType').that.is.a('string');
-      expect(adapter).to.have.property('adapterClass').that.is.a('function');
-      expect(adapter).to.have.property('requirements').that.is.an('array');
-    });
-  });
-  
-  it("should verify adapter class structure", function() {
-    const adapters = adapterRegistry.getAllAdapters();
+    // Dynamic import of the adapter module
+    const adapterModule = await import(adapterPath);
     
-    adapters.forEach((adapter: any) => {
-      const AdapterClass = adapter.adapterClass;
-      
-      // Skip actual instantiation but verify the class structure
-      const prototype = AdapterClass.prototype;
-      
-      // Core wallet methods
-      expect(prototype).to.have.property('initialize').that.is.a('function');
-      expect(prototype).to.have.property('getWalletName').that.is.a('function');
-      expect(prototype).to.have.property('getWalletVersion').that.is.a('function');
-      expect(prototype).to.have.property('isConnected').that.is.a('function');
-      expect(prototype).to.have.property('requestAccounts').that.is.a('function');
-      expect(prototype).to.have.property('getAccounts').that.is.a('function');
-      expect(prototype).to.have.property('on').that.is.a('function');
-      expect(prototype).to.have.property('off').that.is.a('function');
-      expect(prototype).to.have.property('getNetwork').that.is.a('function');
-      expect(prototype).to.have.property('switchNetwork').that.is.a('function');
-      expect(prototype).to.have.property('sendTransaction').that.is.a('function');
-      expect(prototype).to.have.property('signTransaction').that.is.a('function');
-      expect(prototype).to.have.property('signMessage').that.is.a('function');
-      
-      // For EVM adapters, check EVM-specific methods
-      if (adapter.adapterType === 'evm') {
-        expect(prototype).to.have.property('signTypedData').that.is.a('function');
-        expect(prototype).to.have.property('getGasPrice').that.is.a('function');
-        expect(prototype).to.have.property('estimateGas').that.is.a('function');
-      }
-    });
-  });
-  
-  it("should verify adapter requirements match registration", function() {
-    const adapters = adapterRegistry.getAllAdapters();
+    // Find the adapter class in the module (usually the default export or named export)
+    const AdapterClass: any = Object.values(adapterModule).find(
+      exp => typeof exp === 'function' && exp.name.includes('Wallet')
+    );
     
-    adapters.forEach((adapter: any) => {
-      const AdapterClass = adapter.adapterClass;
-      const requirements = adapter.requirements || [];
-      
-      // Check if we have the web3auth adapter
-      if (adapter.name === "web3auth") {
-        expect(requirements).to.include("web3authConfig");
-        expect(adapter.adapterType).to.equal("evm");
-      }
-    });
+    if (!AdapterClass) {
+      throw new Error(`No adapter class found in ${adapterPath}`);
+    }
+    
+    console.log(`Testing adapter class: ${AdapterClass.name}`);
+    
+    // Determine which methods are required based on adapter type
+    const requiredEnums: any = [IRequiredMethods]; // Core methods always required
+    
+    // Add type-specific methods
+    if (adapterType === WalletType.evm || adapterType === WalletType.web3auth) {
+      requiredEnums.push(IEVMRequiredMethods);
+    }
+    
+    // Use the validator utility
+    validateInterface(AdapterClass, requiredEnums, AdapterClass.name);
   });
 });

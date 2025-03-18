@@ -1,6 +1,4 @@
-import { CoreWallet } from ".";
-import { SignTypedDataVersion } from "../enums";
-import { TypedData, TransactionData, UserOperation, PaymasterData, DIDDocument, VerifiableCredential } from "../types";
+import { TypedData, SignTypedDataVersion, CoreWallet, TransactionData, UserOperation, PaymasterData, DIDDocument, VerifiableCredential } from "../";
 
 // TODO: Add EVM-specific types y separar en carpetas. 
 export interface EVMWallet extends CoreWallet {

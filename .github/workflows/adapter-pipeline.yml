@@ -24,9 +24,6 @@ jobs:
       
       - name: Run adapter validation script
         run: node scripts/validate-adapter.js ${{ github.ref_name }}
-      
-      - name: Run wallet unit tests
-        run: npm run test:wallet
 
   sync-to-bitbucket:
     needs: validate

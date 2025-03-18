@@ -1,6 +1,6 @@
 // adapters/registry.ts
 
-import { WalletType } from "../types/enums";
+import { WalletType } from "../types";
 
 // Type definitions for adapter metadata
 export interface AdapterMetadata {
