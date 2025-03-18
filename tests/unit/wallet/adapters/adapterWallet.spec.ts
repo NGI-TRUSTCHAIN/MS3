@@ -1,5 +1,5 @@
-import { IEVMRequiredMethods, IRequiredMethods } from "packages/wallet/src/types";
-import { validateInterface } from "tests/utils/validator";
+import { IEVMRequiredMethods, IRequiredMethods } from "../../../../packages/wallet/src/types/enums/index";
+import { validateInterface } from "../../../utils/validator";
 
 // This test is designed to be called programmatically with dynamic imports
 describe("Dynamic Adapter Validation", function() {
