@@ -2,7 +2,7 @@ import { WalletEvent } from "../enums";
 import { TransactionData } from "../types";
 
 // TODO: Add ESTE WALLET TIENE QUE SER GENERICO Y NO ESPECIFICO DE EVM, ASEGURARSE.
-export interface CoreWallet {
+export interface ICoreWallet {
   /** General Initialization */
   initialize(args?:any): Promise<void>;
 
@@ -27,4 +27,9 @@ export interface CoreWallet {
   signMessage(message: string): Promise<string>;
 }
 
-
+export interface IWalletOptions {
+  adapterName: string,
+  neededFeature?: string,
+  provider?: any,
+  options?: any
+}

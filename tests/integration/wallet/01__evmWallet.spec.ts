@@ -16,10 +16,17 @@ let browser: any;
 async function setupTestEnvironment() {
   // Create a basic server to serve our fixtures
   server = http.createServer((req, res) => {
-    let filePath = join(fixturesDir, req.url === '/' ? 'index.html' : req.url as string);
+    if (req.url === '/favicon.ico') {
+      res.writeHead(204); // No content response
+      res.end();
+      return;
+    }
     
+
+    let filePath = join(fixturesDir, req.url === '/' ? 'index.html' : req.url as string);
+  
     if (req.url === '/') {
-      filePath = join(fixturesDir, 'evmwallet.html');
+      filePath = join(fixturesDir, 'evmWallet.html');
     }
     
     if (req.url === '/dist/evmwallet-bundle.js') {
@@ -34,6 +41,12 @@ async function setupTestEnvironment() {
       '.json': 'application/json',
     }[extname] || 'text/plain';
 
+    if (!fs.existsSync(filePath)) {
+      res.writeHead(404);
+      res.end(`File not found: ${filePath}`);
+      return;
+    }
+    
     fs.readFile(filePath, (error, content) => {
       if (error) {
         console.error(`Error reading file ${filePath}:`, error);

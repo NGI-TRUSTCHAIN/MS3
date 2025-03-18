@@ -4,7 +4,7 @@ import { Web3AuthWalletAdapter } from './web3authWallet';
 
 adapterRegistry.register({
   name: "web3auth",
-  adapterType: WalletType['evm'], // Web3Auth is EVM-compatible
+  adapterType: WalletType['web3auth'], // Web3Auth is EVM-compatible
   adapterClass: Web3AuthWalletAdapter,
   requirements: ["web3authConfig"]
 });

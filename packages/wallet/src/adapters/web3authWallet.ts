@@ -21,14 +21,14 @@ export class Web3AuthWalletAdapter implements EVMWallet {
   private initialized = false;
   private config: Web3AuthConfig;
 
-  constructor(config: Web3AuthConfig) {
-    this.config = config;
-    console.log("Web3AuthWalletAdapter created (no-modal)", config);
+  constructor(args: Web3AuthConfig) {
+
+    this.config = args;
   }
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
-  
+
     // Create the private key provider.
     const privateKeyProvider = new EthereumPrivateKeyProvider({
       config: { chainConfig: this.config.chainConfig }

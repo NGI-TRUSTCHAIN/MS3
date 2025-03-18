@@ -1,8 +1,8 @@
-import { CoreWallet } from "..";
+import { ICoreWallet } from "..";
 import { SignTypedDataVersion } from "../../enums";
 import { TypedData, TransactionData, UserOperation, PaymasterData, DIDDocument, VerifiableCredential } from "../../types";
 // TODO: Add EVM-specific types y separar en carpetas. 
-export interface EVMWallet extends CoreWallet {
+export interface EVMWallet extends ICoreWallet {
   /** EVM-Specific Features */
   signTypedData(data: TypedData, version?: SignTypedDataVersion): Promise<string>;
   getGasPrice(): Promise<string>;

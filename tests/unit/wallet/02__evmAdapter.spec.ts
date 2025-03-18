@@ -11,7 +11,12 @@ describe("EVMWalletAdapter", function() {
     // Use a deterministic private key for tests
     const privateKey = "0x0123456789012345678901234567890123456789012345678901234567890123";
     provider = new JsonRpcProvider("https://ethereum-sepolia-rpc.publicnode.com");
-    walletInstance = createWallet("evmWallet", undefined, provider, privateKey);
+    
+    walletInstance = createWallet({
+      adapterName: "evmWallet",
+      provider,
+      options: { privateKey }
+    });
     
     await walletInstance.initialize();
   });

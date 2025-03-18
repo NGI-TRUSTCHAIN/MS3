@@ -30,6 +30,7 @@ describe("Web3AuthWalletAdapter", function() {
       //     loginProvider: "google"
       //   }
       // };
+      
       // const walletInstance = createWallet("web3auth", undefined, null, { web3authConfig });
       
       // Skip actual instantiation but document requirements
