@@ -1,7 +1,6 @@
 import { adapterRegistry } from './registry';
-import { WalletType } from '../types/enums';
+import { WalletType } from '../types';
 import { EvmWalletAdapter } from './etheresWallet';
-import { EVMWallet } from '../types/interfaces/EVM';
 
 adapterRegistry.register({
   name: "evmWallet",

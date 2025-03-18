@@ -1,8 +1,6 @@
-import { ICoreWallet, IWalletOptions } from './types/interfaces';
-import { TransactionData } from './types/types';
+import { ICoreWallet, IWalletOptions,TransactionData, WalletEvent } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
-import { WalletEvent } from './types/enums';
 import { createErrorHandlingProxy } from './errors';
 import { WalletAdapterFactory } from './factories/walletAdapterFactory';
 import { VersionRepository } from '@m3s/utils';

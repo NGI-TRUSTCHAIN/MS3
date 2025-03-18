@@ -1,5 +1,5 @@
 import { ethers, HDNodeWallet, Provider } from "ethers";
-import { ICoreWallet } from "../types/interfaces";
+import { ICoreWallet } from "../types";
 
 interface args {
   privateKey?: string,

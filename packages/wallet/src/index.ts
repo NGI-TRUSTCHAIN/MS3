@@ -1,12 +1,11 @@
 import { adapterRegistry } from './adapters/registry';
 import { BaseWallet } from './wallet.core';
-import { ICoreWallet, IWalletOptions } from './types/interfaces';
+import { ICoreWallet, IWalletOptions } from './types';
 
 // Export main components
 export { BaseWallet } from './wallet.core';
-export * from './types/interfaces';
+export * from './types';
 export * from './adapters';
-
 
 export function createWallet<T extends ICoreWallet = ICoreWallet>(params: IWalletOptions): T {
 
