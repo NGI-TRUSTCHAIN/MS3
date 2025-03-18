@@ -54,7 +54,7 @@ try {
   process.env.INTERFACE_NAME = interfaceName;
   
   // Run the test with the extracted interface information
-  execSync('npx mocha -r ts-node/register -r tsconfig-paths/register tests/unit/wallet/adapters/adapterWallet.spec.ts', { 
+  execSync('npx mocha -r ts-node/register tests/unit/wallet/adapters/adapterWallet.spec.ts', { 
     stdio: 'inherit',
     cwd: path.join(__dirname, '..'),
     env: {...process.env}
