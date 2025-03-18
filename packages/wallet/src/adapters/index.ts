@@ -1,3 +1,1 @@
-export * from './registry'
-
-import './web3authWallet.registration';
+export * from "./web3authWallet"

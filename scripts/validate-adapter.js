@@ -53,7 +53,7 @@ try {
   process.env.ADAPTER_PATH = `../../../../packages/wallet/src/adapters/${adapterName}Wallet`;
   process.env.ADAPTER_TYPE = adapterType;
   
-  execSync('npx mocha -r ts-node/register tests/unit/wallet/adapters/dynamicAdapter.spec.ts', { 
+  execSync('npx mocha -r ts-node/register tests/unit/wallet/adapters/adapterWallet.spec.ts', { 
     stdio: 'inherit',
     cwd: path.join(__dirname, '..'),
     env: {...process.env}
