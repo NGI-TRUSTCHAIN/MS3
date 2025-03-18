@@ -8,18 +8,34 @@ export class EvmWalletAdapter implements EVMWallet{
   private provider?: Provider;
   private privateKey: string;
 
-  constructor(privateKey?: string, provider?: Provider) {
-    if (!privateKey) {
-      const generatedWallet = ethers.Wallet.createRandom();
-      this.privateKey = generatedWallet.privateKey;
+  constructor(options: { privateKey?: string, provider?: Provider } | string, provider?: Provider) {
+    // Handle both old and new parameter styles
+    if (typeof options === 'string') {
+      // Legacy constructor call with privateKey as first parameter
+      this.privateKey = options;
       this.wallet = new EthersWallet(this.privateKey);
+      
+      if (provider) {
+        this.setProvider(provider);
+      }
     } else {
-      this.privateKey = privateKey;
-      this.wallet = new EthersWallet(privateKey);
+      // New constructor call with options object
+      const { privateKey, provider: optionsProvider } = options;
+      
+      if (!privateKey) {
+        const generatedWallet = ethers.Wallet.createRandom();
+        this.privateKey = generatedWallet.privateKey;
+        this.wallet = new EthersWallet(this.privateKey);
+      } else {
+        this.privateKey = privateKey;
+        this.wallet = new EthersWallet(privateKey);
+      }
+      
+      if (optionsProvider) {
+        this.setProvider(optionsProvider);
+      }
     }
-    if (provider) {
-      this.setProvider(provider);
-    }
+    
     console.log("EvmWalletAdapter created. PrivateKey:", this.privateKey);
   }
 

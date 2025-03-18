@@ -11,15 +11,23 @@ const fixturesDir = join(__dirname, '..', 'fixtures');
 const port = 8081; // Different port from web3auth test
 let server: http.Server;
 let browser: any;
+let baseUrl: string;
 
 // Create server function
 async function setupTestEnvironment() {
   // Create a basic server to serve our fixtures
   server = http.createServer((req, res) => {
-    let filePath = join(fixturesDir, req.url === '/' ? 'index.html' : req.url as string);
+    if (req.url === '/favicon.ico') {
+      res.writeHead(204); // No content response
+      res.end();
+      return;
+    }
     
+
+    let filePath = join(fixturesDir, req.url === '/' ? 'index.html' : req.url as string);
+  
     if (req.url === '/') {
-      filePath = join(fixturesDir, 'evmwallet.html');
+      filePath = join(fixturesDir, 'evmWallet.html');
     }
     
     if (req.url === '/dist/evmwallet-bundle.js') {
@@ -34,6 +42,12 @@ async function setupTestEnvironment() {
       '.json': 'application/json',
     }[extname] || 'text/plain';
 
+    if (!fs.existsSync(filePath)) {
+      res.writeHead(404);
+      res.end(`File not found: ${filePath}`);
+      return;
+    }
+    
     fs.readFile(filePath, (error, content) => {
       if (error) {
         console.error(`Error reading file ${filePath}:`, error);
@@ -47,8 +61,14 @@ async function setupTestEnvironment() {
     });
   });
 
-  await new Promise<void>(resolve => server.listen(port, resolve));
-  console.log(`Test server running at http://localhost:${port}`);
+  await new Promise<void>((resolve) => {
+    server.listen(0, () => { 
+      const actualPort = (server.address() as any).port;
+      baseUrl = `http://localhost:${actualPort}`; // Updates outer baseUrl
+      console.log(`Test server running at ${baseUrl}`);
+      resolve();
+    });
+  });
   
   // Launch browser
   browser = await chromium.launch({ 
@@ -70,7 +90,6 @@ async function teardownTestEnvironment() {
 // Actual test code
 test.describe('EVMWallet Integration', () => {
   test.setTimeout(120000); // 2 minute timeout
-  const baseUrl = `http://localhost:${port}`;
   
   test.beforeAll(async () => {
     await setupTestEnvironment();

@@ -1,4 +1,4 @@
-import { createWallet } from '@m3s/wallet';
+import { createWallet, IWalletOptions } from '@m3s/wallet';
 import { EVMWallet } from '@m3s/wallet/types/interfaces/EVM/index.js';
 
 // When the page loads, set up the test fixtures
@@ -51,7 +51,15 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       
       // Create the wallet
-      wallet = createWallet<EVMWallet>("web3auth", undefined, null, { web3authConfig });
+            const params: IWalletOptions = {
+              adapterName: 'web3auth',
+              neededFeature: undefined,
+              provider: null,
+              options: { web3authConfig }
+            }
+            
+      wallet = createWallet<EVMWallet>(params);
+      
       await wallet.initialize();
       
       log('Web3Auth initialized. Requesting accounts...');

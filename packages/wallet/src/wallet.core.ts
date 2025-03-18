@@ -1,4 +1,4 @@
-import { CoreWallet } from './types/interfaces';
+import { ICoreWallet, IWalletOptions } from './types/interfaces';
 import { TransactionData } from './types/types';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -7,23 +7,31 @@ import { createErrorHandlingProxy } from './errors';
 import { WalletAdapterFactory } from './factories/walletAdapterFactory';
 import { VersionRepository } from '@m3s/utils';
 
-export class BaseWallet implements CoreWallet {
+export class BaseWallet implements ICoreWallet {
   protected adapter: any;
   protected versionRepo: VersionRepository;
   protected walletVersion: string;
   protected provider?: any;
 
-  constructor(adapterName: string, neededFeature?: string, provider?: any, options?: any) {
-    // If options is a string, treat it as a private key.
-    if (typeof options === 'string') {
-      options = { privateKey: options };
-    }
+  constructor(
+    // adapterName: string,
+    // neededFeature?: string,
+    // provider?: any,
+    // options?: any
+    params: IWalletOptions
+  ) {
+    
+    const { adapterName, neededFeature, provider, options } = params;
+
     this.walletVersion = this.getCurrentVersion();
     this.versionRepo = new VersionRepository();
+
     if (neededFeature && !this.checkFeatureSupport(neededFeature)) {
       throw new Error(`Wallet@${this.walletVersion} does not support the feature: ${neededFeature}`);
     }
+
     this.getInstance(adapterName, options);
+    
     if (provider) {
       this.setProvider(provider);
     }

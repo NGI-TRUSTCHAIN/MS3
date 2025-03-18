@@ -1,7 +1,11 @@
 // adapters/index.ts
+
+// Export the registry
+export * from './registry';  
+
+// Export all adapters
 export * from './mockedWallet';
 export * from './etheresWallet';
-export * from './registry';  // Export the registry
 
 // Load all registrations
 import './mockedWallet.registration';

@@ -1,7 +1,7 @@
 import { ethers, HDNodeWallet, Provider } from "ethers";
-import { CoreWallet } from "../types/interfaces";
+import { ICoreWallet } from "../types/interfaces";
 
-export class MockedWalletAdapter implements CoreWallet{
+export class MockedWalletAdapter implements ICoreWallet{
   private wallet: HDNodeWallet;
   private provider?: Provider;
   private privateKey: string;
