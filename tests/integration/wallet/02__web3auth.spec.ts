@@ -8,9 +8,9 @@ import { dirname, join } from 'path';
 // Inline setup code (instead of importing from setup.js)
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixturesDir = join(__dirname, '..', 'fixtures');
-const port = 8080;
 let server: http.Server;
 let browser: any;
+let baseUrl: string; 
 
 // Create server function
 async function setupTestEnvironment() {
@@ -59,8 +59,15 @@ async function setupTestEnvironment() {
     });
   });
 
-  await new Promise<void>(resolve => server.listen(port, resolve));
-  console.log(`Test server running at http://localhost:${port}`);
+  // Start server with dynamic port
+  await new Promise<void>((resolve) => {
+    server.listen(0, () => { // Use 0 to get a dynamic port
+      const actualPort = (server.address() as any).port;
+      baseUrl = `http://localhost:${actualPort}`;
+      console.log(`Test server running at ${baseUrl}`);
+      resolve();
+    });
+  });
 
   // Launch browser
   browser = await chromium.launch({
@@ -82,8 +89,6 @@ async function teardownTestEnvironment() {
 // Actual test code
 test.describe('Web3Auth Wallet Integration', () => {
   test.setTimeout(300000);
-
-  const baseUrl = `http://localhost:${port}`;
 
   test.beforeAll(async () => {
     await setupTestEnvironment();
