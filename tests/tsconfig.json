@@ -16,6 +16,6 @@
       "@m3s/wallet/*": ["packages/wallet/dist/*"]
     }
   },
-  "include": ["**/*.ts"],
+  "include": ["**/*.ts", "utils/mappings.js", "method-extractor.js"],
   "exclude": ["node_modules", "dist"]
 }

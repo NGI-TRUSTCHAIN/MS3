@@ -10,7 +10,7 @@ export * from './adapters';
 
 export function createWallet<T extends ICoreWallet = ICoreWallet>(params: IWalletOptions): T {
 
-  const { adapterName,neededFeature, provider, options } = params
+  const { adapterName } = params
 
   const adapterInfo = adapterRegistry.getAdapter(adapterName);
   
@@ -19,9 +19,7 @@ export function createWallet<T extends ICoreWallet = ICoreWallet>(params: IWalle
   }
   
   // Create a wallet with the adapter
-  const wallet = new BaseWallet(params
-    // adapterName, neededFeature, provider, options
-  );
+  const wallet = new BaseWallet(params);
   
   // Return it with the appropriate type based on what the caller expects
   return wallet as unknown as T;

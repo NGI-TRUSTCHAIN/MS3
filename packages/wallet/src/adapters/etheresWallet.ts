@@ -3,39 +3,34 @@ import { EVMWallet } from "../types/interfaces/EVM";
 
 type TransactionData = { from: string; to: string; value: string; data?: string };
 
-export class EvmWalletAdapter implements EVMWallet{
+// Define always the constructor arguments in a type.
+interface args {
+  privateKey?: string, 
+  provider?: Provider
+}
+
+export class EvmWalletAdapter implements EVMWallet {
   private wallet: EthersWallet;
   private provider?: Provider;
   private privateKey: string;
 
-  constructor(options: { privateKey?: string, provider?: Provider } | string, provider?: Provider) {
+  constructor(args: args) {
+    const { privateKey, provider: optionsProvider } = args;
     // Handle both old and new parameter styles
-    if (typeof options === 'string') {
-      // Legacy constructor call with privateKey as first parameter
-      this.privateKey = options;
+
+    if (!privateKey) {
+      const generatedWallet = ethers.Wallet.createRandom();
+      this.privateKey = generatedWallet.privateKey;
       this.wallet = new EthersWallet(this.privateKey);
-      
-      if (provider) {
-        this.setProvider(provider);
-      }
     } else {
-      // New constructor call with options object
-      const { privateKey, provider: optionsProvider } = options;
-      
-      if (!privateKey) {
-        const generatedWallet = ethers.Wallet.createRandom();
-        this.privateKey = generatedWallet.privateKey;
-        this.wallet = new EthersWallet(this.privateKey);
-      } else {
-        this.privateKey = privateKey;
-        this.wallet = new EthersWallet(privateKey);
-      }
-      
-      if (optionsProvider) {
-        this.setProvider(optionsProvider);
-      }
+      this.privateKey = privateKey;
+      this.wallet = new EthersWallet(privateKey);
     }
-    
+
+    if (optionsProvider) {
+      this.setProvider(optionsProvider);
+    }
+
     console.log("EvmWalletAdapter created. PrivateKey:", this.privateKey);
   }
 
@@ -43,7 +38,7 @@ export class EvmWalletAdapter implements EVMWallet{
     // For EVM, initialization is immediate.
     return;
   }
-  
+
   setProvider(provider: Provider): void {
     this.provider = provider;
     (this.wallet as any) = this.wallet.connect(provider)

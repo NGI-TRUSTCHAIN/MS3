@@ -6,5 +6,6 @@ adapterRegistry.register({
   name: "mockedWallet",
   adapterType: WalletType['core'],
   adapterClass: MockedWalletAdapter,
-  requirements: []
+  requirements: [],
+
 });

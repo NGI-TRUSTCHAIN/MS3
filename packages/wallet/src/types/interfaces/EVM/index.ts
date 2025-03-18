@@ -24,7 +24,7 @@ export interface MetaTransactionWallet {
   getRelayerAddress(): Promise<string>;
 }
 
-export interface DecentralizedIdentityWallet {
+export interface DecentralizedIdentityWallet extends EVMWallet {
   createDID(method: string, options?: any): Promise<string>;
   resolveDID(did: string): Promise<DIDDocument>;
   issueCredential(did: string, credential: VerifiableCredential): Promise<string>;

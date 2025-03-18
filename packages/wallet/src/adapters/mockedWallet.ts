@@ -1,12 +1,19 @@
 import { ethers, HDNodeWallet, Provider } from "ethers";
 import { ICoreWallet } from "../types/interfaces";
 
-export class MockedWalletAdapter implements ICoreWallet{
+interface args {
+  privateKey?: string,
+  provider?: Provider
+}
+
+export class MockedWalletAdapter implements ICoreWallet {
   private wallet: HDNodeWallet;
   private provider?: Provider;
   private privateKey: string;
 
-  constructor(privateKey?: string, provider?: Provider) {
+  constructor(args: args) {
+    const { privateKey, provider } = args;
+
     if (!privateKey) {
       const generatedWallet = ethers.Wallet.createRandom();
       this.privateKey = generatedWallet.privateKey;
@@ -26,7 +33,7 @@ export class MockedWalletAdapter implements ICoreWallet{
     // For EVM, initialization is immediate.
     return;
   }
-  
+
   setProvider(provider: Provider): void {
     this.provider = provider;
     this.wallet = this.wallet.connect(provider);

@@ -2,7 +2,7 @@ import { ICoreWallet, IWalletOptions } from './types/interfaces';
 import { TransactionData } from './types/types';
 import * as fs from 'fs';
 import * as path from 'path';
-import { IRequiredMethods, WalletEvent } from './types/enums';
+import { WalletEvent } from './types/enums';
 import { createErrorHandlingProxy } from './errors';
 import { WalletAdapterFactory } from './factories/walletAdapterFactory';
 import { VersionRepository } from '@m3s/utils';
@@ -13,13 +13,7 @@ export class BaseWallet implements ICoreWallet {
   protected walletVersion: string;
   protected provider?: any;
 
-  constructor(
-    // adapterName: string,
-    // neededFeature?: string,
-    // provider?: any,
-    // options?: any
-    params: IWalletOptions
-  ) {
+  constructor(params: IWalletOptions) {
     
     const { adapterName, neededFeature, provider, options } = params;
 
@@ -52,9 +46,6 @@ export class BaseWallet implements ICoreWallet {
     if (!this.adapter) {
       throw new Error(`Adapter "${adapterName}" initialization error.`);
     }
-    if (!this.implementsCoreWalletMethods()) {
-      throw new Error(`Adapter "${adapterName}" does not implement the required CoreWallet interface.`);
-    }
   }
 
   private getCurrentVersion(): string {
@@ -79,23 +70,6 @@ export class BaseWallet implements ICoreWallet {
     if (feature && !this.versionRepo.supportsFeature('wallet', this.walletVersion, feature)) {
       console.warn(`Wallet@${this.walletVersion} does not support the feature: ${feature}`);
     }
-    return true;
-  }
-
-  private implementsCoreWalletMethods(): boolean {
-    const requiredMethods = Object.values(IRequiredMethods);
-    const missingMethods: string[] = [];
-    console.log('Checking required methods on adapter:', this.adapter);
-    requiredMethods.forEach(method => {
-      if (!this.adapter[method]) {
-        missingMethods.push(method);
-        console.warn(`Missing required method: ${method}`);
-      }
-    });
-    if (missingMethods.length > 0) {
-      console.error('Adapter is missing required methods:', missingMethods);
-      return false;
-    } else console.log('Adapter implements all required methods.');
     return true;
   }
 
