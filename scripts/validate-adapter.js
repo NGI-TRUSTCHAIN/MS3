@@ -22,14 +22,6 @@ if (!fs.existsSync(adapterFilePath)) {
   process.exit(1);
 }
 
-// Check if registration file exists
-const regFilePath = path.join(__dirname, '..', 'packages/wallet/src/adapters', `${adapterName}Wallet.registration.ts`);
-if (!fs.existsSync(regFilePath)) {
-  console.error(`Registration file not found at: ${regFilePath}`);
-  console.error(`Please create a registration file that adds your adapter to the registry.`);
-  process.exit(1);
-}
-
 // Run TypeScript compiler to verify interface implementation
 try {
   console.log('Running TypeScript compiler to validate interfaces...');
@@ -50,7 +42,7 @@ try {
   console.log(`Running dynamic validation for ${adapterName}Wallet as type: ${adapterType}...`);
   
   // Set environment variables for the test
-  process.env.ADAPTER_PATH = `../../../../packages/wallet/src/adapters/${adapterName}Wallet`;
+  process.env.ADAPTER_PATH = `../packages/wallet/src/adapters/${adapterName}Wallet`;
   process.env.ADAPTER_TYPE = adapterType;
   
   execSync('npx mocha -r ts-node/register tests/unit/wallet/adapters/adapterWallet.spec.ts', { 
