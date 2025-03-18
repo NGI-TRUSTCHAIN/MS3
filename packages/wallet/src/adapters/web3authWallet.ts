@@ -206,3 +206,6 @@ export class Web3AuthWalletAdapter implements EVMWallet {
     throw new Error("getPrivateKey is not supported in Web3AuthWalletAdapter");
   }
 }
+
+// Export with the same name the Implemented API.
+export interface API extends EVMWallet {};

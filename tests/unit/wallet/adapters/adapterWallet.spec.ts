@@ -1,4 +1,4 @@
-import { IEVMRequiredMethods, IRequiredMethods, WalletType } from "packages/wallet/src/types";
+import { IEVMRequiredMethods, IRequiredMethods } from "packages/wallet/src/types";
 import { validateInterface } from "tests/utils/validator";
 
 // This test is designed to be called programmatically with dynamic imports
@@ -9,10 +9,10 @@ describe("Dynamic Adapter Validation", function() {
   it("should validate adapter implements required interface", async function() {
     // Dynamically load the adapter class - will be provided by the validation script
     const adapterPath = process.env.ADAPTER_PATH;
-    const adapterType = process.env.ADAPTER_TYPE;
+    const interfaceName = process.env.INTERFACE_NAME;
     
-    if (!adapterPath) {
-      throw new Error("ADAPTER_PATH environment variable is required");
+    if (!adapterPath || !interfaceName) {
+      throw new Error("ADAPTER_PATH and INTERFACE_NAME environment variables are required");
     }
     
     // Dynamic import of the adapter module
@@ -27,15 +27,16 @@ describe("Dynamic Adapter Validation", function() {
       throw new Error(`No adapter class found in ${adapterPath}`);
     }
     
-    console.log(`Testing adapter class: ${AdapterClass.name}`);
+    console.log(`Testing adapter class: ${AdapterClass.name} implements ${interfaceName}`);
     
-    // Determine which methods are required based on adapter type
+    // Determine which methods are required based on interface name
     const requiredEnums: any = [IRequiredMethods]; // Core methods always required
     
-    // Add type-specific methods
-    if (adapterType === WalletType.evm || adapterType === WalletType.web3auth) {
+    // Add interface-specific methods based on the detected interface
+    if (interfaceName === 'EVMWallet') {
       requiredEnums.push(IEVMRequiredMethods);
     }
+    // Future interfaces can be added here without modifying the validation script
     
     // Use the validator utility
     validateInterface(AdapterClass, requiredEnums, AdapterClass.name);
