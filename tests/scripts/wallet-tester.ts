@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { ICoreWallet } from "@m3s/wallet";
-import { EVMWallet } from "@m3s/wallet";
+import { IEVMWallet } from "@m3s/wallet";
 import { WalletEvent } from "@m3s/wallet";
 import sinon from "sinon";
 
@@ -31,14 +31,14 @@ export class WalletValidator {
   }
 
   /**
-   * Test EVMWallet interface compliance (includes core methods plus EVM-specific ones)
+   * Test IEVMWallet interface compliance (includes core methods plus EVM-specific ones)
    */
-  static testEVMInterface(wallet: EVMWallet) {
+  static testEVMInterface(wallet: IEVMWallet) {
     // First test the core interface
     this.testCoreInterface(wallet);
 
     // Then test EVM-specific methods
-    describe("EVMWallet interface compliance", () => {
+    describe("IEVMWallet interface compliance", () => {
       const evmMethods = [
         'signTypedData', 'getGasPrice', 'estimateGas'
       ];
@@ -158,7 +158,7 @@ export class WalletValidator {
   /**
    * Test EVM-specific behavior
    */
-  static testEVMBehavior(wallet: EVMWallet) {
+  static testEVMBehavior(wallet: IEVMWallet) {
     // First test core behavior
     this.testCoreBehavior(wallet);
 
@@ -232,7 +232,7 @@ export class WalletValidator {
   /**
    * Test error handling for EVM wallet functionality
    */
-  static testEVMErrorHandling(wallet: EVMWallet) {
+  static testEVMErrorHandling(wallet: IEVMWallet) {
     // First test core error handling
     this.testCoreErrorHandling(wallet);
 
@@ -261,7 +261,7 @@ export class WalletValidator {
   /**
    * Run all tests for an EVM wallet
    */
-  static testEVMWallet(wallet: EVMWallet) {
+  static testEVMWallet(wallet: IEVMWallet) {
     this.testEVMInterface(wallet);
     this.testEVMBehavior(wallet);
     this.testEVMErrorHandling(wallet);

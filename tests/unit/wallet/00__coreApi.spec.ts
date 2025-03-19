@@ -67,7 +67,7 @@ describe("Core Wallet API", function () {
       });
     });
     
-    it("verifies EVMWallet interface extends ICoreWallet correctly", function () {
+    it("verifies IEVMWallet interface extends ICoreWallet correctly", function () {
       const evmSpecificMethods = [
         'signTypedData', 'getGasPrice', 'estimateGas'
       ];

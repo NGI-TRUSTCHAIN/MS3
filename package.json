@@ -28,6 +28,7 @@
     "test:smartContract": "cd tests && npm run test:smartContract",
     
     "test:integration": "cd tests && npm run test:integration",
+    "test:int": "cd tests && npm run test:evmwallet && npm run test:web3auth",
     "test:integration:debug": "cd tests && npm run test:integration:debug",
     "test:web3auth": "cd tests && npm run test:web3auth",
     "test:evmwallet": "cd tests && npm run test:evmwallet",

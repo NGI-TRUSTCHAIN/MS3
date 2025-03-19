@@ -94,9 +94,9 @@ npm run test:integration:debug
 
 The Web3Auth test opens a browser window and requires you to manually complete the Google OAuth flow when the popup appears. The test will wait for you to complete this flow before continuing.
 
-#### EVMWallet Integration Test
+#### IEVMWallet Integration Test
 
-The EVMWallet test is fully automated and doesn't require manual interaction.
+The IEVMWallet test is fully automated and doesn't require manual interaction.
 
 #### Running All Tests Together
 

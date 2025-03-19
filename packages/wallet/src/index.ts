@@ -18,7 +18,6 @@ export async function createWallet<T extends ICoreWallet = ICoreWallet>(params: 
   }
   
   // Create a wallet with the adapter
-  // const wallet = new BaseWallet(params);
   const wallet = await BaseWallet.create(params);
 
   // Return it with the appropriate type based on what the caller expects

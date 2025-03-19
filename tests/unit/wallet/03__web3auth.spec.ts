@@ -4,7 +4,7 @@ import { Web3AuthWalletAdapter } from "@m3s/wallet";
 describe("Web3AuthWalletAdapter", function() {
   this.timeout(5000);
   
-  it("implements all required EVMWallet interface methods", function() {
+  it("implements all required IEVMWallet interface methods", function() {
     // Get the prototype of the actual implementation
     const prototype = Web3AuthWalletAdapter.prototype;
     

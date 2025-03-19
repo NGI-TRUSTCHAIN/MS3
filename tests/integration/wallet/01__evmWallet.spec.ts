@@ -88,7 +88,7 @@ async function teardownTestEnvironment() {
 }
 
 // Actual test code
-test.describe('EVMWallet Integration', () => {
+test.describe('IEVMWallet Integration', () => {
   test.setTimeout(120000); // 2 minute timeout
   
   test.beforeAll(async () => {

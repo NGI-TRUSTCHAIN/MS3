@@ -4,9 +4,9 @@ import { TransactionData } from "../types";
 // TODO: Add ESTE WALLET TIENE QUE SER GENERICO Y NO ESPECIFICO DE EVM, ASEGURARSE.
 export interface ICoreWallet {
   /** General Initialization */
-  initialize(args?:any): Promise<any>;
-  // Initialization state
+  initialize(args?: any): Promise<any>;
   isInitialized(): boolean;
+  disconnect(): void; // Clean disconnect
 
   /** Wallet Metadata */
   getWalletName(): string;
@@ -17,13 +17,14 @@ export interface ICoreWallet {
   requestAccounts(): Promise<string[]>;
   getPrivateKey(): Promise<string>;
   getAccounts(): Promise<string[]>;
+  getBalance(account?: string): Promise<string>; // Fetch account balance
+  verifySignature(message: string, signature: string): Promise<boolean>; // Verify signature correctness
   on(event: WalletEvent, callback: (...args: any[]) => void): void;
   off(event: WalletEvent, callback: (...args: any[]) => void): void;
 
   /** Network Management */
   getNetwork(): Promise<{ chainId: string; name?: string }>;
   setProvider(provider: any): void;
-  // switchNetwork removed from core interface
 
   /** Transactions & Signing */
   sendTransaction(tx: TransactionData): Promise<string>;

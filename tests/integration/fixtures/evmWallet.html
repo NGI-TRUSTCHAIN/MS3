@@ -4,7 +4,7 @@
   <link rel="icon" href="data:,">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EVMWallet Integration Test</title>
+  <title>IEVMWallet Integration Test</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -77,16 +77,27 @@
     <button id="estimateGasButton" disabled>Estimate Gas</button>
     <button id="getGasPriceButton" disabled>Get Gas Price</button>
     <button id="signTypedDataButton" disabled>Sign Typed Data</button>
+    <button id="getTokenBalanceButton" disabled>Get Token Balance</button>
+    <button id="getTransactionReceiptButton" disabled>Get Transaction Receipt</button>
+    <button id="getPrivateKeyButton" disabled>Get Private Key</button>
+    <button id="verifySignatureButton" disabled>Verify Signature</button>
+    <button id="testEventsButton" disabled>Test Events</button>
+
   </div>
 
   <div class="section">
     <h2>Results</h2>
     <div>
+      <p>Token Balance: <span id="tokenBalance"></span></p>
+      <p>Transaction Receipt: <pre id="transactionReceipt" style="font-family: monospace; max-height: 200px; overflow-y: auto;"></pre></p>
       <p>Signature: <pre id="signature" style="font-family: monospace;"></pre></p>
       <p>Transaction: <pre id="transaction" style="font-family: monospace;"></pre></p>
       <p>Gas Estimate: <span id="gasEstimate"></span></p>
       <p>Gas Price: <span id="gasPrice"></span></p>
       <p>Typed Data Signature: <pre id="typedDataSignature" style="font-family: monospace;"></pre></p>
+      <p>Private Key (redacted): <span id="privateKey"></span></p>
+      <p>Signature Verification: <span id="verifySignature"></span></p>
+      <p>Event Log: <pre id="eventLog" style="font-family: monospace; max-height: 200px; overflow-y: auto;"></pre></p>
     </div>
   </div>
 

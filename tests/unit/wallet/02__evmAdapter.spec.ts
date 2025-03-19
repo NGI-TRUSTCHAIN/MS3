@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { createWallet, EVMWallet, WalletEvent } from "@m3s/wallet";
+import { createWallet, IEVMWallet, WalletEvent } from "@m3s/wallet";
 import { JsonRpcProvider } from "ethers";
 import sinon from "sinon";
 import { WalletValidator } from "../../scripts/wallet-tester.js";
@@ -20,13 +20,13 @@ after(() => {
 
 describe("EVMWalletAdapter", function () {
   this.timeout(10000);
-  let walletInstance: EVMWallet;
+  let walletInstance: IEVMWallet;
   let provider: JsonRpcProvider;
   const TEST_PRIVATE_KEY = "0x0000000000000000000000000000000000000000000000000000000000000001";
 
   before(async function () {
     provider = new JsonRpcProvider("https://ethereum-sepolia-rpc.publicnode.com");
-    walletInstance = <EVMWallet>await createWallet({
+    walletInstance = <IEVMWallet>await createWallet({
       adapterName: "evmWallet",
       provider,
       options: { privateKey: TEST_PRIVATE_KEY }
@@ -35,13 +35,13 @@ describe("EVMWalletAdapter", function () {
 
   // Move the validator calls inside their own tests
   describe("interface compliance", function () {
-    it("implements the EVMWallet interface", function () {
+    it("implements the IEVMWallet interface", function () {
       WalletValidator.testEVMInterface(walletInstance);
     });
   });
 
   describe("behavior verification", function () {
-    it("behaves according to the EVMWallet specification", function () {
+    it("behaves according to the IEVMWallet specification", function () {
       WalletValidator.testEVMBehavior(walletInstance);
     });
   });

@@ -1,6 +1,10 @@
 const path = require('path');
 const webpack = require('webpack');
 
+/**
+ * @fileoverview Webpack configuration file for the test environment.
+ * @requires webpack
+ */
 module.exports = {
   entry: {
     'bundle': "./integration/fixtures/web3auth-bundle.ts",
@@ -14,6 +18,10 @@ module.exports = {
   },
   resolve: {
     extensions: [".ts", ".js"],
+    alias: {
+      '@m3s/wallet': path.resolve(__dirname, '../packages/wallet/dist/index.js'),
+      '@m3s/utils': path.resolve(__dirname, '../packages/utils/dist/index.js')
+    },
     fallback: {
       fs: false,
       path: require.resolve('path-browserify'),

@@ -8,7 +8,7 @@
     "test:wallet": "node scripts/run-unit-tests.js wallet",
     "test:crosschain": "node scripts/run-unit-tests.js crosschain",
     "test:smartContract": "node scripts/run-unit-tests.js smartContract",
-    
+
     "build:integration": "webpack --config webpack.conf.cjs",
     "test:integration": "npx playwright test integration",
     "test:integration:debug": "npx playwright test integration --headed --debug",

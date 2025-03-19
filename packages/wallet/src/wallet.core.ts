@@ -12,9 +12,7 @@ export class BaseWallet implements ICoreWallet {
   protected provider?: any;
   protected initialized: boolean = false;
 
-  isInitialized(): boolean {
-    return this.adapter.isInitialized();
-  }
+  /** BaseWallet methods */
 
   private constructor() {
     this.versionRepo = new VersionRepository();
@@ -41,15 +39,9 @@ export class BaseWallet implements ICoreWallet {
 
     return createErrorHandlingProxy(wallet);
   }
-
-  async initialize(args?: any): Promise<void> {
-    if (this.adapter.initialize) {
-      await this.adapter.initialize(args);
-    }
-  }
-
+  
   private async getInstance(adapterName: string, options?: any): Promise<void> {
-    const walletFactory = await WalletAdapterFactory.create({ adapterName, ...options });
+    const walletFactory = await WalletAdapterFactory.create({ adapterName, options });
     this.adapter = walletFactory.instance;
     if (!this.adapter) {
       throw new Error(`Adapter "${adapterName}" initialization error.`);
@@ -81,6 +73,74 @@ export class BaseWallet implements ICoreWallet {
     return true;
   }
 
+  /** General Initialization */
+  async initialize(args?: any): Promise<void> {
+    if (this.adapter.initialize) {
+      await this.adapter.initialize(args);
+    }
+  }
+
+  isInitialized(): boolean {
+    return this.adapter.isInitialized();
+  }
+
+  disconnect(): void {
+    if (this.adapter && typeof this.adapter.disconnect === 'function') {
+      this.adapter.disconnect();
+    }
+  }
+
+  /** Wallet Metadata */
+
+  getWalletName(): string {
+    return this.adapter.getWalletName();
+  }
+
+  getWalletVersion(): string {
+    return this.adapter.getWalletVersion();
+  }
+
+  isConnected(): boolean {
+    return this.adapter.isConnected();
+  }
+
+  /** Account Management */
+  async requestAccounts(): Promise<string[]> {
+    // Ensure the adapter is ready.
+    return this.adapter.requestAccounts();
+  }
+
+  async getPrivateKey(): Promise<string> {
+    if (typeof this.adapter.getPrivateKey === "function") {
+      return this.adapter.getPrivateKey();
+    }
+    throw new Error("Adapter does not implement getPrivateKey");
+  }
+
+  getAccounts(): Promise<string[]> {
+    return this.adapter.getAccounts();
+  }
+
+  getBalance(account?: string): Promise<string> {
+    return this.adapter.getBalance(account);
+  }
+
+  verifySignature(message: string, signature: string): Promise<boolean> {
+    return this.adapter.verifySignature(message, signature);
+  }
+  
+  on(event: WalletEvent, callback: (...args: any[]) => void): void {
+    return this.adapter.on(event, callback);
+  }
+
+  off(event: WalletEvent, callback: (...args: any[]) => void): void {
+    return this.adapter.off(event, callback);
+  }
+
+  getNetwork(): Promise<{ chainId: string; name?: string }> {
+    return this.adapter.getNetwork();
+  }
+
   setProvider(provider: any): void {
     if (!provider) {
       throw new Error("Provider cannot be null/undefined");
@@ -94,54 +154,7 @@ export class BaseWallet implements ICoreWallet {
     }
   }
 
-  getProvider(): any | undefined {
-    return this.adapter.getProvider();
-  }
-
-  // CoreWallet delegate methods:
-  getWalletName(): string {
-    return this.adapter.getWalletName();
-  }
-
-  getWalletVersion(): string {
-    return this.adapter.getWalletVersion();
-  }
-
-  async getPrivateKey(): Promise<string> {
-    if (typeof this.adapter.getPrivateKey === "function") {
-      return this.adapter.getPrivateKey();
-    }
-    throw new Error("Adapter does not implement getPrivateKey");
-  }
-
-  isConnected(): boolean {
-    return this.adapter.isConnected();
-  }
-
-  async requestAccounts(): Promise<string[]> {
-    // Ensure the adapter is ready.
-    return this.adapter.requestAccounts();
-  }
-
-  getAccounts(): Promise<string[]> {
-    return this.adapter.getAccounts();
-  }
-
-  on(event: WalletEvent, callback: (...args: any[]) => void): void {
-    return this.adapter.on(event, callback);
-  }
-
-  off(event: WalletEvent, callback: (...args: any[]) => void): void {
-    return this.adapter.off(event, callback);
-  }
-
-  getNetwork(): Promise<{ chainId: string; name?: string }> {
-    return this.adapter.getNetwork();
-  }
-
-  switchNetwork(chainId: string): Promise<boolean> {
-    return this.adapter.switchNetwork(chainId);
-  }
+  /** Network Management */
 
   sendTransaction(tx: TransactionData): Promise<string> {
     return this.adapter.sendTransaction(tx);
@@ -155,7 +168,7 @@ export class BaseWallet implements ICoreWallet {
     return this.adapter.signMessage(message);
   }
 
-  // EVM-specific methods - These will be called when the adapter is EVM-compatible
+  /** EVM-Specific Features */
   async signTypedData(data: any): Promise<string> {
     if (typeof this.adapter.signTypedData !== 'function') {
       throw new Error('Adapter does not implement signTypedData');
@@ -176,4 +189,19 @@ export class BaseWallet implements ICoreWallet {
     }
     return this.adapter.estimateGas(tx);
   }
+  
+  async getTransactionReceipt(txHash: string): Promise<any> {
+    if (typeof this.adapter.getTransactionReceipt !== 'function') {
+      throw new Error('Adapter does not implement getTransactionReceipt');
+    }
+    return this.adapter.getTransactionReceipt(txHash);
+  }
+
+  async getTokenBalance(tokenAddress: string, account?: string): Promise<string> {
+    if (typeof this.adapter.getTokenBalance !== 'function') {
+      throw new Error('Adapter does not implement getTokenBalance');
+    }
+    return this.adapter.getTokenBalance(tokenAddress, account);
+  }
+
 }
