@@ -1,4 +1,4 @@
-import { ICoreWallet, IWalletOptions,TransactionData, WalletEvent } from './types';
+import { ICoreWallet, IWalletOptions, TransactionData, WalletEvent } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 import { createErrorHandlingProxy } from './errors';
@@ -7,28 +7,39 @@ import { VersionRepository } from '@m3s/utils';
 
 export class BaseWallet implements ICoreWallet {
   protected adapter: any;
-  protected versionRepo: VersionRepository;
-  protected walletVersion: string;
+  protected versionRepo!: VersionRepository;
+  protected walletVersion!: string;
   protected provider?: any;
+  protected initialized: boolean = false;
 
-  constructor(params: IWalletOptions) {
-    
-    const { adapterName, neededFeature, provider, options } = params;
+  isInitialized(): boolean {
+    return this.adapter.isInitialized();
+  }
 
-    this.walletVersion = this.getCurrentVersion();
+  private constructor() {
     this.versionRepo = new VersionRepository();
+    this.walletVersion = "0.0.0"; // Default that will be overwritten in create()
+    this.initialized = false;
+  }
 
-    if (neededFeature && !this.checkFeatureSupport(neededFeature)) {
-      throw new Error(`Wallet@${this.walletVersion} does not support the feature: ${neededFeature}`);
+  static async create(params: IWalletOptions): Promise<BaseWallet & ICoreWallet> {
+    const wallet = new BaseWallet();
+
+    const { adapterName, neededFeature, provider, options } = params;
+    wallet.walletVersion = wallet.getCurrentVersion();
+    wallet.versionRepo = new VersionRepository();
+
+    if (neededFeature && !wallet.checkFeatureSupport(neededFeature)) {
+      throw new Error(`Wallet@${wallet.walletVersion} does not support the feature: ${neededFeature}`);
     }
 
-    this.getInstance(adapterName, options);
-    
+    await wallet.getInstance(adapterName, options);
+
     if (provider) {
-      this.setProvider(provider);
+      wallet.setProvider(provider);
     }
 
-    return createErrorHandlingProxy(this);
+    return createErrorHandlingProxy(wallet);
   }
 
   async initialize(args?: any): Promise<void> {
@@ -37,9 +48,8 @@ export class BaseWallet implements ICoreWallet {
     }
   }
 
-  private getInstance(adapterName: string, options?: any): void {
-    // TODO: Type options better.
-    const walletFactory = new WalletAdapterFactory({ adapterName, ...options });
+  private async getInstance(adapterName: string, options?: any): Promise<void> {
+    const walletFactory = await WalletAdapterFactory.create({ adapterName, ...options });
     this.adapter = walletFactory.instance;
     if (!this.adapter) {
       throw new Error(`Adapter "${adapterName}" initialization error.`);
@@ -75,14 +85,17 @@ export class BaseWallet implements ICoreWallet {
     if (!provider) {
       throw new Error("Provider cannot be null/undefined");
     }
+
     this.provider = provider;
-    if (this.adapter?.setProvider) {
+
+    // This is critical - make sure to update the adapter's provider
+    if (this.adapter && typeof this.adapter.setProvider === 'function') {
       this.adapter.setProvider(provider);
     }
   }
 
   getProvider(): any | undefined {
-    return this.provider;
+    return this.adapter.getProvider();
   }
 
   // CoreWallet delegate methods:
@@ -94,7 +107,7 @@ export class BaseWallet implements ICoreWallet {
     return this.adapter.getWalletVersion();
   }
 
-  getPrivateKey(): string {
+  async getPrivateKey(): Promise<string> {
     if (typeof this.adapter.getPrivateKey === "function") {
       return this.adapter.getPrivateKey();
     }
@@ -107,9 +120,6 @@ export class BaseWallet implements ICoreWallet {
 
   async requestAccounts(): Promise<string[]> {
     // Ensure the adapter is ready.
-    if (this.adapter.initialize) {
-      await this.adapter.initialize();
-    }
     return this.adapter.requestAccounts();
   }
 

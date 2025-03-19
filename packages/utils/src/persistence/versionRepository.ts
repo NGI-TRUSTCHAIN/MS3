@@ -21,7 +21,7 @@ export class VersionRepository {
       this.matrix = {}; 
     } else {
       // Node: use fs to load versionMatrix.json
-      const matrixPath = path.join(__dirname, "..", "versions", "versionMatrix.json");
+      const matrixPath = path.join(__dirname, "assets", "versions", "versionMatrix.json");
       console.info("Loading version matrix from:", matrixPath);
       try {
         this.matrix = JSON.parse(fs.readFileSync(matrixPath, "utf-8"));

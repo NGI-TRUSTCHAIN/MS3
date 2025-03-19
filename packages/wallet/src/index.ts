@@ -7,7 +7,7 @@ export { BaseWallet } from './wallet.core';
 export * from './types';
 export * from './adapters';
 
-export function createWallet<T extends ICoreWallet = ICoreWallet>(params: IWalletOptions): T {
+export async function createWallet<T extends ICoreWallet = ICoreWallet>(params: IWalletOptions): Promise<T> {
 
   const { adapterName } = params
 
@@ -18,8 +18,9 @@ export function createWallet<T extends ICoreWallet = ICoreWallet>(params: IWalle
   }
   
   // Create a wallet with the adapter
-  const wallet = new BaseWallet(params);
-  
+  // const wallet = new BaseWallet(params);
+  const wallet = await BaseWallet.create(params);
+
   // Return it with the appropriate type based on what the caller expects
   return wallet as unknown as T;
 }

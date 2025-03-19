@@ -1,5 +1,5 @@
-import { ethers, HDNodeWallet, Provider } from "ethers";
-import { ICoreWallet } from "../types";
+import { ethers, Wallet as EthersWallet, Provider } from "ethers";
+import { ICoreWallet, WalletEvent } from "../types";
 
 interface args {
   privateKey?: string,
@@ -7,38 +7,68 @@ interface args {
 }
 
 export class MockedWalletAdapter implements ICoreWallet {
-  private wallet: HDNodeWallet;
+  private wallet!: EthersWallet;
   private provider?: Provider;
   private privateKey: string;
+  public initialized: boolean = false;
+  private eventListeners: Map<string, Set<(payload: any) => void>> = new Map();
 
-  constructor(args: args) {
+  isInitialized(): boolean {
+    return this.initialized;
+  }
+
+  /**
+ * Static factory method for creating and initializing an adapter in one step
+ * @param args Configuration parameters
+ * @returns A fully initialized EvmWalletAdapter instance
+ */
+  static async create(args: args): Promise<MockedWalletAdapter> {
+    const adapter = new MockedWalletAdapter(args);
+    await adapter.initialize();
+    return adapter;
+  }
+
+  private constructor(args: args) {
     const { privateKey, provider } = args;
+    // Handle both old and new parameter styles
 
     if (!privateKey) {
       const generatedWallet = ethers.Wallet.createRandom();
       this.privateKey = generatedWallet.privateKey;
-      this.wallet = new ethers.Wallet(this.privateKey) as unknown as HDNodeWallet;
     } else {
       this.privateKey = privateKey;
-      this.wallet = new ethers.Wallet(privateKey) as unknown as HDNodeWallet;
     }
 
     if (provider) {
-      this.setProvider(provider);
+      this.provider = provider;
     }
 
+    console.log("EvmWalletAdapter created. PrivateKey:", this.privateKey);
   }
 
+  /**
+    * Initialize the wallet adapter
+    * @returns The adapter instance for chaining
+    */
   async initialize(): Promise<void> {
-    // For EVM, initialization is immediate.
-    return;
+    if (this.initialized) return;
+
+    this.wallet = new ethers.Wallet(this.privateKey);
+    
+    if (this.provider) {
+      this.wallet = this.wallet.connect(this.provider);
+    }
+    this.initialized = true;
   }
+
 
   setProvider(provider: Provider): void {
     this.provider = provider;
-    this.wallet = this.wallet.connect(provider);
+    // Add defensive check
+    if (this.wallet) {
+      this.wallet = this.wallet.connect(provider);
+    }
   }
-
   // CoreWallet-like methods
   getWalletName(): string {
     return "MockedWalletAdapter";
@@ -49,23 +79,44 @@ export class MockedWalletAdapter implements ICoreWallet {
   }
 
   isConnected(): boolean {
-    return !!this.provider;
+    return !!this.provider && !!this.wallet?.provider;
   }
 
+  // Update request accounts to emit event
   async requestAccounts(): Promise<string[]> {
-    return [this.wallet.address];
+    const accounts = [this.wallet.address];
+    this.emitEvent(WalletEvent.accountsChanged, accounts);
+    return accounts;
   }
 
   async getAccounts(): Promise<string[]> {
     return [this.wallet.address];
   }
 
+  // Helper method to emit events
+  private emitEvent(event: string, payload: any): void {
+    if (this.eventListeners.has(event)) {
+      this.eventListeners.get(event)!.forEach(callback => {
+        try {
+          callback(payload);
+        } catch (error) {
+          console.error(`Error in event callback for ${event}:`, error);
+        }
+      });
+    }
+  }
+
   on(event: any, callback: (...args: any[]) => void): void {
-    console.warn("Event handling not implemented in MockedWalletAdapter");
+    if (!this.eventListeners.has(event)) {
+      this.eventListeners.set(event, new Set());
+    }
+    this.eventListeners.get(event)!.add(callback);
   }
 
   off(event: any, callback: (...args: any[]) => void): void {
-    console.warn("Event handling not implemented in MockedWalletAdapter");
+    if (this.eventListeners.has(event)) {
+      this.eventListeners.get(event)!.delete(callback);
+    }
   }
 
   async getNetwork(): Promise<{ chainId: string; name?: string }> {
@@ -74,10 +125,6 @@ export class MockedWalletAdapter implements ICoreWallet {
     }
     const network = await this.provider.getNetwork();
     return { chainId: String(network.chainId), name: network.name };
-  }
-
-  async switchNetwork(_chainId: string): Promise<boolean> {
-    return true;
   }
 
   async sendTransaction(tx: any): Promise<string> {
@@ -115,7 +162,7 @@ export class MockedWalletAdapter implements ICoreWallet {
   }
 
   // Expose the private key
-  getPrivateKey(): string {
+  async getPrivateKey(): Promise<string> {
     return this.privateKey;
   }
 }

@@ -10,12 +10,12 @@
     "declaration": true,
     "esModuleInterop": true,
     "paths": {
-      "@m3s/utils": ["packages/utils/dist"],
-      "@m3s/utils/*": ["packages/utils/dist/*"],
-      "@m3s/wallet": ["packages/wallet/dist"],
-      "@m3s/wallet/*": ["packages/wallet/dist/*"]
+      "@m3s/utils": ["../packages/utils/dist"],
+      "@m3s/utils/*": ["../packages/utils/dist/*"],
+      "@m3s/wallet": ["../packages/wallet/dist"],
+      "@m3s/wallet/*": ["../packages/wallet/dist/*"]
     }
   },
-  "include": ["**/*.ts", "utils/mappings.js", "method-extractor.js"],
+  "include": ["**/*.ts", "scripts/mappings.js", "method-extractor.js"],
   "exclude": ["node_modules", "dist"]
 }

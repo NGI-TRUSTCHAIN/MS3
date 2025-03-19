@@ -4,12 +4,20 @@ import { WalletType } from '../types/enums';
 export class WalletAdapterFactory {
   public instance: any;
 
-  constructor(args: any) {
-    const adapter = this.initAdapter(args);
-    this.instance = adapter;
+  // constructor(args: any) {
+  //   const adapter = this.initAdapter(args);
+  //   this.instance = adapter;
+  // }
+  
+  private constructor() { /* Empty constructor */ }
+
+  static async create(args: any): Promise<WalletAdapterFactory> {
+    const factory = new WalletAdapterFactory();
+    factory.instance = await factory.initAdapter(args);
+    return factory;
   }
 
-  initAdapter(args: any): any {
+  async initAdapter(args: any): Promise<any> {
     const adapterInfo = adapterRegistry.getAdapter(args.adapterName);
 
     if (!adapterInfo) {
@@ -32,16 +40,16 @@ export class WalletAdapterFactory {
     // Handle different constructor signatures based on adapter type
     switch (adapterInfo.adapterType) {
       case WalletType['evm']:
-        return new AdapterClass(args);
+        return  AdapterClass.create(args);
       case WalletType['web3auth']:
         // Look for web3authConfig in both places - options object or root
-        return new AdapterClass(args);
+        return  AdapterClass.create(args);
       // case WalletType['newAdapterType']:
       //   // Pass the required parameters to the adapter, let the adapter deside how to handle them.
-      //   return new AdapterClass(args);
+      //   return  AdapterClass.create(args);
       default:
         // Generic adapter initialization
-        return new AdapterClass(args);
+        return  AdapterClass.create(args);
     }
   }
 }

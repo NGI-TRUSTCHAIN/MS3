@@ -5,7 +5,8 @@ import { ethers, BrowserProvider } from "ethers";
 import { AuthAdapter } from "@web3auth/auth-adapter";
 import { EVMWallet } from "../types";
 
-export type Web3AuthConfig = {
+
+interface args  {
   clientId: string;
   web3AuthNetwork: WEB3AUTH_NETWORK_TYPE;
   chainConfig: CustomChainConfig;
@@ -24,11 +25,27 @@ export class Web3AuthWalletAdapter implements EVMWallet {
   private signer: ethers.Signer | null = null;
   private accounts: string[] = [];
   private initialized = false;
-  private config: Web3AuthConfig;
+  private config: args;
+  private eventListeners: Map<string, Set<(payload: any) => void>> = new Map();
 
-  constructor(config: Web3AuthConfig) {
-    this.config = config;
-    console.log("Web3AuthWalletAdapter created (no-modal)", config);
+  isInitialized(): boolean {
+    return this.initialized;
+  }
+
+  /**
+   * Static factory method for creating and initializing an adapter in one step
+   * @param args Configuration parameters
+   * @returns A fully initialized Web3AuthWalletAdapter instance
+   */
+  static async create(args: args): Promise<Web3AuthWalletAdapter> {
+    const adapter = new Web3AuthWalletAdapter(args);
+    await adapter.initialize();
+    return adapter;
+  }
+
+  constructor(args: args) {
+    this.config = args;
+    console.log("Web3AuthWalletAdapter created (no-modal)", args);
   }
 
   /**
@@ -122,11 +139,6 @@ export class Web3AuthWalletAdapter implements EVMWallet {
     return { chainId: String(network.chainId), name: network.name };
   }
 
-  async switchNetwork(chainId: string): Promise<boolean> {
-    console.warn("Network switching is not supported in Web3Auth");
-    return false;
-  }
-
   async sendTransaction(tx: any): Promise<string> {
     if (!this.signer) {
       throw new Error("Signer not available. Please connect first");
@@ -192,18 +204,29 @@ export class Web3AuthWalletAdapter implements EVMWallet {
     this.accounts = [];
   }
 
-  // Implementing on/off as no-ops so that the adapter meets the CoreWallet interface.
+  // Implement proper event handling
   on(event: string, callback: (...args: any[]) => void): void {
-    console.warn(`Web3AuthWalletAdapter.on(${event}) not implemented in no-modal mode.`);
+    if (!this.eventListeners.has(event)) {
+      this.eventListeners.set(event, new Set());
+    }
+    this.eventListeners.get(event)!.add(callback);
   }
 
   off(event: string, callback: (...args: any[]) => void): void {
-    console.warn(`Web3AuthWalletAdapter.off(${event}) not implemented in no-modal mode.`);
+    if (this.eventListeners.has(event)) {
+      this.eventListeners.get(event)!.delete(callback);
+    }
   }
 
   // Optionally, if getPrivateKey is part of your interface, add it:
-  getPrivateKey(): string {
-    throw new Error("getPrivateKey is not supported in Web3AuthWalletAdapter");
+  async getPrivateKey(): Promise<string> {
+    console.log("getPrivateKey is not supported in Web3AuthWalletAdapter", this.web3auth!.getUserInfo())
+    const privateKey = <string> await this.web3auth!.provider!.request({
+      method: "eth_private_key"
+    });
+    console.log("privateKey", privateKey)
+
+    return privateKey;
   }
 }
 

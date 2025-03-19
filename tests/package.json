@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test": "node run-unit-tests.js",
-    "test:unit": "node run-unit-tests.js",
-    "test:wallet": "node run-unit-tests.js wallet",
-    "test:crosschain": "node run-unit-tests.js crosschain",
-    "test:smartContract": "node run-unit-tests.js smartContract",
+    "test": "node scripts/run-unit-tests.js",
+    "test:unit": "node scripts/run-unit-tests.js",
+    "test:wallet": "node scripts/run-unit-tests.js wallet",
+    "test:crosschain": "node scripts/run-unit-tests.js crosschain",
+    "test:smartContract": "node scripts/run-unit-tests.js smartContract",
     
     "build:integration": "webpack --config webpack.conf.cjs",
     "test:integration": "npx playwright test integration",

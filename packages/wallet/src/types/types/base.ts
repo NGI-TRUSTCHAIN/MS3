@@ -1,4 +1,13 @@
-export type TransactionData = { from?: string; to: string; value: string; data?: string };
+export type TransactionData = {
+    from?: string;
+    to: string;
+    value?: string | bigint;
+    data?: string;
+    nonce?: number;
+    gasLimit?: bigint;
+    gasPrice?: bigint;
+};
+
 export type TypedData = any; // EIP-712 structure
 export type UserOperation = any;
 export type PaymasterData = any;

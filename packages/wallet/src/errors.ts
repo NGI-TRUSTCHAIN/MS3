@@ -1,28 +1,50 @@
-
-class AdapterError extends Error {
-    constructor(method: string, originalError: any) {
-        super(`AdapterError in ${method}: ${originalError.message || originalError}`);
-        this.name = "AdapterError";
+export class AdapterError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = 'AdapterError';
     }
-}
-
-// TODO: Revisar y plantear como manejar los errores y presentarlos al usuario, y si esto es necesario.
-export function createErrorHandlingProxy<T extends object>(adapter: T): T {
-    return new Proxy(adapter, {
-        get(target, prop, receiver) {
-            const orig = Reflect.get(target, prop, receiver);
-            if (typeof orig === 'function') {
-                return async (...args: any[]) => {
-                    try {
-                        return await orig.apply(target, args);
-                    } catch (error: any) {
-                        console.error(`Error in adapter method ${String(prop)}:`, error);
-                        // Optionally adapt error message or replace the error type here.
-                        throw new AdapterError(String(prop), error); 
-                    }
-                };
-            }
-            return orig;
-        },
+  }
+  
+  // Define which methods should be treated as async
+  const asyncMethods = [
+    'initialize', 'requestAccounts', 'getAccounts', 'getNetwork',
+    'switchNetwork', 'sendTransaction', 'signTransaction', 'signMessage',
+    'signTypedData', 'getGasPrice', 'estimateGas'
+  ];
+  
+  export function createErrorHandlingProxy(target: any): any {
+    return new Proxy(target, {
+      get(target, prop, receiver) {
+        const value = Reflect.get(target, prop, receiver);
+        
+        if (typeof value === 'function') {
+          const methodName = String(prop);
+          
+          // Check if this is an async method
+          if (asyncMethods.includes(methodName)) {
+            // Async wrapper
+            return async function(...args: any[]) {
+              try {
+                return await value.apply(target, args);
+              } catch (error: any) {
+                console.error(`Error in adapter method ${methodName}: ${error.message || error}`);
+                throw new AdapterError(`AdapterError in ${methodName}: ${error.message || error}`);
+              }
+            };
+          } else {
+            // Synchronous wrapper
+            return function(...args: any[]) {
+              try {
+                return value.apply(target, args);
+              } catch (error: any) {
+                console.error(`Error in adapter method ${methodName}: ${error.message || error}`);
+                throw new AdapterError(`AdapterError in ${methodName}: ${error.message || error}`);
+              }
+            };
+          }
+        }
+        
+        return value;
+      }
     });
-}
+  }

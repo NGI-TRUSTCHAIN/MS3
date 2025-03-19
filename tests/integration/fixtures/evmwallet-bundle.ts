@@ -1,6 +1,4 @@
-import { createWallet } from '@m3s/wallet';
-import { EVMWallet } from '@m3s/wallet/types/interfaces/EVM/index.js';
-import { IWalletOptions } from '@m3s/wallet/types/interfaces/index.js';
+import { createWallet, EVMWallet, IWalletOptions } from '@m3s/wallet';
 
 import { JsonRpcProvider } from 'ethers';
 
@@ -43,21 +41,17 @@ document.addEventListener('DOMContentLoaded', () => {
       log('Initializing EVM wallet...');
       
       // Use a deterministic private key for tests
-      const privateKey = '0x0123456789012345678901234567890123456789012345678901234567890123';
+      const TEST_PRIVATE_KEY = '0x0123456789012345678901234567890123456789012345678901234567890123';
       const provider = new JsonRpcProvider('https://ethereum-sepolia-rpc.publicnode.com');
 
       // Create the wallet
       const params: IWalletOptions = {
         adapterName: 'evmWallet',
-        neededFeature: undefined,
         provider: provider,
-        options: { privateKey }
+        options: { privateKey: TEST_PRIVATE_KEY }
       }
 
-      wallet = createWallet<EVMWallet>(params);
-
-      await wallet.initialize();
-      
+      wallet = await createWallet<EVMWallet>(params);      
       log('EVM wallet initialized. Requesting accounts...');
       
       const accounts = await wallet.getAccounts();

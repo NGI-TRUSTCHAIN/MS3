@@ -10,7 +10,7 @@
   "scripts": {
     "build": "tsc && npm run copy-version-matrix",
     "prepublishOnly": "npm run build",
-    "copy-version-matrix": "if not exist dist\\versions mkdir dist\\versions && copy /Y src\\versions\\versionMatrix.json dist\\versions\\"
+    "copy-version-matrix": "if not exist dist\\assets\\versions mkdir dist\\assets\\versions && copy /Y src\\versions\\versionMatrix.json dist\\assets\\versions\\"
   },
   "publishConfig": {
     "access": "public"
