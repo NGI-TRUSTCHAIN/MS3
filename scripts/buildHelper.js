@@ -9,6 +9,9 @@ function buildPackage(packageName) {
   console.log(`Building ${packageName} from ${pkgPath}...`);
   
   try {
+    // Install dependencies.
+    execSync("npm install --legacy-peer-deps", { stdio: "inherit", cwd: pkgPath });
+    
     execSync("tsc", { stdio: "inherit", cwd: pkgPath });
     
     // For utils package, also copy version matrix
