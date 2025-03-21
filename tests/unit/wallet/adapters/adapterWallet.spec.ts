@@ -1,5 +1,49 @@
-import { IEVMRequiredMethods, IRequiredMethods } from "../../../../packages/wallet/src/types/enums/index";
 import { validateInterface } from "../../../utils/validator";
+
+enum IRequiredMethods {
+  /** General Initialization */
+  initialize = "initialize",
+  isInitialized = "isInitialized",
+  disconnect = "disconnect",
+
+  /** Wallet Metadata */
+  getWalletName = "getWalletName",  
+  getWalletVersion = "getWalletVersion",
+  isConnected = "isConnected",
+
+  /** Account Management */
+  requestAccounts = "requestAccounts",
+  getPrivateKey = "getPrivateKey",
+  getAccounts = "getAccounts",
+  getBalance = "getBalance",
+  verifySignature = "verifySignature",
+  on = "on",
+  off = "off",
+
+  /** Network Management */
+  getNetwork = "getNetwork",
+  setProvider = "setProvider",
+
+  /** Transactions & Signing */
+  sendTransaction = "sendTransaction",
+  signTransaction = "signTransaction",
+  signMessage = "signMessage",
+}
+
+enum IEVMRequiredMethods {
+  signTypedData = "signTypedData",
+  getGasPrice = "getGasPrice",
+  estimateGas = "estimateGas",
+  getTransactionReceipt = "getTransactionReceipt",
+  getTokenBalance = "getTokenBalance",
+  
+}
+
+// Map interface names to their required method enums
+const interfaceMethodMap: Record<string, any[]> = {
+  'ICoreWallet': [IRequiredMethods],
+  'IEVMWallet': [IRequiredMethods, IEVMRequiredMethods]
+};
 
 // This test is designed to be called programmatically with dynamic imports
 describe("Dynamic Adapter Validation", function() {
@@ -15,12 +59,17 @@ describe("Dynamic Adapter Validation", function() {
       throw new Error("ADAPTER_PATH and INTERFACE_NAME environment variables are required");
     }
     
+    console.log(`Loading adapter from path: ${adapterPath}`);
+    
     // Dynamic import of the adapter module
     const adapterModule = await import(adapterPath);
     
-    // Find the adapter class in the module (usually the default export or named export)
-    const AdapterClass: any = Object.values(adapterModule).find(
-      exp => typeof exp === 'function' && exp.name.includes('Wallet')
+    // Find the adapter class in the module with proper type casting
+    const AdapterClass = Object.values(adapterModule).find(
+      (exp): exp is new (...args: any[]) => any => 
+        typeof exp === 'function' && 
+        typeof exp.name === 'string' && 
+        exp.name.includes('Wallet')
     );
     
     if (!AdapterClass) {
@@ -29,14 +78,8 @@ describe("Dynamic Adapter Validation", function() {
     
     console.log(`Testing adapter class: ${AdapterClass.name} implements ${interfaceName}`);
     
-    // Determine which methods are required based on interface name
-    const requiredEnums: any = [IRequiredMethods]; // Core methods always required
-    
-    // Add interface-specific methods based on the detected interface
-    if (interfaceName === 'EVMWallet') {
-      requiredEnums.push(IEVMRequiredMethods);
-    }
-    // Future interfaces can be added here without modifying the validation script
+    // Get required methods dynamically from the interface map
+    const requiredEnums = interfaceMethodMap[interfaceName] || [IRequiredMethods];
     
     // Use the validator utility
     validateInterface(AdapterClass, requiredEnums, AdapterClass.name);

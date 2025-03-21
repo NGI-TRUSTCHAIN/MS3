@@ -7,9 +7,11 @@
     "test": "mocha -r ts-node/register tests/unit/**/*.spec.ts",
     "test:wallet": "mocha -r ts-node/register tests/unit/wallet/**/*.spec.ts",
     "validate-adapter": "node scripts/validate-adapter.js",
+    "validate:web3auth": "npm run validate-adapter collaborate/adapter/web3auth",
     "lint": "eslint packages/**/*.ts"
   },
   "dependencies": {
+    "@m3s/wallet": "^1.0.98",
     "@web3auth/auth-adapter": "^9.7.0",
     "@web3auth/base": "^9.7.0",
     "@web3auth/ethereum-provider": "^9.7.0",

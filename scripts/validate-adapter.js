@@ -50,7 +50,8 @@ try {
   console.log(`Detected implementation of interface: ${interfaceName}`);
   
   // Set environment variables for the test
-  process.env.ADAPTER_PATH = path.resolve(__dirname, '..', 'packages', 'wallet', 'src', 'adapters', `${adapterName}Wallet.ts`);
+  // Use a RELATIVE PATH from the test file to the adapter
+  process.env.ADAPTER_PATH = "../../../../packages/wallet/src/adapters/" + adapterName + "Wallet";
   process.env.INTERFACE_NAME = interfaceName;
   
   // Run the test with the extracted interface information
