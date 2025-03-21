@@ -4,7 +4,6 @@ import { WalletAdapterFactory } from './factories/walletAdapterFactory';
 import { createErrorHandlingProxy } from './errors';
 
 // Export main components
-// export { BaseWallet } from './wallet.core';
 export * from './types';
 export * from './adapters';
 
