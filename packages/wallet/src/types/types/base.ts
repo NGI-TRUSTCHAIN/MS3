@@ -6,6 +6,8 @@ export type TransactionData = {
     nonce?: number;
     gasLimit?: bigint;
     gasPrice?: bigint;
+    maxFeePerGas?: bigint;
+    maxPriorityFeePerGas?: bigint;
 };
 
 export type TypedData = any; // EIP-712 structure

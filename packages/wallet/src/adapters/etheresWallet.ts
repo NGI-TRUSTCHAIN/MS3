@@ -1,12 +1,15 @@
 import { ethers, Provider, Wallet as EthersWallet } from "ethers";
 import { IEVMWallet } from "../types/interfaces/EVM";
-import { TransactionData } from "../types";
+import { TransactionData, WalletEvent } from "../types";
 
 // Define always the constructor arguments in a type.
 interface args {
-  privateKey?: string,
-  provider?: Provider
+  provider?: Provider,
+  options?: {
+    privateKey?: string,
+  }
 }
+
 export class EvmWalletAdapter implements IEVMWallet {
   private wallet!: EthersWallet;
   private provider?: Provider;
@@ -33,14 +36,14 @@ export class EvmWalletAdapter implements IEVMWallet {
    * ```
    */
   private constructor(args: args) {
-    const { privateKey, provider: optionsProvider } = args;
+    const { options, provider: optionsProvider } = args;
     // Handle both old and new parameter styles
 
-    if (!privateKey) {
+    if (!options?.privateKey) {
       const generatedWallet = ethers.Wallet.createRandom();
       this.privateKey = generatedWallet.privateKey;
     } else {
-      this.privateKey = privateKey;
+      this.privateKey = options?.privateKey;
     }
 
     if (optionsProvider) {
@@ -95,10 +98,16 @@ export class EvmWalletAdapter implements IEVMWallet {
    * This method does not clean up event listeners or other resources.
    */
   disconnect(): void {
+    // Preserve the private key! Don't reset it
+    const preservedPrivateKey = this.privateKey;
+    
     this.provider = undefined;
     this.wallet = undefined as any; // Type assertion to avoid TypeScript error
     this.initialized = false;
     this.eventListeners.clear(); // Clear event listeners
+    
+    // Restore the private key
+    this.privateKey = preservedPrivateKey;
   }
 
   /** Wallet Metadata */
@@ -141,6 +150,10 @@ export class EvmWalletAdapter implements IEVMWallet {
    */
   async requestAccounts(): Promise<string[]> {
     const accounts = [this.wallet.address];
+
+    // Emit the accountsChanged event explicitly
+    this.emitEvent(WalletEvent.accountsChanged, accounts);
+
     return accounts;
   }
 
@@ -189,6 +202,25 @@ export class EvmWalletAdapter implements IEVMWallet {
   }
 
   /**
+   * Emits an event with the specified name and payload
+   * @param eventName The name of the event to emit
+   * @param payload The payload to pass to the event listeners
+   */
+    private emitEvent(eventName: string, payload: any): void {
+      console.log(`Emitting ${eventName} event with:`, payload);
+      const listeners = this.eventListeners.get(eventName);
+      if (listeners && listeners.size > 0) {
+        for (const callback of listeners) {
+          try {
+            callback(payload);
+          } catch (error) {
+            console.error(`Error in ${eventName} event handler:`, error);
+          }
+        }
+      }
+    }
+
+  /**
    * Registers an event listener for the specified event.
    * 
    * @param event - The name of the event to listen for.
@@ -233,8 +265,20 @@ export class EvmWalletAdapter implements IEVMWallet {
    * @throws Will throw an error if the provider is not set.
    */
   async getNetwork(): Promise<{ chainId: string; name?: string }> {
-    const network = await this.provider!.getNetwork();
-    return { chainId: String(network.chainId), name: network.name };
+    if (!this.provider) {
+      throw new Error("Provider not set");
+    }
+    
+    console.log("[EvmWalletAdapter] Getting network from provider:", this.provider);
+    
+    try {
+      const network = await this.provider.getNetwork();
+      console.log("[EvmWalletAdapter] Network result:", network);
+      return { chainId: String(network.chainId), name: network.name };
+    } catch (error:any) {
+      console.error("[EvmWalletAdapter] Error in getNetwork:", error);
+      throw new Error("Failed to get network: " + error.message);
+    }
   }
 
   /**
@@ -242,15 +286,33 @@ export class EvmWalletAdapter implements IEVMWallet {
    *
    * @param provider - The new provider to set for the wallet.
    */
-  setProvider(provider: Provider): void {
+  async setProvider(provider: Provider): Promise<void> {
+    console.log("[EvmWalletAdapter] Setting new provider:", provider);
     this.provider = provider;
-
-    // Reconnect the wallet with the new provider
+    
+    // Reconnect wallet to new provider
     if (this.wallet) {
-      this.wallet = this.wallet.connect(provider);
+      try {
+        this.wallet = this.wallet.connect(provider);
+        console.log("[EvmWalletAdapter] Wallet reconnected to new provider");
+        
+        // Ensure we emit the event after connecting
+        // setTimeout(async () => {
+        //   try {
+            const network = await provider.getNetwork();
+            console.log("[EvmWalletAdapter] New network:", network);
+            const chainId = `0x${network.chainId.toString(16)}`;
+            this.emitEvent(WalletEvent.chainChanged, chainId);
+        //   } catch (err) {
+        //     console.error("[EvmWalletAdapter] Error getting network:", err);
+        //   }
+        // }, 500);
+      } catch (err) {
+        console.error("[EvmWalletAdapter] Error connecting wallet to provider:", err);
+      }
     }
   }
-
+  
   /** Transactions & Signing */
   private processTransactionValue(tx: TransactionData): TransactionData {
     if (typeof tx.value === 'string' && tx.value.includes('.')) {
@@ -266,10 +328,29 @@ export class EvmWalletAdapter implements IEVMWallet {
    * @returns A promise that resolves to the transaction hash as a string.
    * @throws Will throw an error if the wallet, provider, or initialization is not properly set up.
    */
-  async sendTransaction(tx: any): Promise<string> {
-    const processedTx = this.processTransactionValue(tx);
-    const response = await this.wallet.sendTransaction(processedTx);
-    return response.hash;
+  async sendTransaction(tx: TransactionData): Promise<string> {
+    if (!this.wallet) {
+      throw new Error("Wallet not initialized. Call initialize() first.");
+    }
+  
+    if (!this.provider) {
+      throw new Error("Provider not set");
+    }
+  
+    try {
+      // Process value if it's a string with decimal places
+      const txRequest = { ...tx };
+      
+      if (typeof tx.value === 'string' && tx.value.includes('.')) {
+        txRequest.value = ethers.parseEther(tx.value).toString();
+      }
+      
+      const response = await this.wallet.sendTransaction(txRequest);
+      return response.hash;
+    } catch (error) {
+      console.error("Transaction error:", error);
+      throw error;
+    }
   }
 
   /**
@@ -360,9 +441,33 @@ export class EvmWalletAdapter implements IEVMWallet {
     if (!account) {
       account = this.wallet.address;
     }
-    const tokenContract = new ethers.Contract(tokenAddress, ["function balanceOf(address) view returns (uint256)"], this.provider!);
-    const balance = await tokenContract.balanceOf(account);
-    return ethers.formatUnits(balance, 18); // Assuming 18 decimals for ERC-20 tokens
+    
+    // Use a more complete ERC-20 ABI with more error handling
+    const erc20Abi = [
+      "function balanceOf(address) view returns (uint256)",
+      "function decimals() view returns (uint8)",
+      "function symbol() view returns (string)"
+    ];
+    
+    try {
+      const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, this.provider!);
+      
+      // Get balance
+      const balance = await tokenContract.balanceOf(account);
+      
+      // Try to get decimals, default to 18 if not available
+      let decimals = 18;
+      try {
+        decimals = await tokenContract.decimals();
+      } catch (error) {
+        console.log("Could not get token decimals, using default of 18");
+      }
+      
+      return ethers.formatUnits(balance, decimals);
+    } catch (error: any) {
+      console.error("Error getting token balance:", error);
+      throw new Error(`Failed to get token balance: ${error.message}`);
+    }
   }
 
 }

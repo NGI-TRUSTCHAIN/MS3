@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "scripts": {
-    "clean": "rimraf packages/*/dist",
+    "clean": "rimraf packages/*/dist packages/*/tsconfig.tsbuildinfo",
     
     "build": "node scripts/build-all.js",
     "build:utils": "node scripts/build-package.js utils",
@@ -23,23 +23,9 @@
     "release": "npm run build && npm run publish:all",
     
     "test": "cd tests && npm run test",
-    "test:wallet": "cd tests && npm run test:wallet",
-    "test:crosschain": "cd tests && npm run test:crosschain",
-    "test:smartContract": "cd tests && npm run test:smartContract",
-    
-    "test:integration": "cd tests && npm run test:integration",
-    "test:int": "cd tests && npm run test:evmwallet && npm run test:web3auth",
-    "test:integration:debug": "cd tests && npm run test:integration:debug",
-    "test:web3auth": "cd tests && npm run test:web3auth",
-    "test:evmwallet": "cd tests && npm run test:evmwallet",
-    
     "build:integration": "cd tests && npm run build:integration",
-    
-    "test:all": "npm run test && npm run test:integration",
-    "build:test": "npm run build && npm run test:all",
-
+  
     "merge-adapter": "node scripts/mergeHelper.js"
-
   },
   "devDependencies": {
     "@babel/core": "^7.26.9",

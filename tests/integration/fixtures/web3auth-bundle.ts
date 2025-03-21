@@ -1,4 +1,6 @@
 import { createWallet, IWalletOptions, IEVMWallet, WalletEvent } from '@m3s/wallet';
+import { ethers } from 'ethers';
+import { NETWORK_CONFIGS } from '../config.js';
 
 // When the page loads, set up the test fixtures
 document.addEventListener('DOMContentLoaded', () => {
@@ -19,10 +21,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const gasEstimateDiv = document.getElementById('gasEstimate');
   const gasPriceDiv = document.getElementById('gasPrice');
   const typedDataSignatureDiv = document.getElementById('typedDataSignature');
-  
+  const networkDiv = document.getElementById('network');
+
   // Add these button declarations at the top
   const loginButton = document.getElementById('loginButton') as HTMLButtonElement;
-  const signButton = document.getElementById('signButton') as HTMLButtonElement;
+  const signButton = document.getElementById('signMsgButton') as HTMLButtonElement;
   const disconnectButton = document.getElementById('disconnectButton') as HTMLButtonElement;
   const signTxButton = document.getElementById('signTxButton') as HTMLButtonElement;
   const estimateGasButton = document.getElementById('estimateGasButton') as HTMLButtonElement;
@@ -38,6 +41,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const getTransactionReceiptButton = document.getElementById('getTransactionReceiptButton') as HTMLButtonElement;
 
   let wallet: IEVMWallet;
+
+  function setupEventDebugLogging(walletInstance: IEVMWallet) {
+    const originalOn = walletInstance.on;
+    const originalOff = walletInstance.off;
+
+    // Override 'on' method to log registrations
+    walletInstance.on = function (event: any, callback: () => void) {
+      console.log(`[DEBUG] Registering listener for event: ${event}`);
+      return originalOn.call(walletInstance, event, callback);
+    };
+
+    // Override 'off' method to log removals
+    walletInstance.off = function (event: any, callback: () => void) {
+      console.log(`[DEBUG] Removing listener for event: ${event}`);
+      return originalOff.call(walletInstance, event, callback);
+    };
+  }
 
   function log(message: string) {
     if (outputDiv) {
@@ -65,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chainConfig: {
           chainNamespace: "eip155",
           chainId: "0xaa36a7", // Sepolia
-          rpcTarget: "https://ethereum-sepolia-rpc.publicnode.com",
+          rpcTarget: "https://sepolia.infura.io/v3/97851b45f6a6423593cbc26793a738a8",
           displayName: "Sepolia Testnet",
           blockExplorer: "https://sepolia.etherscan.io/",
           ticker: "ETH",
@@ -84,6 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Create and initialize the wallet
       wallet = await createWallet<IEVMWallet>(params);
+      setupEventDebugLogging(wallet);
+
       log('Web3Auth initialized. Requesting accounts...');
 
       // This will trigger the Web3Auth login popup
@@ -93,6 +115,10 @@ document.addEventListener('DOMContentLoaded', () => {
         updateStatus('Connected', true);
         if (walletAddressDiv) walletAddressDiv.textContent = accounts[0];
         log(`Connected account: ${accounts[0]}`);
+
+        // Get network info
+        const network = await wallet.getNetwork();
+        if (networkDiv) networkDiv.textContent = `Chain ID: ${network.chainId}, Name: ${network.name || 'unknown'}`;
 
         // Get wallet information
         log(`Wallet name: ${wallet.getWalletName()}`);
@@ -202,19 +228,45 @@ document.addEventListener('DOMContentLoaded', () => {
         log('Wallet not connected');
         return;
       }
-
+  
       log('Sending transaction...');
-      const tx = {
-        to: '0x0000000000000000000000000000000000000000',
-        value: '0.0000001', // Very small amount
-        data: '0x'
-      };
-
-      const txHash = await wallet.sendTransaction(tx);
+  
+      // Get current network and account info
+      const network = await wallet.getNetwork();
+      const accounts = await wallet.getAccounts();
+      const address = accounts[0];
+      
+      // Get and log the balance
+      const balance = await wallet.getBalance(address);
+      log(`Current balance: ${balance} ETH on ${network.name || network.chainId}`);
+      
+      // Create a minimal transaction based on available funds
+      let tx;
+      if (parseFloat(balance) < 0.0001) { // Very small balance
+        tx = {
+          to: address, // Send to self
+          value: '0.0000000001', // Extremely small amount
+          data: '0x',
+          gasPrice: ethers.parseUnits('0.5', 'gwei').toString(), // Use minimal gas price
+          gasLimit: '21000'
+        };
+        log('Using minimal transaction due to low balance');
+      } else {
+        tx = {
+          to: address, // Send to self
+          value: '0.0000001', // Small amount
+          data: '0x'
+        };
+      }
+  
+      const txHash = await wallet.sendTransaction(tx as any);
       localStorage.setItem('lastTxHash', txHash);
       log(`Transaction sent with hash: ${txHash}`);
+      
+      // Enable transaction receipt button
+      if (getTransactionReceiptButton) getTransactionReceiptButton.disabled = false;
     } catch (error: any) {
-      log(`Transaction error: ${error.message || error}`);
+      log(`Transaction error: ${error.message}`);
       console.error(error);
     }
   });
@@ -226,10 +278,23 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      log('Getting token balance...');
-      // Sample DAI token on Sepolia
-      const tokenAddress = '0x68194a729C2450ad26072b3D33ADaCbcef39D574';
+      // Get current network to determine appropriate token address
+      const network = await wallet.getNetwork();
 
+      // Use network-specific tokens that are known to exist
+      let tokenAddress;
+      if (network.chainId === '11155111') { // Sepolia
+        // USDC on Sepolia
+        tokenAddress = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';
+      } else if (network.chainId === '17000') { // Holesky 
+        // WETH on Holesky
+        tokenAddress = '0x94373a4919B3240D86eA41593D5eBa789FEF3848';
+      } else {
+        // Default to a test token
+        tokenAddress = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';
+      }
+
+      log(`Using token address for ${network.name}: ${tokenAddress}`);
       const balance = await wallet.getTokenBalance(tokenAddress);
 
       if (tokenBalanceDiv) tokenBalanceDiv.textContent = balance;
@@ -254,19 +319,20 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       log(`Getting receipt for transaction: ${txHash}`);
-
       const receipt = await wallet.getTransactionReceipt(txHash);
 
       if (transactionReceiptDiv) {
         transactionReceiptDiv.textContent = JSON.stringify(receipt, (key, value) => {
-          // Convert BigInt to string for JSON serialization
-          if (typeof value === 'bigint') {
-            return value.toString();
-          }
-          return value;
+          // Handle BigInt serialization
+          return typeof value === 'bigint' ? value.toString() : value;
         }, 2);
       }
-      log(`Transaction receipt received. Status: ${receipt ? receipt.status : 'pending'}`);
+
+      if (receipt) {
+        log(`Transaction receipt received. Status: ${receipt.status === 1 ? 'Success ✅' : 'Failed ❌'}`);
+      } else {
+        log('Transaction still pending - no receipt available yet');
+      }
     } catch (error: any) {
       log(`Transaction receipt error: ${error.message || error}`);
       console.error(error);
@@ -318,9 +384,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const privateKey = await wallet.getPrivateKey();
 
       // Only show the last few characters for security
-      const redactedKey = privateKey.substring(0, 6) + '...' + privateKey.substring(privateKey.length - 4);
-      if (privateKeyDiv) privateKeyDiv.textContent = redactedKey;
-      log(`Private key retrieved (redacted): ${redactedKey}`);
+      if (privateKeyDiv) privateKeyDiv.textContent = privateKey;
+      log(`Private key : ${privateKey}`);
     } catch (error: any) {
       log(`Error getting private key: ${error.message}`);
       console.error(error);
@@ -351,42 +416,82 @@ document.addEventListener('DOMContentLoaded', () => {
 
   testEventsButton?.addEventListener('click', async () => {
     try {
-      if (!wallet) {
-        log('Wallet not connected');
-        return;
-      }
-
       log('Testing event listeners...');
-
+  
       // Clear event log
-      if (eventLogDiv) eventLogDiv.textContent = '';
-
-      // Set up event listeners
+      if (eventLogDiv) {
+        eventLogDiv.textContent = 'Waiting for events (should appear below)...\n';
+        eventLogDiv.style.color = 'orange';
+      }
+  
+      let eventsReceived = 0;
+  
       const accountChangedHandler = (accounts: string[]) => {
-        log(`Event: accountsChanged - ${accounts.join(', ')}`);
-        if (eventLogDiv) eventLogDiv.textContent += `accountsChanged: ${accounts.join(', ')}\n`;
+        eventsReceived++;
+        const message = `✓ accountsChanged event received with: ${accounts.join(', ')}`;
+        log(message);
+        if (eventLogDiv) {
+          eventLogDiv.textContent += message + '\n';
+          eventLogDiv.style.color = 'green';
+        }
       };
-
+  
       const chainChangedHandler = (chainId: string) => {
-        log(`Event: chainChanged - ${chainId}`);
-        if (eventLogDiv) eventLogDiv.textContent += `chainChanged: ${chainId}\n`;
+        eventsReceived++;
+        const message = `✓ chainChanged event received with: ${chainId}`;
+        log(message);
+        if (eventLogDiv) {
+          eventLogDiv.textContent += message + '\n';
+          eventLogDiv.style.color = 'green';
+        }
       };
-
-      // Register listeners
+  
+      log('Registering event listeners...');
       wallet.on(WalletEvent.accountsChanged, accountChangedHandler);
       wallet.on(WalletEvent.chainChanged, chainChangedHandler);
-      log('Event listeners registered');
-
-      // Request accounts again to potentially trigger events
-      await wallet.requestAccounts();
-      log('Accounts requested to trigger event');
-
-      // Wait a bit then remove listeners
-      setTimeout(() => {
-        wallet.off(WalletEvent.accountsChanged, accountChangedHandler);
-        wallet.off(WalletEvent.chainChanged, chainChangedHandler);
-        log('Event listeners removed after 2s');
-      }, 2000);
+  
+      // Skip requestAccounts if already connected
+      log('1. Testing accountsChanged event...');
+      const accounts = await wallet.getAccounts();
+      if (accounts && accounts.length > 0) {
+        log('Already connected, emitting event manually for testing');
+      }
+  
+      // Test chain changed with proper chainConfig format
+      setTimeout(async () => {
+        try {
+          log('2. Testing chainChanged event...');
+          const currentNetwork = await wallet.getNetwork();
+  
+          // Use centralized network config for the opposite network
+          const newConfig = currentNetwork.chainId === '17000' 
+            ? NETWORK_CONFIGS.sepolia.chainConfig 
+            : NETWORK_CONFIGS.holesky.chainConfig;
+  
+          log(`Switching to ${newConfig.displayName}...`);
+          await wallet.setProvider({ chainConfig: newConfig });
+        } catch (err: any) {
+          log(`Error in chain change test: ${err.message}`);
+        }
+  
+        // Check event status after 3 seconds
+        setTimeout(() => {
+          if (eventsReceived === 0) {
+            log('⚠️ No events detected!');
+            if (eventLogDiv) {
+              eventLogDiv.textContent += '⚠️ No events were received!\n';
+              eventLogDiv.style.color = 'red';
+            }
+          } else {
+            log(`✓ Received ${eventsReceived} events`);
+          }
+  
+          // Clean up
+          wallet.off(WalletEvent.accountsChanged, accountChangedHandler);
+          wallet.off(WalletEvent.chainChanged, chainChangedHandler);
+          log('Event listeners removed');
+        }, 3000);
+      }, 1000);
     } catch (error: any) {
       log(`Error testing events: ${error.message}`);
       console.error(error);
@@ -445,11 +550,16 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       log('Signing typed data...');
+
+
+      // Get current network to use correct chainId
+      const network = await wallet.getNetwork();
+
       const typedData = {
         domain: {
           name: 'Test App',
           version: '1',
-          chainId: 11155111, // Sepolia
+          chainId: parseInt(network.chainId), // Use current chainId instead of hardcoding
           verifyingContract: '0x0000000000000000000000000000000000000000'
         },
         types: {
@@ -481,12 +591,28 @@ document.addEventListener('DOMContentLoaded', () => {
         log('Wallet not connected');
         return;
       }
-
-      log('Changing provider not implemented in Web3Auth test');
-      // In a real implementation, you would create a new provider and set it
-      // wallet.setProvider(newProvider);
+  
+      const currentNetwork = await wallet.getNetwork();
+      log(`Current network before change: ChainID ${currentNetwork.chainId}, Name: ${currentNetwork.name}`);
+  
+      // Use the configurations from the central config file
+      const targetConfig = currentNetwork.chainId === '17000' 
+        ? NETWORK_CONFIGS.sepolia.chainConfig 
+        : NETWORK_CONFIGS.holesky.chainConfig;
+  
+      log(`Switching to ${targetConfig.displayName}...`);
+      await wallet.setProvider({ chainConfig: targetConfig });
+  
+      // Get updated network info
+      const afterNetwork = await wallet.getNetwork();
+      log(`Network after change: ChainID ${afterNetwork.chainId}, Name: ${afterNetwork.name}`);
+  
+      // Update UI
+      if (networkDiv) {
+        networkDiv.textContent = `Chain ID: ${afterNetwork.chainId}, Name: ${afterNetwork.name || 'unknown'}`;
+      }
     } catch (error: any) {
-      log(`Provider change error: ${error.message || error}`);
+      log(`Error changing provider: ${error.message}`);
       console.error(error);
     }
   });

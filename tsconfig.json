@@ -14,6 +14,6 @@
         "@m3s/*": ["packages/*/src"]
       }
     },
-    "include": ["packages/**/*.ts", "tests/**/*.ts"],
+    "include": ["packages/**/*.ts", "tests/**/*.ts", "tests/integration/config.js"],
     "exclude": ["node_modules", "dist"]
   }

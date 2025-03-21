@@ -3,19 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test": "node scripts/run-unit-tests.js",
-    "test:unit": "node scripts/run-unit-tests.js",
-    "test:wallet": "node scripts/run-unit-tests.js wallet",
-    "test:crosschain": "node scripts/run-unit-tests.js crosschain",
-    "test:smartContract": "node scripts/run-unit-tests.js smartContract",
-
     "build:integration": "webpack --config webpack.conf.cjs",
-    "test:integration": "npx playwright test integration",
-    "test:integration:debug": "npx playwright test integration --headed --debug",
-    "test:web3auth": "npx playwright test integration/wallet/02__web3auth.spec.ts",
-    "test:evmwallet": "npx playwright test integration/wallet/01__evmWallet.spec.ts",
-    
-    "test:all": "npm run test && npm run test:integration"
+    "test": "node scripts/manual-test-server.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.42.0",

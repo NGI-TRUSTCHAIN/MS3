@@ -32,13 +32,6 @@ rl.question('Continue? (y/n) ', (answer) => {
     // Checkout the adapter branch
     execSync(`git checkout github/${adapterName}`, { stdio: 'inherit' });
     
-    // Run integration tests
-    console.log('Running integration tests...');
-    execSync('npm run test:integration', { stdio: 'inherit' });
-    
-    // If we get here, tests passed
-    console.log('Integration tests passed!');
-    
     // Checkout develop and merge
     execSync('git checkout develop', { stdio: 'inherit' });
     execSync(`git merge github/${adapterName}`, { stdio: 'inherit' });

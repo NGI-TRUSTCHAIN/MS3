@@ -5,12 +5,8 @@ import { WalletType } from '../types/enums';
 export class WalletAdapterFactory {
   public instance: any;
 
-  // constructor(args: any) {
-  //   const adapter = this.initAdapter(args);
-  //   this.instance = adapter;
-  // }
-  
-  private constructor() { /* Empty constructor */ }
+
+  private constructor() {}
 
   static async create(args: IWalletOptions): Promise<WalletAdapterFactory> {
     console.log("WalletAdapterFactory creating with:", JSON.stringify(args, null, 2));
