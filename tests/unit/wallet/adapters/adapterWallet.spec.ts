@@ -5,12 +5,10 @@ enum IRequiredMethods {
   initialize = "initialize",
   isInitialized = "isInitialized",
   disconnect = "disconnect",
-
   /** Wallet Metadata */
   getWalletName = "getWalletName",  
   getWalletVersion = "getWalletVersion",
   isConnected = "isConnected",
-
   /** Account Management */
   requestAccounts = "requestAccounts",
   getPrivateKey = "getPrivateKey",
@@ -19,11 +17,9 @@ enum IRequiredMethods {
   verifySignature = "verifySignature",
   on = "on",
   off = "off",
-
   /** Network Management */
   getNetwork = "getNetwork",
   setProvider = "setProvider",
-
   /** Transactions & Signing */
   sendTransaction = "sendTransaction",
   signTransaction = "signTransaction",
