@@ -39,9 +39,9 @@ export class WalletAdapterFactory {
     switch (adapterInfo.adapterType) {
       case WalletType['evm']:
         return  AdapterClass.create(args);
-      case WalletType['web3auth']:
-        // Look for web3authConfig in both places - options object or root
-        return  AdapterClass.create(args);
+      // case WalletType['web3auth']:
+      //   // Look for web3authConfig in both places - options object or root
+      //   return  AdapterClass.create(args);
       // case WalletType['newAdapterType']:
       //   // Pass the required parameters to the adapter, let the adapter deside how to handle them.
       //   return  AdapterClass.create(args);
