@@ -1,5 +1,6 @@
 const path = require("path");
 const { execSync } = require("child_process");
+const fs = require("fs");
 
 // Fix path resolution
 const rootDir = path.resolve(__dirname, '..');
@@ -14,13 +15,30 @@ function buildPackage(packageName) {
     
     execSync("tsc", { stdio: "inherit", cwd: pkgPath });
     
-    // For utils package, also copy version matrix
-    if (packageName === 'utils') {
-      const versionMatrixSrc = path.join(pkgPath, 'src/versions/versionMatrix.json');
-      const versionMatrixDest = path.join(pkgPath, 'dist/versions');
+    // If building wallet, bundle utils into it
+    if (packageName === 'wallet') {
+      execSync('node scripts/update-imports.js', { stdio: "inherit", cwd: rootDir });
+
+      console.log('Bundling necessary utils code into wallet package...');
+      const utilsSourcePath = path.join(rootDir, 'packages/utils/dist');
+      const walletDistPath = path.join(pkgPath, 'dist/utils');
       
-      execSync(`if not exist ${versionMatrixDest} mkdir ${versionMatrixDest}`, { shell: true });
-      execSync(`copy /Y ${versionMatrixSrc} ${versionMatrixDest}\\`, { shell: true });
+      // Create utils directory in wallet dist if it doesn't exist
+      execSync(`if not exist ${walletDistPath} mkdir ${walletDistPath}`, { shell: true });
+      
+      // Copy necessary utils files
+      execSync(`copy /Y ${utilsSourcePath}\\*.* ${walletDistPath}\\`, { shell: true });
+      
+      // Update package.json to remove utils dependency
+      const packageJsonPath = path.join(pkgPath, 'package.json');
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+      
+      // Remove utils dependency
+      if (packageJson.dependencies && packageJson.dependencies['@m3s/utils']) {
+        delete packageJson.dependencies['@m3s/utils'];
+        fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+        console.log('Removed @m3s/utils dependency from wallet package.json');
+      }
     }
     
     console.log(`Successfully built ${packageName}`);
