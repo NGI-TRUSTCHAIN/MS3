@@ -1,47 +1,130 @@
-import * as fs from "fs";
-import * as path from "path";
-
-// TODO: Mejorar el interfaz añadiendo otro anidado para los adapters y sus versiones.
 export interface VersionMatrix {
-  [moduleName: string]: {
-    [versionString: string]: {
-      features: string[];
+  modules: {
+    [moduleName: string]: ModuleEntry;
+  };
+}
+
+export interface ModuleEntry {
+  versions: {
+    [moduleVersion: string]: {
+      adapters: {
+        [adapterName: string]: AdapterCompatibility;
+      };
     };
   };
 }
 
+export interface AdapterCompatibility {
+  minVersion: string;
+  maxVersion: string;
+  supportedFeatures: {
+    [featureName: string]: {
+      addedInVersion?: string;
+      deprecatedInVersion?: string;
+    };
+  };
+}
+
+import matrixData from '../versions/versionMatrix.json' with { type: 'json' };
+
 export class VersionRepository {
   private matrix: VersionMatrix;
+  private static instance: VersionRepository;
 
-  constructor() {
-    if (typeof window !== "undefined") {
-      // In a browser environment, bypass fs.
-      console.info("Browser environment detected - using static fallback for version matrix.");
-      // You may load a static versionMatrix (if you have one saved as JSON in your bundle) or simply fallback to {}
-      this.matrix = {}; 
-    } else {
-      // Node: use fs to load versionMatrix.json
-      const matrixPath = path.join(__dirname, "assets", "versions", "versionMatrix.json");
-      console.info("Loading version matrix from:", matrixPath);
-      try {
-        this.matrix = JSON.parse(fs.readFileSync(matrixPath, "utf-8"));
-      } catch (error) {
-        console.error("Failed to load version matrix:", error);
-        this.matrix = {};
-      }
+  private constructor() {
+    // Use ES module import instead of require
+    this.matrix = matrixData;
+  }
+
+  /**
+   * Checks if a feature is supported in a single call
+   * @param params Object containing check parameters
+   * @returns True if the feature is supported, false otherwise
+   */
+  public checkFeatureSupport(params: {
+    moduleName: string;
+    moduleVersion: string;
+    adapterName: string;
+    adapterVersion: string;
+    featureName: string;
+  }): boolean {
+    const { moduleName, moduleVersion, adapterName, adapterVersion, featureName } = params;
+
+    return this.supportsFeature(
+      moduleName,
+      moduleVersion,
+      adapterName,
+      adapterVersion,
+      featureName
+    );
+  }
+
+  public static getInstance(): VersionRepository {
+    if (!VersionRepository.instance) {
+      VersionRepository.instance = new VersionRepository();
+    }
+    return VersionRepository.instance;
+  }
+
+  // No loading necessary - everything is bundled
+  public loadMatrix(): void {
+    // Nothing to do - matrix is already loaded at construction time
+  }
+
+  public isAdapterCompatible(
+    moduleName: string,
+    moduleVersion: string,
+    adapterName: string,
+    adapterVersion: string
+  ): boolean {
+    try {
+      const adapterCompat = this.matrix.modules[moduleName]?.versions[moduleVersion]?.adapters[adapterName];
+      if (!adapterCompat) return false;
+
+      const { minVersion, maxVersion } = adapterCompat;
+      return this.isVersionInRange(adapterVersion, minVersion, maxVersion);
+    } catch (error) {
+      return false;
     }
   }
 
-  /** Check if a specific module version supports a given feature */
-  public supportsFeature(moduleName: string, version: string, feature: string): boolean {
-    const moduleVersions = this.matrix[moduleName] || {};
-    const data = moduleVersions[version];
-    if (!data) return false;
-    return data.features.includes(feature);
+  public supportsFeature(
+    moduleName: string,
+    moduleVersion: string,
+    adapterName: string,
+    adapterVersion: string,
+    featureName: string
+  ): boolean {
+    try {
+      const adapterCompat = this.matrix.modules[moduleName]?.versions[moduleVersion]?.adapters[adapterName];
+      if (!adapterCompat) return false;
+
+      const feature = adapterCompat.supportedFeatures[featureName];
+      if (!feature) return false;
+
+      const isAdded = !feature.addedInVersion || this.compareVersions(adapterVersion, feature.addedInVersion) >= 0;
+      const isNotDeprecated = !feature.deprecatedInVersion || this.compareVersions(adapterVersion, feature.deprecatedInVersion) < 0;
+
+      return isAdded && isNotDeprecated;
+    } catch (error) {
+      return false;
+    }
   }
 
-  /** Get all features supported by a module version */
-  public getFeaturesForVersion(moduleName: string, version: string): string[] {
-    return this.matrix[moduleName]?.[version]?.features || [];
+  private isVersionInRange(version: string, min: string, max: string): boolean {
+    if (max === '*') return this.compareVersions(version, min) >= 0;
+    return this.compareVersions(version, min) >= 0 && this.compareVersions(version, max) <= 0;
+  }
+
+  private compareVersions(a: string, b: string): number {
+    const partsA = a.split('.').map(Number);
+    const partsB = b.split('.').map(Number);
+
+    for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+      const partA = partsA[i] || 0;
+      const partB = partsB[i] || 0;
+      if (partA !== partB) return partA - partB;
+    }
+    return 0;
   }
 }

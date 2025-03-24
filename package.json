@@ -27,7 +27,9 @@
  
     "setup:tests": "cd tests && npm install --legacy-peer-deps",
     "build:integration": "npm run setup:tests && cd tests && npm run build:integration",
-    "test:clean": "npm run clean:all && npm run build && npm run build:integration && npm test"
+    "test:clean": "npm run clean:all && npm run build && npm run build:integration && npm test",
+    "update-matrix": "node scripts/update-version-matrix.js",
+    "preversion": "npm run update-matrix"
   },
   "devDependencies": {
     "@babel/core": "^7.26.9",

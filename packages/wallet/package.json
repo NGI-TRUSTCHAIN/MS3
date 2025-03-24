@@ -2,8 +2,21 @@
   "name": "@m3s/wallet",
   "version": "1.1.0",
   "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "wallet",
+    "ethereum",
+    "web3auth",
+    "blockchain",
+    "evm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git@bitbucket.org:ctb-marisca/ms3-package.git",
+    "directory": "packages/wallet"
+  },
   "main": "dist/index.js",
-  "description": "M3S Wallet Module",
+  "description": "A flexible wallet interface supporting multiple blockchain wallet types, including EVM wallets and Web3Auth integration",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
@@ -12,7 +25,7 @@
   },
   "publishConfig": {
     "access": "public",
-    "tag": "alpha"
+    "tag": "latest"
   },
   "dependencies": {
     "@web3auth/auth-adapter": "^9.7.0",

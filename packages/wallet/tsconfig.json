@@ -5,6 +5,10 @@
     "rootDir": "./src",
     "declaration": true,
     "declarationMap": true,
+
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    
     "sourceMap": true,
     "composite": true
   },

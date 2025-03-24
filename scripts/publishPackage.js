@@ -27,23 +27,82 @@ function updateDependentPackages(packageName, version) {
 }
 
 function updateVersionMatrix(packageName, version) {
-  // This function is also fine
   const utilsPath = join(rootDir, 'packages/utils');
   const matrixPath = join(utilsPath, 'src/versions/versionMatrix.json');
+  const rootMatrixPath = join(rootDir, 'version-matrix.json');
   
+  let matrix = { modules: {} };
+  
+  // Try to read existing matrix
   if (existsSync(matrixPath)) {
-    const matrix = JSON.parse(readFileSync(matrixPath, 'utf8'));
-    
-    matrix[packageName] = {
-      mockedAdapter: {
-        supported: true,
-        minVersion: version,
-        maxVersion: "*"
+    try {
+      matrix = JSON.parse(readFileSync(matrixPath, 'utf8'));
+    } catch (e) {
+      console.warn('Failed to parse existing matrix, creating new one');
+    }
+  }
+  
+  // Ensure structure exists
+  if (!matrix.modules) {
+    matrix.modules = {};
+  }
+  if (!matrix.modules[packageName]) {
+    matrix.modules[packageName] = { versions: {} };
+  }
+  
+  // Define adapters based on the package being updated
+  const adapters = {};
+  
+  if (packageName === 'wallet') {
+    // Wallet-specific adapters
+    adapters["web3auth"] = {
+      minVersion: "1.0.0",
+      maxVersion: "*",
+      supportedFeatures: {
+        "signMessage": { addedInVersion: "1.0.0" },
+        "signTypedData": { addedInVersion: "1.0.0" },
+        "switchNetwork": { addedInVersion: "1.0.0" }
       }
     };
+    
+    adapters["evmWallet"] = {
+      minVersion: "1.0.0",
+      maxVersion: "*",
+      supportedFeatures: {
+        "signMessage": { addedInVersion: "1.0.0" },
+        "signTypedData": { addedInVersion: "1.0.0" },
+        "getGasPrice": { addedInVersion: "1.0.0" }
+      }
+    };
+  } else {
+    // Default adapter for other packages
+    adapters["mockedAdapter"] = {
+      minVersion: version,
+      maxVersion: "*",
+      supportedFeatures: {
+        "basicFeature": { addedInVersion: version }
+      }
+    };
+  }
+  
+  // Add version entry with adapter compatibility
+  matrix.modules[packageName].versions[version] = {
+    adapters: adapters
+  };
 
-    writeFileSync(matrixPath, JSON.stringify(matrix, null, 2));
-    console.log(`Updated version matrix for ${packageName}@${version}`);
+  // Save to utils package
+  writeFileSync(matrixPath, JSON.stringify(matrix, null, 2));
+  
+  // Also save to repository root for CDN access
+  writeFileSync(rootMatrixPath, JSON.stringify(matrix, null, 2));
+  
+  console.log(`Updated version matrix for ${packageName}@${version}`);
+  
+  // Git add the root matrix file
+  try {
+    execSync("git add " + rootMatrixPath, { stdio: "inherit", cwd: rootDir });
+  } catch (e) {
+    console.warn('Failed to git add version matrix:', e.message);
   }
 }
 
