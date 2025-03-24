@@ -73,8 +73,25 @@ function publishPackage(packageName) {
     // Manually update version instead of using npm version
     console.log("Bumping version...");
     const versionParts = currentVersion.split('.');
-    const patchVersion = parseInt(versionParts[2]) + 1;
-    const newVersion = `${versionParts[0]}.${versionParts[1]}.${patchVersion}`;
+    const major = parseInt(versionParts[0]);
+    const minor = parseInt(versionParts[1]);
+    const patch = parseInt(versionParts[2]);
+    
+    // Roll over patch to minor when it gets too large
+    let newMajor = major;
+    let newMinor = minor;
+    let newPatch = patch;
+    
+    if (patch >= 99) {
+      // Reset patch, increment minor
+      newPatch = 0;
+      newMinor = minor + 1;
+    } else {
+      // Just increment patch
+      newPatch = patch + 1;
+    }
+
+    const newVersion = `${newMajor}.${newMinor}.${newPatch}`;
     
     // Update package.json with new version
     pkgJson.version = newVersion;
