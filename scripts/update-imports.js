@@ -1,14 +1,19 @@
-const fs = require('fs');
-const path = require('path');
-const glob = require('glob');
+import { readFileSync, writeFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import pkg from 'glob';
+const { sync } = pkg;
 
-const walletDistDir = path.join(__dirname, '../packages/wallet/dist');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const walletDistDir = join(__dirname, '../packages/wallet/dist');
 
 // Find all js files in wallet dist
-const files = glob.sync(`${walletDistDir}/**/*.js`);
+const files = sync(`${walletDistDir}/**/*.js`);
 
 files.forEach(file => {
-  let content = fs.readFileSync(file, 'utf8');
+  let content = readFileSync(file, 'utf8');
   
   // Replace import paths
   content = content.replace(
@@ -21,7 +26,7 @@ files.forEach(file => {
     }
   );
   
-  fs.writeFileSync(file, content);
+  writeFileSync(file, content);
 });
 
 console.log(`Updated imports in ${files.length} files`);

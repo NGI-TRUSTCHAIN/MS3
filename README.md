@@ -29,6 +29,11 @@ cd m3s
 
 # Install dependencies
 npm install
+
+# Install test dependencies (required for integration testing)
+cd tests
+npm install
+cd ..
 ```
 
 #### For Usage
@@ -53,62 +58,57 @@ npm install @m3s/smart-contract
 Unit tests use Mocha and Chai to test individual modules without external dependencies.
 
 ```bash
-# Run all unit tests
-npm test
-
-# Run tests for a specific module
-npm run test:wallet
-npm run test:crosschain
-npm run test:smartContract
-```
-
-### Integration Tests
-
-Integration tests use Playwright to test module functionality in a browser environment.
-
-#### Setup for Integration Tests
-
-```bash
-# Install Playwright browsers (one-time setup)
-npx playwright install chromium
+# Build all packages
+npm run build
 
 # Build integration test bundles
 npm run build:integration
+
+# Run the manual test server
+npm test
 ```
 
-#### Running Integration Tests
+This will start a local server at http://localhost:8080 with links to test different wallet adapters:
 
-```bash
-# Run all integration tests
-npm run test:integration
+- EVM Wallet Test: http://localhost:8080/evmwallet.html
+- Web3Auth Test: http://localhost:8080/web3auth.html
 
-# Run specific integration tests
-npm run test:web3auth    # Requires manual OAuth interaction
-npm run test:evmwallet   # Fully automated test
-
-# Run with browser visible (for debugging)
-npm run test:integration:debug
-```
 
 #### Web3Auth Integration Test
 
-The Web3Auth test opens a browser window and requires you to manually complete the Google OAuth flow when the popup appears. The test will wait for you to complete this flow before continuing.
+The Web3Auth test requires you to manually complete the Google OAuth flow when the popup appears.
 
-#### IEVMWallet Integration Test
+#### Network Configuration
+Tests use centralized network configurations from packages/wallet/src/config.ts:
 
-The IEVMWallet test is fully automated and doesn't require manual interaction.
-
-#### Running All Tests Together
-
-```bash
-# Run all tests (unit + integration)
-npm run test:all
-
-# Build all packages and run all tests
-npm run build:test
+```typescript
+export const NETWORK_CONFIGS = {
+    "holesky": {
+        chainConfig: {
+            chainNamespace: "eip155",
+            chainId: "0x4268",
+            rpcTarget: "https://ethereum-holesky.publicnode.com",
+            displayName: "Holesky Testnet",
+            blockExplorer: "https://holesky.etherscan.io/",
+            ticker: "ETH",
+            tickerName: "Ethereum"
+        }
+    },
+    "sepolia": {
+        chainConfig: {
+            chainNamespace: "eip155",
+            chainId: "0xaa36a7",
+            rpcTarget: "https://sepolia.infura.io/v3/YOUR_INFURA_ID",
+            displayName: "Sepolia Testnet",
+            blockExplorer: "https://sepolia.etherscan.io/",
+            ticker: "ETH",
+            tickerName: "Ethereum"
+        }
+    }
+};
 ```
 
-## Building and Publishing
+#### Building and Publishing
 
 ### Building Packages
 
@@ -123,7 +123,9 @@ npm run build:crosschain
 npm run build:smartContract
 ```
 
-### Publishing Packages
+During the build process, utils are automatically bundled into the wallet package to avoid external dependencies on private packages.
+
+#### Publishing Packages
 
 ```bash
 # Publish all packages
@@ -139,6 +141,7 @@ npm run release
 ```
 
 The publishing process will:
+
 1. Build the package
 2. Increment the patch version
 3. Update dependent package references
@@ -146,25 +149,35 @@ The publishing process will:
 5. Commit changes
 6. Publish to npm with public access
 
-## Usage
+#### Usage
 
-### Wallet Integration
+The IEVMWallet test is fully automated and doesn't require manual interaction.
 
+#### Running All Tests Together
+
+## Wallet Integration
 The wallet module supports multiple wallet types, including standard EVM wallets and Web3Auth.
 
-#### EVM Wallet Example
+## EVM Wallet Example
 
 ```typescript
-import { Wallet } from '@m3s/wallet';
+import { createWallet, IEVMWallet, IWalletOptions } from '@m3s/wallet';
 import { JsonRpcProvider } from 'ethers';
 
 // Create a provider
-const provider = new JsonRpcProvider('https://ethereum-sepolia-rpc.publicnode.com');
+const provider = new JsonRpcProvider('https://ethereum-sepolia.publicnode.com');
 
-// Initialize wallet with private key (for development/testing only)
-const privateKey = '0x...'; // Your private key
-const wallet = createWallet('evmWallet', undefined, provider, privateKey);
-await wallet.initialize();
+// Initialize wallet with the new parameters structure
+const params: IWalletOptions = {
+  adapterName: 'evmWallet',
+  provider,
+  options: {
+    privateKey: '0x...' // Your private key for testing
+  }
+};
+
+// Create the wallet
+const wallet = await createWallet<IEVMWallet>(params);
 
 // Get accounts
 const accounts = await wallet.getAccounts();
@@ -197,7 +210,7 @@ const typedData = {
   domain: {
     name: 'My App',
     version: '1',
-    chainId: 11155111,
+    chainId: parseInt(network.chainId), // Use current network's chainId
     verifyingContract: '0x0000000000000000000000000000000000000000'
   },
   types: {
@@ -211,22 +224,23 @@ const typedData = {
     wallet: '0x0000000000000000000000000000000000000000'
   }
 };
+
 const typedDataSignature = await wallet.signTypedData(typedData);
 ```
 
 #### Web3Auth Example
 
 ```typescript
-import { Wallet } from '@m3s/wallet';
+import { createWallet, IEVMWallet, IWalletOptions, WalletEvent } from '@m3s/wallet';
 
-// Configure Web3Auth
+// Configure Web3Auth with the correct format
 const web3authConfig = {
   clientId: "YOUR_CLIENT_ID",
-  web3AuthNetwork: "sapphire_devnet", 
+  web3AuthNetwork: "sapphire_devnet",
   chainConfig: {
     chainNamespace: "eip155",
     chainId: "0xaa36a7", // Sepolia
-    rpcTarget: "https://ethereum-sepolia-rpc.publicnode.com",
+    rpcTarget: "https://sepolia.infura.io/v3/YOUR_INFURA_ID",
     displayName: "Sepolia Testnet",
     blockExplorer: "https://sepolia.etherscan.io/",
     ticker: "ETH",
@@ -237,22 +251,44 @@ const web3authConfig = {
   }
 };
 
-// Create the wallet with Web3Auth config
-const wallet = createWallet("web3auth", undefined, null, { web3authConfig });
-await wallet.initialize();
+// Create the wallet with the standard structure
+const params: IWalletOptions = {
+  adapterName: 'web3auth',
+  options: { web3authConfig }
+};
+
+// Create and initialize the wallet
+const wallet = await createWallet<IEVMWallet>(params);
 
 // This will trigger the Web3Auth login popup
 const accounts = await wallet.requestAccounts();
 console.log('Connected account:', accounts[0]);
 
+// Listen for chain changes
+wallet.on(WalletEvent.chainChanged, (chainId) => {
+  console.log('Chain changed to:', chainId);
+});
+
 // Sign a message
 const signature = await wallet.signMessage('Hello from Web3Auth');
 console.log('Signature:', signature);
+
+// Switch networks using the proper format
+await wallet.setProvider({
+  chainConfig: {
+    chainNamespace: "eip155",
+    chainId: "0x4268", // Holesky
+    rpcTarget: "https://ethereum-holesky.publicnode.com",
+    displayName: "Holesky Testnet",
+    blockExplorer: "https://holesky.etherscan.io/",
+    ticker: "ETH",
+    tickerName: "Ethereum"
+  }
+});
 
 // Disconnect
 await wallet.disconnect();
 ```
 
-## License
-
+### License
 MIT

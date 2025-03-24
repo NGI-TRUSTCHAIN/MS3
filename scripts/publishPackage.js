@@ -1,21 +1,21 @@
-const path = require("path");
-const { execSync } = require("child_process");
-const fs = require("fs");
+import { resolve, join } from "path";
+import { execSync } from "child_process";
+import { readdirSync, existsSync, readFileSync, writeFileSync } from "fs";
 
-const rootDir = path.resolve(__dirname, '..');
+const rootDir = resolve(__dirname, '..');
 
 function updateDependentPackages(packageName, version) {
   // This function is fine - no changes needed
-  const packagesDir = path.join(rootDir, 'packages');
-  const packages = fs.readdirSync(packagesDir);
+  const packagesDir = join(rootDir, 'packages');
+  const packages = readdirSync(packagesDir);
   
   packages.forEach(pkg => {
-    const pkgJsonPath = path.join(packagesDir, pkg, 'package.json');
-    if (fs.existsSync(pkgJsonPath)) {
-      const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+    const pkgJsonPath = join(packagesDir, pkg, 'package.json');
+    if (existsSync(pkgJsonPath)) {
+      const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf8'));
       if (pkgJson.dependencies?.[`@m3s/${packageName}`]) {
         pkgJson.dependencies[`@m3s/${packageName}`] = `^${version}`;
-        fs.writeFileSync(pkgJsonPath, JSON.stringify(pkgJson, null, 2));
+        writeFileSync(pkgJsonPath, JSON.stringify(pkgJson, null, 2));
         console.log(`Updated ${pkg}'s dependency on ${packageName} to ^${version}`);
       }
     }
@@ -24,11 +24,11 @@ function updateDependentPackages(packageName, version) {
 
 function updateVersionMatrix(packageName, version) {
   // This function is also fine
-  const utilsPath = path.join(rootDir, 'packages/utils');
-  const matrixPath = path.join(utilsPath, 'src/versions/versionMatrix.json');
+  const utilsPath = join(rootDir, 'packages/utils');
+  const matrixPath = join(utilsPath, 'src/versions/versionMatrix.json');
   
-  if (fs.existsSync(matrixPath)) {
-    const matrix = JSON.parse(fs.readFileSync(matrixPath, 'utf8'));
+  if (existsSync(matrixPath)) {
+    const matrix = JSON.parse(readFileSync(matrixPath, 'utf8'));
     
     matrix[packageName] = {
       mockedAdapter: {
@@ -38,22 +38,22 @@ function updateVersionMatrix(packageName, version) {
       }
     };
 
-    fs.writeFileSync(matrixPath, JSON.stringify(matrix, null, 2));
+    writeFileSync(matrixPath, JSON.stringify(matrix, null, 2));
     console.log(`Updated version matrix for ${packageName}@${version}`);
   }
 }
 
 function publishPackage(packageName) {
   try {
-    const pkgPath = path.join(rootDir, `packages/${packageName}`);
-    const pkgJsonPath = path.join(pkgPath, "package.json");
+    const pkgPath = join(rootDir, `packages/${packageName}`);
+    const pkgJsonPath = join(pkgPath, "package.json");
     
-    if (!fs.existsSync(pkgJsonPath)) {
+    if (!existsSync(pkgJsonPath)) {
       throw new Error(`Package ${packageName} not found at ${pkgPath}`);
     }
     
     // Read package.json BEFORE trying to access pkgJson.private
-    const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+    const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf8'));
     
     // Now we can safely check if it's private
     if (pkgJson.private) {
@@ -78,7 +78,7 @@ function publishPackage(packageName) {
     
     // Update package.json with new version
     pkgJson.version = newVersion;
-    fs.writeFileSync(pkgJsonPath, JSON.stringify(pkgJson, null, 2) + '\n');
+    writeFileSync(pkgJsonPath, JSON.stringify(pkgJson, null, 2) + '\n');
     console.log(`Version bumped from ${currentVersion} to ${newVersion}`);
 
     // Update dependencies in other packages
@@ -111,4 +111,4 @@ function publishPackage(packageName) {
   }
 }
 
-module.exports = { publishPackage };
+export default { publishPackage };

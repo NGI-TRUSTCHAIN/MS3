@@ -1,5 +1,5 @@
-import { WalletEvent } from "../enums";
-import { TransactionData } from "../types";
+import { WalletEvent } from "../enums/index.js";
+import { TransactionData } from "../types/index.js";
 
 // TODO: Add ESTE WALLET TIENE QUE SER GENERICO Y NO ESPECIFICO DE EVM, ASEGURARSE.
 export interface ICoreWallet {

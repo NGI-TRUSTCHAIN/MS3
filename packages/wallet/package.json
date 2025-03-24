@@ -1,6 +1,7 @@
 {
   "name": "@m3s/wallet",
   "version": "1.0.100",
+  "type": "module",
   "main": "dist/index.js",
   "description": "M3S Wallet Module",
   "types": "dist/index.d.ts",
@@ -10,7 +11,8 @@
     "publish:independent": "node ./publish.js"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "tag": "alpha"
   },
   "dependencies": {
     "@web3auth/auth-adapter": "^9.7.0",

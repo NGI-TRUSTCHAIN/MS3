@@ -1,5 +1,5 @@
 import { ethers, Wallet as EthersWallet, Provider } from "ethers";
-import { ICoreWallet, WalletEvent } from "../types";
+import { ICoreWallet } from "../types/index.js";
 
 interface args {
   privateKey?: string,

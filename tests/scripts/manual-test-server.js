@@ -1,5 +1,5 @@
 import { createServer } from 'http';
-import { join,dirname, extname as _extname } from 'path';
+import { join, dirname, extname as _extname } from 'path';
 import { existsSync, readFile } from 'fs';
 import { fileURLToPath } from "url";
 

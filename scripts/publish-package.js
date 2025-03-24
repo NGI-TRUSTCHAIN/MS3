@@ -1,4 +1,4 @@
-const { publishPackage } = require("./publishPackage");
+import { publishPackage } from "./publishPackage.js";
 
 const packageName = process.argv[2];
 if (!packageName) {

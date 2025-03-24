@@ -1,17 +1,17 @@
-const path = require("path");
-const fs = require("fs");
-const { publishPackage } = require("./publishPackage");
+import { resolve, join } from "path";
+import { readdirSync, existsSync, readFileSync } from "fs";
+import { publishPackage } from "./publishPackage.js";
 
-const rootDir = path.resolve(__dirname, '..');
-const packagesDir = path.join(rootDir, 'packages');
+const rootDir = resolve(__dirname, '..');
+const packagesDir = join(rootDir, 'packages');
 
 // Get all publishable packages (not marked as private)
 function getPublishablePackages() {
-  return fs.readdirSync(packagesDir)
+  return readdirSync(packagesDir)
     .filter(pkg => {
-      const pkgJsonPath = path.join(packagesDir, pkg, 'package.json');
-      if (fs.existsSync(pkgJsonPath)) {
-        const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+      const pkgJsonPath = join(packagesDir, pkg, 'package.json');
+      if (existsSync(pkgJsonPath)) {
+        const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf8'));
         return !pkgJson.private; // Only include non-private packages
       }
       return false;

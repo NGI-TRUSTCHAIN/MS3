@@ -1,2 +1,3 @@
-const { buildAllPackages } = require("./buildHelper");
+import { buildAllPackages } from "./buildHelper.js";
+
 buildAllPackages();

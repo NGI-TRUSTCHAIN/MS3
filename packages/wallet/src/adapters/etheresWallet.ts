@@ -1,6 +1,6 @@
 import { ethers, Provider, Wallet as EthersWallet } from "ethers";
-import { IEVMWallet } from "../types/interfaces/EVM";
-import { TransactionData, WalletEvent } from "../types";
+import { IEVMWallet } from "../types/interfaces/EVM/index.js";
+import { TransactionData, WalletEvent } from "../types/index.js";
 
 // Define always the constructor arguments in a type.
 interface args {

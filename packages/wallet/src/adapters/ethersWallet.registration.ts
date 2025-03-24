@@ -1,6 +1,6 @@
-import { adapterRegistry } from './registry';
-import { WalletType } from '../types';
-import { EvmWalletAdapter } from './etheresWallet';
+import { adapterRegistry } from './registry.js';
+import { WalletType } from '../types/index.js';
+import { EvmWalletAdapter } from './etheresWallet.js';
 
 adapterRegistry.register({
   name: "evmWallet",

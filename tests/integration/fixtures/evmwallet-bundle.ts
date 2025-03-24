@@ -1,6 +1,6 @@
 import { createWallet, IEVMWallet, IWalletOptions, WalletEvent } from '@m3s/wallet';
 import { ethers, JsonRpcProvider } from 'ethers';
-import { NETWORK_CONFIGS } from '../config.js';
+import { NETWORK_CONFIGS } from '../config/networks.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const outputDiv = document.getElementById('output');

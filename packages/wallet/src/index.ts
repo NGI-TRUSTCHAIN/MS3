@@ -1,11 +1,11 @@
-import { adapterRegistry } from './adapters/registry';
-import { ICoreWallet, IWalletOptions } from './types';
-import { WalletAdapterFactory } from './factories/walletAdapterFactory';
-import { createErrorHandlingProxy } from './errors';
+import { adapterRegistry } from './adapters/registry.js';
+import { ICoreWallet, IWalletOptions } from './types/index.js';
+import { WalletAdapterFactory } from './factories/walletAdapterFactory.js';
+import { createErrorHandlingProxy } from './errors.js';
 
 // Export main components.
-export * from './types';
-export * from './adapters';
+export * from './types/index.js';
+export * from './adapters/index.js';
 
 export async function createWallet<T extends ICoreWallet = ICoreWallet>(params: IWalletOptions): Promise<T> {
   const { adapterName, provider, options } = params;

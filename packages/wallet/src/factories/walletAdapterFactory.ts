@@ -1,6 +1,6 @@
-import { adapterRegistry } from '../adapters/registry';
-import { IWalletOptions } from '../types';
-import { WalletType } from '../types/enums';
+import { adapterRegistry } from '../adapters/registry.js';
+import { IWalletOptions } from '../types/index.js';
+import { WalletType } from '../types/enums/index.js';
 
 export class WalletAdapterFactory {
   public instance: any;

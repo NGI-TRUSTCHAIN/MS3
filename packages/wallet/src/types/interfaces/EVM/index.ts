@@ -2,8 +2,8 @@ import { SignTypedDataVersion } from "@web3auth/ethereum-provider";
 import { TransactionReceipt } from "ethers";
 import { TransactionData, TypedData,
    // DIDDocument, PaymasterData, UserOperation, VerifiableCredential
-   } from "../../types";
-import { ICoreWallet } from "../base";
+   } from "../../types/index.js";
+import { ICoreWallet } from "../base.js";
 
 export interface IEVMWallet extends ICoreWallet {
   /** EVM-Specific Features */

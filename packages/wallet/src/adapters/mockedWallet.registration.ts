@@ -1,6 +1,6 @@
-import { adapterRegistry } from './registry';
-import { MockedWalletAdapter } from './mockedWallet';
-import { WalletType } from '../types';
+import { adapterRegistry } from './registry.js';
+import { MockedWalletAdapter } from './mockedWallet.js';
+import { WalletType } from '../types/index.js';
 
 adapterRegistry.register({
   name: "mockedWallet",

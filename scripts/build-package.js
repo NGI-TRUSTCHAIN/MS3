@@ -1,6 +1,7 @@
-const { buildPackage } = require("./buildHelper");
+import { buildPackage } from "./buildHelper.js";
 
 const packageName = process.argv[2];
+
 if (!packageName) {
   console.error("Please specify a package name");
   process.exit(1);
