@@ -3,8 +3,8 @@ import { ICoreWallet, IWalletOptions } from './types/index.js';
 import { WalletAdapterFactory } from './factories/walletAdapterFactory.js';
 import { createErrorHandlingProxy } from './errors.js';
 import { VersionRepository } from '@m3s/utils/persistence/versionRepository.js';
-import packageJson from '../package.json' with { type: 'json' };
-const { version } = packageJson;
+const pkgJson = require('../package.json') as any;
+const version = pkgJson.version;
 
 // Export main components.
 export * from './types/index.js';

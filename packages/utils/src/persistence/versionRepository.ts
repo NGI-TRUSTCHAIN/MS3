@@ -25,8 +25,7 @@ export interface AdapterCompatibility {
   };
 }
 
-import matrixData from '../versions/versionMatrix.json' with { type: 'json' };
-
+const matrixData = require('../data/versionMatrix.json') as VersionMatrix;
 export class VersionRepository {
   private matrix: VersionMatrix;
   private static instance: VersionRepository;
