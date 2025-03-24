@@ -1,7 +1,11 @@
-import { resolve, join } from "path";
+import { resolve, join, dirname } from "path";
 import { execSync } from "child_process";
 import { readdirSync, existsSync, readFileSync, writeFileSync } from "fs";
+import { fileURLToPath } from "url";
 
+// Fix path resolution for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const rootDir = resolve(__dirname, '..');
 
 function updateDependentPackages(packageName, version) {
@@ -43,7 +47,7 @@ function updateVersionMatrix(packageName, version) {
   }
 }
 
-function publishPackage(packageName) {
+export function publishPackage(packageName) {
   try {
     const pkgPath = join(rootDir, `packages/${packageName}`);
     const pkgJsonPath = join(pkgPath, "package.json");
@@ -127,5 +131,3 @@ function publishPackage(packageName) {
     process.exit(1);
   }
 }
-
-export default { publishPackage };
