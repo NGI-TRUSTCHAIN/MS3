@@ -4,7 +4,9 @@ import { TransactionData, WalletEvent } from "../types/index.js";
 
 // Define always the constructor arguments in a type.
 interface args {
-  provider?: Provider,
+  provider?: {
+    rpcTarget: string,
+  },
   options?: {
     privateKey?: string,
   }
@@ -47,7 +49,7 @@ export class EvmWalletAdapter implements IEVMWallet {
     }
 
     if (optionsProvider) {
-      this.provider = optionsProvider;
+      this.provider = new JsonRpcProvider(optionsProvider.rpcTarget)
     }
 
     console.log("EvmWalletAdapter created. PrivateKey:", this.privateKey);
@@ -60,6 +62,7 @@ export class EvmWalletAdapter implements IEVMWallet {
    * @returns {Promise<EvmWalletAdapter>} A promise that resolves to the newly created EvmWalletAdapter instance.
    */
   static async create(args: args): Promise<EvmWalletAdapter> {
+    console.log("Creating EvmWalletAdapter with args:", args);
     const adapter = new EvmWalletAdapter(args);
     await adapter.initialize();
     return adapter;
@@ -286,23 +289,31 @@ export class EvmWalletAdapter implements IEVMWallet {
    *
    * @param provider - The new provider to set for the wallet.
    */
-  async setProvider(provider: { rpc: Provider }): Promise<void> {
+  async setProvider(provider: any): Promise<void> {
     console.log("[EvmWalletAdapter] Setting new provider:", provider);
-    const { rpc } = provider;
-    this.provider = new JsonRpcProvider(rpc as any)
+        
+    const rpcTarget = provider.rpcTarget;
+  
+    if (!rpcTarget || typeof rpcTarget !== 'string') {
+      throw new Error("[EvmWalletAdapter] Invalid provider config: rpcTarget string required");
+    }
+    
+    
+    // Create new provider with the RPC URL
+    this.provider = new JsonRpcProvider(rpcTarget);
 
     // Reconnect wallet to new provider
     if (this.wallet) {
       try {
         this.wallet = this.wallet.connect(this.provider);
-        console.log("[EvmWalletAdapter] Wallet reconnected to new provider", this.provider);
+        console.log("[EvmWalletAdapter] Wallet reconnected to new provider");
         const network = await this.provider.getNetwork();
         console.log("[EvmWalletAdapter] New network:", network);
         const chainId = `0x${network.chainId.toString(16)}`;
         this.emitEvent(WalletEvent.chainChanged, chainId);
-
       } catch (err) {
         console.error("[EvmWalletAdapter] Error connecting wallet to provider:", err);
+        throw err;
       }
     }
   }

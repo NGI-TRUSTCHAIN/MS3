@@ -3,7 +3,7 @@ export const adapterConfigs = {
     initCode: `
       const params: IWalletOptions = {
         adapterName: 'ethers',
-        provider: {rpc: "https://sepolia.infura.io/v3/97851b45f6a6423593cbc26793a738a8"}
+        provider: {rpcTarget: "https://sepolia.infura.io/v3/97851b45f6a6423593cbc26793a738a8"}
       };
       wallet = await createWallet<IEVMWallet>(params);
       setupEventDebugLogging(wallet);
@@ -15,7 +15,7 @@ export const adapterConfigs = {
       const provider = new JsonRpcProvider("https://sepolia.infura.io/v3/97851b45f6a6423593cbc26793a738a8");
       const params: IWalletOptions = {
         adapterName: 'ethers',
-        provider: {rpc: "https://sepolia.infura.io/v3/97851b45f6a6423593cbc26793a738a8"},
+        provider: {rpcTarget: "https://sepolia.infura.io/v3/97851b45f6a6423593cbc26793a738a8"},
         options: { privateKey: TEST_PRIVATE_KEY }
       };
       wallet = await createWallet<IEVMWallet>(params);

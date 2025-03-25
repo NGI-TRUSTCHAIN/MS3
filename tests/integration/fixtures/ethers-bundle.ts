@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const provider = new JsonRpcProvider("https://sepolia.infura.io/v3/97851b45f6a6423593cbc26793a738a8");
       const params: IWalletOptions = {
         adapterName: 'ethers',
-        provider: {rpc: "https://sepolia.infura.io/v3/97851b45f6a6423593cbc26793a738a8"},
+        provider: {rpcTarget: "https://sepolia.infura.io/v3/97851b45f6a6423593cbc26793a738a8"},
         options: { privateKey: TEST_PRIVATE_KEY }
       };
       wallet = await createWallet<IEVMWallet>(params);
@@ -478,7 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
       setTimeout(async () => {
         log('2. Testing chainChanged event...');
         // Using centralized network configuration
-        const holeskyProvider = new JsonRpcProvider(NETWORK_CONFIGS.holesky.chainConfig.rpcTarget);
+        const holeskyProvider = new JsonRpcProvider(NETWORK_CONFIGS.holesky.rpcTarget);
         await wallet.setProvider(holeskyProvider);
 
         // Check event status after 2s
@@ -517,26 +517,17 @@ document.addEventListener('DOMContentLoaded', () => {
   
       // Use the configurations from the central config file
       const targetConfig = currentNetwork.chainId === '17000' 
-        ? NETWORK_CONFIGS.sepolia.chainConfig 
-        : NETWORK_CONFIGS.holesky.chainConfig;
-  
+        ? NETWORK_CONFIGS.sepolia
+        : NETWORK_CONFIGS.holesky;
+
       if (!targetConfig) {
         throw new Error("No alternate network configuration found");
       }
 
       log(`Changing provider to ${targetConfig.displayName} network...`);
 
-      // Delegate to the adapter’s setProvider appropriately.
-      const name = wallet.getWalletName().toLowerCase();
-      
-      if (name.includes("web3auth")) {
-        console.log("Using Web3Auth provider change method", targetConfig);
-        await wallet.setProvider({ chainConfig: targetConfig });
-      } else {
-        console.log("Using EVM provider change method", targetConfig.rpcTarget);
-        const rpc = targetConfig.rpcTarget;
-        await wallet.setProvider({ rpc });
-      }
+      // Delegate to the adapter's setProvider
+      await wallet.setProvider(targetConfig);
 
       // Wait a moment for the network switch
       await new Promise(r => setTimeout(r, 1000));

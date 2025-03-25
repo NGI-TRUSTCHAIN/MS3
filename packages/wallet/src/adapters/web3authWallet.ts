@@ -364,77 +364,53 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
 
 
   /**
-   * Sets the provider for the wallet by switching chains in Web3Auth
-   * @param provider The provider configuration for Web3Auth
-   * @returns Promise resolving when the provider is set
-   * @throws Error if Web3Auth is not initialized or chain switch fails
+   * Sets the provider for Web3Auth by switching chains.
+   * This method accepts either a direct chainConfig object or an object containing chainConfig.
+   * 
+   * @param config - Network configuration with required chain details
    */
-  async setProvider(provider: Partial<{
-    chainConfig: {
-      chainNamespace: ChainNamespaceType,
-      chainId: string,
-      rpcTarget: string,
-      displayName: string,
-      blockExplorer: string,
-      ticker: string,
-      tickerName: string
-    },
-    web3AuthNetwork: string,
-    sessionTime: number,
-    redirectUrl: string
-  }>): Promise<void> {
+  async setProvider(config: any): Promise<void> {
+    console.log("[Web3AuthWalletAdapter] Setting provider with:", config);
+
     if (!this.initialized || !this.web3auth) {
       throw new Error("Web3Auth not initialized");
     }
 
-    if (!provider.chainConfig?.chainId) {
-      throw new Error("chainId is required");
+    // Validate required property
+    if (!config.chainId) {
+      throw new Error("chainId is required in provider config");
     }
 
     try {
-      console.log(`[Web3AuthWalletAdapter] Switching to chain ${provider.chainConfig.chainId}`);
-
-      // First try to switch to the chain directly
+      console.log(`[Web3AuthWalletAdapter] Switching to chain ${config.chainId}`);
+  
+      // Try to switch to the chain directly
       try {
-        await this.web3auth.switchChain({ chainId: provider.chainConfig.chainId });
+        await this.web3auth.switchChain({ chainId: config.chainId });
       } catch (error) {
         console.log("[Web3AuthWalletAdapter] Chain not found, adding it first");
-
-        // If the chain doesn't exist yet, add it first
-        const chainConfig = {
-          chainNamespace: provider.chainConfig.chainNamespace || "eip155",
-          chainId: provider.chainConfig.chainId,
-          rpcTarget: provider.chainConfig.rpcTarget || "",
-          displayName: provider.chainConfig.displayName || "Custom Network",
-          blockExplorer: provider.chainConfig.blockExplorer || "",
-          ticker: provider.chainConfig.ticker || "ETH",
-          tickerName: provider.chainConfig.tickerName || "Ethereum"
-        };
-
-        await this.web3auth.addChain(chainConfig);
-        await this.web3auth.switchChain({ chainId: provider.chainConfig.chainId });
+        // Add the chain if it doesn't exist
+        await this.web3auth.addChain(config);
+        await this.web3auth.switchChain({ chainId: config.chainId });
       }
-
-      // CRITICAL FIX: Force Web3Auth to refresh its provider state
+  
+      // Force Web3Auth to refresh its provider state
       if (this.web3auth.provider) {
-        // Reset internal provider state to ensure fresh data
         await this.web3auth.provider.request({ method: "eth_chainId" });
         await this.web3auth.provider.request({ method: "eth_accounts" });
       }
-
-      // Get fresh network info to confirm the switch
+  
       const network = await this.getNetwork();
       console.log(`[Web3AuthWalletAdapter] Successfully switched to chain ${network.chainId} (${network.name})`);
-
-      // Check balance for diagnostics
+  
+      // Account balance check
       const accounts = await this.getAccounts();
       if (accounts.length > 0) {
         const balance = await this.getBalance(accounts[0]);
         console.log(`[Web3AuthWalletAdapter] Account ${accounts[0]} balance on new chain: ${balance} ETH`);
       }
-
-      // Emit the chain changed event with the new chainId
-      this.emitEvent(WalletEvent.chainChanged, provider.chainConfig.chainId);
+  
+      this.emitEvent(WalletEvent.chainChanged, config.chainId);
     } catch (error) {
       console.error("[Web3AuthWalletAdapter] Error switching chain:", error);
       throw error;
