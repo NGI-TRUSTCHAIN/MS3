@@ -1,4 +1,4 @@
-import { ethers, Provider, Wallet as EthersWallet } from "ethers";
+import { ethers, Provider, Wallet as EthersWallet, JsonRpcProvider } from "ethers";
 import { IEVMWallet } from "../types/interfaces/EVM/index.js";
 import { TransactionData, WalletEvent } from "../types/index.js";
 
@@ -100,12 +100,12 @@ export class EvmWalletAdapter implements IEVMWallet {
   disconnect(): void {
     // Preserve the private key! Don't reset it
     const preservedPrivateKey = this.privateKey;
-    
+
     this.provider = undefined;
     this.wallet = undefined as any; // Type assertion to avoid TypeScript error
     this.initialized = false;
     this.eventListeners.clear(); // Clear event listeners
-    
+
     // Restore the private key
     this.privateKey = preservedPrivateKey;
   }
@@ -206,19 +206,19 @@ export class EvmWalletAdapter implements IEVMWallet {
    * @param eventName The name of the event to emit
    * @param payload The payload to pass to the event listeners
    */
-    private emitEvent(eventName: string, payload: any): void {
-      console.log(`Emitting ${eventName} event with:`, payload);
-      const listeners = this.eventListeners.get(eventName);
-      if (listeners && listeners.size > 0) {
-        for (const callback of listeners) {
-          try {
-            callback(payload);
-          } catch (error) {
-            console.error(`Error in ${eventName} event handler:`, error);
-          }
+  private emitEvent(eventName: string, payload: any): void {
+    console.log(`Emitting ${eventName} event with:`, payload);
+    const listeners = this.eventListeners.get(eventName);
+    if (listeners && listeners.size > 0) {
+      for (const callback of listeners) {
+        try {
+          callback(payload);
+        } catch (error) {
+          console.error(`Error in ${eventName} event handler:`, error);
         }
       }
     }
+  }
 
   /**
    * Registers an event listener for the specified event.
@@ -268,14 +268,14 @@ export class EvmWalletAdapter implements IEVMWallet {
     if (!this.provider) {
       throw new Error("Provider not set");
     }
-    
+
     console.log("[EvmWalletAdapter] Getting network from provider:", this.provider);
-    
+
     try {
       const network = await this.provider.getNetwork();
       console.log("[EvmWalletAdapter] Network result:", network);
       return { chainId: String(network.chainId), name: network.name };
-    } catch (error:any) {
+    } catch (error: any) {
       console.error("[EvmWalletAdapter] Error in getNetwork:", error);
       throw new Error("Failed to get network: " + error.message);
     }
@@ -286,33 +286,27 @@ export class EvmWalletAdapter implements IEVMWallet {
    *
    * @param provider - The new provider to set for the wallet.
    */
-  async setProvider(provider: Provider): Promise<void> {
+  async setProvider(provider: { rpc: Provider }): Promise<void> {
     console.log("[EvmWalletAdapter] Setting new provider:", provider);
-    this.provider = provider;
-    
+    const { rpc } = provider;
+    this.provider = new JsonRpcProvider(rpc as any)
+
     // Reconnect wallet to new provider
     if (this.wallet) {
       try {
-        this.wallet = this.wallet.connect(provider);
-        console.log("[EvmWalletAdapter] Wallet reconnected to new provider");
-        
-        // Ensure we emit the event after connecting
-        // setTimeout(async () => {
-        //   try {
-            const network = await provider.getNetwork();
-            console.log("[EvmWalletAdapter] New network:", network);
-            const chainId = `0x${network.chainId.toString(16)}`;
-            this.emitEvent(WalletEvent.chainChanged, chainId);
-        //   } catch (err) {
-        //     console.error("[EvmWalletAdapter] Error getting network:", err);
-        //   }
-        // }, 500);
+        this.wallet = this.wallet.connect(this.provider);
+        console.log("[EvmWalletAdapter] Wallet reconnected to new provider", this.provider);
+        const network = await this.provider.getNetwork();
+        console.log("[EvmWalletAdapter] New network:", network);
+        const chainId = `0x${network.chainId.toString(16)}`;
+        this.emitEvent(WalletEvent.chainChanged, chainId);
+
       } catch (err) {
         console.error("[EvmWalletAdapter] Error connecting wallet to provider:", err);
       }
     }
   }
-  
+
   /** Transactions & Signing */
   private processTransactionValue(tx: TransactionData): TransactionData {
     if (typeof tx.value === 'string' && tx.value.includes('.')) {
@@ -332,19 +326,19 @@ export class EvmWalletAdapter implements IEVMWallet {
     if (!this.wallet) {
       throw new Error("Wallet not initialized. Call initialize() first.");
     }
-  
+
     if (!this.provider) {
       throw new Error("Provider not set");
     }
-  
+
     try {
       // Process value if it's a string with decimal places
       const txRequest = { ...tx };
-      
+
       if (typeof tx.value === 'string' && tx.value.includes('.')) {
         txRequest.value = ethers.parseEther(tx.value).toString();
       }
-      
+
       const response = await this.wallet.sendTransaction(txRequest);
       return response.hash;
     } catch (error) {
@@ -441,20 +435,20 @@ export class EvmWalletAdapter implements IEVMWallet {
     if (!account) {
       account = this.wallet.address;
     }
-    
+
     // Use a more complete ERC-20 ABI with more error handling
     const erc20Abi = [
       "function balanceOf(address) view returns (uint256)",
       "function decimals() view returns (uint8)",
       "function symbol() view returns (string)"
     ];
-    
+
     try {
       const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, this.provider!);
-      
+
       // Get balance
       const balance = await tokenContract.balanceOf(account);
-      
+
       // Try to get decimals, default to 18 if not available
       let decimals = 18;
       try {
@@ -462,7 +456,7 @@ export class EvmWalletAdapter implements IEVMWallet {
       } catch (error) {
         console.log("Could not get token decimals, using default of 18");
       }
-      
+
       return ethers.formatUnits(balance, decimals);
     } catch (error: any) {
       console.error("Error getting token balance:", error);

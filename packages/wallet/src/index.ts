@@ -3,7 +3,8 @@ import { ICoreWallet, IWalletOptions } from './types/index.js';
 import { WalletAdapterFactory } from './factories/walletAdapterFactory.js';
 import { createErrorHandlingProxy } from './errors.js';
 import { VersionRepository } from '@m3s/utils/persistence/versionRepository.js';
-const pkgJson = require('../package.json') as any;
+import pkgJson from '../package.json' with { type: "json" };
+
 const version = pkgJson.version;
 
 // Export main components.
@@ -56,7 +57,7 @@ export async function createWallet<T extends ICoreWallet = ICoreWallet>(params: 
 
   // Set provider if provided.
   if (provider && typeof adapter.setProvider === 'function') {
-    adapter.setProvider(provider);
+    await adapter.setProvider(provider);
   }
 
   // Wrap in error handler and return.

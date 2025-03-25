@@ -1,3 +1,5 @@
+import matrixData from '../versions/versionMatrix.json' with { type: "json" };
+
 export interface VersionMatrix {
   modules: {
     [moduleName: string]: ModuleEntry;
@@ -25,7 +27,6 @@ export interface AdapterCompatibility {
   };
 }
 
-const matrixData = require('../data/versionMatrix.json') as VersionMatrix;
 export class VersionRepository {
   private matrix: VersionMatrix;
   private static instance: VersionRepository;

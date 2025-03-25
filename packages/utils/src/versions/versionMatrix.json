@@ -18,7 +18,7 @@
                 "verifySignature": {"addedInVersion": "1.0.0"}
               }
             },
-            "evmWallet": {
+            "ethers": {
               "minVersion": "1.0.0",
               "maxVersion": "*",
               "supportedFeatures": {

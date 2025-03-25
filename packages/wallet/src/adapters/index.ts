@@ -1,6 +1,6 @@
 // Export all adapters
 export * from './mockedWallet.js';
-export * from './etheresWallet.js';
+export * from './ethersWallet.js';
 export * from "./web3authWallet.js";
 
 // Load all registrations

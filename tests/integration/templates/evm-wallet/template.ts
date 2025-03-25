@@ -1,6 +1,6 @@
 import { IEVMWallet, WalletEvent, IWalletOptions, createWallet } from '@m3s/wallet';
 import { JsonRpcProvider } from 'ethers';
-import { NETWORK_CONFIGS } from "../config/networks.js";
+import { NETWORK_CONFIGS } from "{{NETWORK_IMPORT_PATH}}";
 
 document.addEventListener('DOMContentLoaded', () => {
   // DOM Elements
@@ -95,35 +95,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Connect button handler
   connectButton.addEventListener('click', async () => {
     try {
-      log('Initializing web3auth wallet...');
+      log('Initializing {{ADAPTER_NAME}} wallet...');
 
-      
-      const web3authConfig = {
-        clientId: "BCUGgXUJQX2T90W4YBqJQpvLsjKzNv-fmFzbqdMq5zW7EOsCikCvOrrIIUmbHwFGw8rNp5Cgmc5KQ2cafWVT2tk",
-        web3AuthNetwork: "sapphire_devnet",
-        chainConfig: {
-          chainNamespace: "eip155",
-          chainId: "0xaa36a7", // Sepolia
-          rpcTarget: "https://sepolia.infura.io/v3/97851b45f6a6423593cbc26793a738a8",
-          displayName: "Sepolia Testnet",
-          blockExplorer: "https://sepolia.etherscan.io/",
-          ticker: "ETH",
-          tickerName: "Ethereum"
-        },
-        loginConfig: {
-          loginProvider: "google"
-        }
-      };
-      
-      const params: IWalletOptions = {
-        adapterName: 'web3auth',
-        options: { web3authConfig }
-      };
-      wallet = await createWallet<IEVMWallet>(params);
-      setupEventDebugLogging(wallet);
-    
+      /* ADAPTER_INIT_CODE */
 
-      log('web3auth initialized. Requesting accounts...');
+      log('{{ADAPTER_NAME}} initialized. Requesting accounts...');
       const accounts = await wallet.requestAccounts();
 
       if (accounts && accounts.length > 0) {
@@ -191,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       log('Signing message...');
-      const message = 'Hello from web3auth Integration Test';
+      const message = 'Hello from {{ADAPTER_NAME}} Integration Test';
       const signature = await wallet.signMessage(message);
 
       if (signatureDiv) signatureDiv.textContent = signature;
@@ -427,7 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       log('Verifying signature...');
-      const message = 'Hello from web3auth Integration Test';
+      const message = 'Hello from {{ADAPTER_NAME}} Integration Test';
       const signature = await wallet.signMessage(message);
 
       // Verify the signature
@@ -602,5 +578,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  log('web3auth integration test loaded');
+  log('{{ADAPTER_NAME}} integration test loaded');
 });

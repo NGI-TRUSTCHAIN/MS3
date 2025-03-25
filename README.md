@@ -169,7 +169,7 @@ const provider = new JsonRpcProvider('https://ethereum-sepolia.publicnode.com');
 
 // Initialize wallet with the new parameters structure
 const params: IWalletOptions = {
-  adapterName: 'evmWallet',
+  adapterName: 'ethers',
   provider,
   options: {
     privateKey: '0x...' // Your private key for testing

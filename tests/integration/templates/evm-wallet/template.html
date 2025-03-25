@@ -4,7 +4,7 @@
   <link rel="icon" href="data:,">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IEVMWallet Integration Test</title>
+  <title>{{ADAPTER_NAME}} Integration Test</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -32,35 +32,36 @@
       border-left: 4px solid #ccc;
       margin: 10px 0;
     }
-    .test-status.pass {
-      border-left: 4px solid #4CAF50;
-      background-color: #f1f8e9;
-    }
-    .test-status.fail {
-      border-left: 4px solid #F44336;
-      background-color: #ffebee;
+    .pass {
+      border-left-color: #4CAF50;
     }
     .section {
-      margin: 20px 0;
-      padding: 10px;
-      border: 1px solid #eee;
+      margin-bottom: 20px;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
     }
     #output {
-      max-height: 200px;
+      height: 200px;
       overflow-y: auto;
-      background-color: #f5f5f5;
+      border: 1px solid #ddd;
       padding: 10px;
-      border-radius: 4px;
       font-family: monospace;
     }
     pre {
+      font-family: monospace;
       white-space: pre-wrap;
       word-break: break-all;
+    }
+    .json-display {
+      font-family: monospace;
+      max-height: 200px;
+      overflow-y: auto;
     }
   </style>
 </head>
 <body>
-  <h1>EVM Wallet Integration Test</h1>
+  <h1>{{ADAPTER_NAME}} Integration Test</h1>
   
   <div class="section">
     <h2>Wallet Status</h2>
@@ -72,7 +73,6 @@
     <button id="connectButton">Connect Wallet</button>
     <button id="disconnectButton" disabled>Disconnect</button>
     <button id="signMsgButton" disabled>Sign Message</button>
-
     <button id="signTxButton" disabled>Sign Transaction</button>
     <button id="estimateGasButton" disabled>Estimate Gas</button>
     <button id="getGasPriceButton" disabled>Get Gas Price</button>
@@ -83,32 +83,64 @@
     <button id="getPrivateKeyButton" disabled>Get Private Key</button>
     <button id="verifySignatureButton" disabled>Verify Signature</button>
     <button id="testEventsButton" disabled>Test Events</button>
-    <button id="changeProviderButton">Change Provider</button>
+    <button id="changeProviderButton" disabled>Change Provider</button>
     <button id="sendTxButton" disabled>Send Transaction</button>
   </div>
 
   <div class="section">
     <h2>Results</h2>
+    <p>Wallet Name: <span id="walletName"></span></p>
+    <p>Wallet Version: <span id="walletVersion"></span></p>
+    <p>Is Initialized: <span id="isInitialized"></span></p>
+    <p>Is Connected: <span id="isConnected"></span></p>
+    <p>Wallet Address: <span id="walletAddress"></span></p>
+    <p>Network: <span id="network"></span></p>
+    <p>Private Key: <span id="privateKey"></span></p>
+
     <div>
-
-      <p>Wallet Name: <span id="walletName"></span></p>
-      <p>Wallet Version: <span id="walletVersion"></span></p>
-      <p>Is Initialized: <span id="isInitialized"></span></p>
-      <p>Is Connected: <span id="isConnected"></span></p>
-      <p>Private Key: <span id="privateKey"></span></p>
-      <p>Wallet Address: <span id="walletAddress"></span></p>
-      <p>Network: <span id="network"></span></p>
-
-      <p>Token Balance: <span id="tokenBalance"></span></p>
-      <p>Transaction Receipt: <pre id="transactionReceipt" style="font-family: monospace; max-height: 200px; overflow-y: auto;"></pre></p>
-      <p>Signature: <pre id="signature" style="font-family: monospace;"></pre></p>
-      <p>Transaction: <pre id="transaction" style="font-family: monospace;"></pre></p>
-      <p>Gas Estimate: <span id="gasEstimate"></span></p>
-      <p>Gas Price: <span id="gasPrice"></span></p>
-      <p>Typed Data Signature: <pre id="typedDataSignature" style="font-family: monospace;"></pre></p>
-      <p>Signature Verification: <span id="verifySignature"></span></p>
-      <p>Event Log: <pre id="eventLog" style="font-family: monospace; max-height: 200px; overflow-y: auto;"></pre></p>
+      <h3>Message Signature</h3>
+      <pre id="signature" class="json-display"></pre>
     </div>
+    
+    <div>
+      <h3>Transaction</h3>
+      <pre id="transaction" class="json-display"></pre>
+    </div>
+    
+    <div>
+      <h3>Gas Estimate</h3>
+      <div id="gasEstimate"></div>
+    </div>
+    
+    <div>
+      <h3>Gas Price</h3>
+      <div id="gasPrice"></div>
+    </div>
+    
+    <div>
+      <h3>Typed Data Signature</h3>
+      <pre id="typedDataSignature" class="json-display"></pre>
+    </div>
+    
+    <div>
+      <h3>Token Balance</h3>
+      <div id="tokenBalance"></div>
+    </div>
+    
+    <div>
+      <h3>Transaction Receipt</h3>
+      <pre id="transactionReceipt" class="json-display"></pre>
+    </div>
+    
+    <div>
+      <h3>Signature Verification</h3>
+      <div id="verifySignature"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Event Testing</h2>
+    <pre id="eventLog" class="json-display"></pre>
   </div>
 
   <div class="section">
@@ -116,6 +148,6 @@
     <div id="output"></div>
   </div>
 
-  <script src="dist/evmwallet-bundle.js"></script>
+  <script src="dist/{{ADAPTER_NAME}}-bundle.js"></script>
 </body>
 </html>

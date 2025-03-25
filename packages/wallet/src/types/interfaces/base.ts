@@ -24,7 +24,7 @@ export interface ICoreWallet {
 
   /** Network Management */
   getNetwork(): Promise<{ chainId: string; name?: string }>;
-  setProvider(provider: any): void;
+  setProvider(provider: any): Promise<void>;
 
   /** Transactions & Signing */
   sendTransaction(tx: TransactionData): Promise<string>;

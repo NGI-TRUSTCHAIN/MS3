@@ -2,13 +2,25 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "baseUrl": "../",
-    "outDir": "./dist",
+    "noEmit": false,
+    "declaration": false,
     "rootDir": "./",
     "skipLibCheck": true,
+    "resolveJsonModule": true,
     "paths": {
       "@m3s/*": ["packages/*/dist"]
     }
   },
-  "include": ["**/*.ts", "integration/config/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "**/*.ts",
+    "integration/config/*.ts",
+    "integration/config/adapter-configs.js",
+    "scripts/adapterProviderHelper.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "integration/fixtures",
+    "integration/templates"
+  ]
 }

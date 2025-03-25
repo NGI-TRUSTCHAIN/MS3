@@ -6,7 +6,8 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "composite": true
+    "composite": true,
+    "resolveJsonModule": true
   },
   "references": [{ "path": "../utils" }],
   "include": ["src/**/*", "src/**/*.json"],

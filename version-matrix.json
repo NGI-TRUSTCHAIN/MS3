@@ -34,7 +34,7 @@
                 }
               }
             },
-            "evmWallet": {
+            "ethers": {
               "minVersion": "1.0.0",
               "maxVersion": "*",
               "supportedFeatures": {

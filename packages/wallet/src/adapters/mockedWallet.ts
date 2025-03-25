@@ -242,11 +242,11 @@ export class MockedWalletAdapter implements ICoreWallet {
   *
   * @param provider - The provider to set for the wallet.
   */
-  setProvider(provider: Provider): void {
+  async setProvider(provider: Provider): Promise<void> {
     this.provider = provider;
     // Add defensive check
     if (this.wallet) {
-      this.wallet = this.wallet.connect(provider);
+      this.wallet = await this.wallet.connect(provider);
     }
   }
 

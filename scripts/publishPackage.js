@@ -65,7 +65,7 @@ function updateVersionMatrix(packageName, version) {
       }
     };
     
-    adapters["evmWallet"] = {
+    adapters["ethers"] = {
       minVersion: "1.0.0",
       maxVersion: "*",
       supportedFeatures: {
