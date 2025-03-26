@@ -1,7 +1,6 @@
 module.exports = {
   entry: {
-    'web3auth-bundle': "./integration/fixtures/web3auth-bundle.ts",
-    'ethers-bundle': "./integration/fixtures/ethers-bundle.ts"
+    'web3auth-bundle': "./integration/fixtures/web3auth-bundle.ts"
   },
   mode: "development",
   devtool: "source-map",

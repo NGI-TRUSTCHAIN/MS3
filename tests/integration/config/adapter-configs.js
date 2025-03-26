@@ -3,7 +3,7 @@ export const adapterConfigs = {
     initCode: `
       const params: IWalletOptions = {
         adapterName: 'ethers',
-        provider: {rpcTarget: "https://sepolia.infura.io/v3/97851b45f6a6423593cbc26793a738a8"}
+        provider: {rpcTarget: "https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}"},
       };
       wallet = await createWallet<IEVMWallet>(params);
       setupEventDebugLogging(wallet);
@@ -11,11 +11,11 @@ export const adapterConfigs = {
   },
   ethers: {
     initCode: `
-      const TEST_PRIVATE_KEY = '0x63a648a4c0efeeb4f08207f1682bed9937a4c6cb5f7f1ee39f75c135e8828b2b';
-      const provider = new JsonRpcProvider("https://sepolia.infura.io/v3/97851b45f6a6423593cbc26793a738a8");
+      const TEST_PRIVATE_KEY = '${process.env.WEB3AUTH_CLIENT_ID}';
+      const provider = new JsonRpcProvider("https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}");
       const params: IWalletOptions = {
         adapterName: 'ethers',
-        provider: {rpcTarget: "https://sepolia.infura.io/v3/97851b45f6a6423593cbc26793a738a8"},
+        provider: {rpcTarget: "https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}"},
         options: { privateKey: TEST_PRIVATE_KEY }
       };
       wallet = await createWallet<IEVMWallet>(params);
@@ -25,12 +25,12 @@ export const adapterConfigs = {
   web3auth: {
     initCode: `
       const web3authConfig = {
-        clientId: "BCUGgXUJQX2T90W4YBqJQpvLsjKzNv-fmFzbqdMq5zW7EOsCikCvOrrIIUmbHwFGw8rNp5Cgmc5KQ2cafWVT2tk",
+        clientId: "${process.env.WEB3AUTH_CLIENT_ID}",
         web3AuthNetwork: "sapphire_devnet",
         chainConfig: {
           chainNamespace: "eip155",
           chainId: "0xaa36a7", // Sepolia
-          rpcTarget: "https://sepolia.infura.io/v3/97851b45f6a6423593cbc26793a738a8",
+          rpcTarget: "https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}",
           displayName: "Sepolia Testnet",
           blockExplorer: "https://sepolia.etherscan.io/",
           ticker: "ETH",

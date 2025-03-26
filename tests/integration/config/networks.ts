@@ -12,7 +12,7 @@ export const NETWORK_CONFIGS = {
     "sepolia": {
         chainNamespace: "eip155",
         chainId: "0xaa36a7",
-        rpcTarget: "https://sepolia.infura.io/v3/97851b45f6a6423593cbc26793a738a8",
+        rpcTarget: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
         displayName: "Sepolia Testnet",
         blockExplorer: "https://sepolia.etherscan.io/",
         ticker: "ETH",

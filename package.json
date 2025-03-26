@@ -22,7 +22,6 @@
     "test": "cd tests && npm run test",
     "setup:tests": "cd tests && npm install --legacy-peer-deps",
     "generate:integration": "cd tests && npm run generate:integration",
-
     "build:integration": "npm run setup:tests && cd tests && npm run build:integration",
     "test:clean": "npm run clean:all && npm run build && npm run build:integration && npm test",
     "update-matrix": "node scripts/update-version-matrix.js",
@@ -47,6 +46,7 @@
     "@web3auth/base": "^9.7.0",
     "@web3auth/ethereum-provider": "^9.7.0",
     "@web3auth/no-modal": "^9.7.0",
+    "dotenv": "^16.4.7",
     "ethers": "^6.13.5"
   }
 }
