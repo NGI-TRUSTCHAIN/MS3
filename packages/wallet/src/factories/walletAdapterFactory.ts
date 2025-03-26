@@ -35,19 +35,7 @@ export class WalletAdapterFactory {
     // Create the appropriate adapter instance based on the registration
     const AdapterClass = adapterInfo.adapterClass;
 
-    // Handle different constructor signatures based on adapter type
-    switch (adapterInfo.adapterType) {
-      case WalletType['evm']:
-        return  AdapterClass.create(args);
-      // case WalletType['web3auth']:
-      //   // Look for web3authConfig in both places - options object or root
-      //   return  AdapterClass.create(args);
-      // case WalletType['newAdapterType']:
-      //   // Pass the required parameters to the adapter, let the adapter deside how to handle them.
-      //   return  AdapterClass.create(args);
-      default:
-        // Generic adapter initialization
-        return  AdapterClass.create(args);
-    }
+    // Return the created adapter instance.
+    return  AdapterClass.create(args);
   }
 }

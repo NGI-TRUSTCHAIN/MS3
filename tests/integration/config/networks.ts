@@ -1,3 +1,6 @@
+
+// TODO: Usar la API de ChainList para tener acceso a todas las redes.
+// https://chainlist.org/
 export const NETWORK_CONFIGS = {
     "holesky": {
         chainNamespace: "eip155",

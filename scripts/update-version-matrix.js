@@ -1,10 +1,7 @@
-// scripts/update-version-matrix.js (extended)
-// const fs = require('fs');
-// const path = require('path');
 import { fs } from 'fs';
 import { path } from 'path';
 
-function updateMatrixForAdapter(adapterName) {
+function updateMatrixForAdapter(adapterName, writeToFile = true) {
   // Read current matrix
   const matrixPath = path.join(__dirname, '..', 'packages/utils/src/versions/versionMatrix.json');
   const matrix = JSON.parse(fs.readFileSync(matrixPath, 'utf8'));
@@ -17,7 +14,7 @@ function updateMatrixForAdapter(adapterName) {
   const methodRegex = /async\s+(\w+)\s*\([^)]*\)/g;
   const methods = [];
   let match;
-  
+
   while ((match = methodRegex.exec(adapterContent)) !== null) {
     methods.push(match[1]);
   }
@@ -37,8 +34,8 @@ function updateMatrixForAdapter(adapterName) {
     matrix.modules.wallet.versions[walletVersion] = { adapters: {} };
   }
   
-  // Add adapter with detected features
-  matrix.modules.wallet.versions[walletVersion].adapters[adapterName] = {
+  // Create the adapter entry
+  const adapterEntry = {
     minVersion: "1.0.0",
     maxVersion: "*",
     supportedFeatures: methods.reduce((acc, method) => {
@@ -47,14 +44,23 @@ function updateMatrixForAdapter(adapterName) {
     }, {})
   };
   
-  // Write updated matrix back
-  fs.writeFileSync(matrixPath, JSON.stringify(matrix, null, 2));
+  // Add to matrix
+  matrix.modules.wallet.versions[walletVersion].adapters[adapterName] = adapterEntry;
   
-  // Also update root version matrix
-  const rootMatrixPath = path.join(__dirname, '..', 'version-matrix.json');
-  fs.writeFileSync(rootMatrixPath, JSON.stringify(matrix, null, 2));
+  // Only write to files if writeToFile is true
+  if (writeToFile) {
+    // Write updated matrix back
+    fs.writeFileSync(matrixPath, JSON.stringify(matrix, null, 2));
+    
+    // Also update root version matrix
+    const rootMatrixPath = path.join(__dirname, '..', 'version-matrix.json');
+    fs.writeFileSync(rootMatrixPath, JSON.stringify(matrix, null, 2));
+    
+    console.log(`Version matrix updated with capabilities for ${adapterName} adapter`);
+  }
   
-  console.log(`Version matrix updated with capabilities for ${adapterName} adapter`);
+  // Return the adapter entry for programmatic use
+  return adapterEntry;
 }
 
 // Run if called directly

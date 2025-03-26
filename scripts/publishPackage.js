@@ -53,27 +53,25 @@ function updateVersionMatrix(packageName, version) {
   // Define adapters based on the package being updated
   const adapters = {};
   
+ 
   if (packageName === 'wallet') {
-    // Wallet-specific adapters
-    adapters["web3auth"] = {
-      minVersion: "1.0.0",
-      maxVersion: "*",
-      supportedFeatures: {
-        "signMessage": { addedInVersion: "1.0.0" },
-        "signTypedData": { addedInVersion: "1.0.0" },
-        "switchNetwork": { addedInVersion: "1.0.0" }
-      }
-    };
+    // Get all adapter files
+    const adapterDir = join(rootDir, 'packages/wallet/src/adapters');
+    const adapterFiles = readdirSync(adapterDir)
+      .filter(f => f.endsWith('Wallet.ts'))
+      .map(f => f.replace('Wallet.ts', ''));
     
-    adapters["ethers"] = {
-      minVersion: "1.0.0",
-      maxVersion: "*",
-      supportedFeatures: {
-        "signMessage": { addedInVersion: "1.0.0" },
-        "signTypedData": { addedInVersion: "1.0.0" },
-        "getGasPrice": { addedInVersion: "1.0.0" }
+    // Use the update-version-matrix.js script for each adapter
+    const { updateMatrixForAdapter } = require('./update-version-matrix.js');
+    
+    adapterFiles.forEach(adapter => {
+      try {
+        const adapterFeatures = updateMatrixForAdapter(adapter, false); // Don't write to file
+        adapters[adapter] = adapterFeatures;
+      } catch (err) {
+        console.warn(`Failed to analyze adapter ${adapter}:`, err.message);
       }
-    };
+    });
   } else {
     // Default adapter for other packages
     adapters["mockedAdapter"] = {
