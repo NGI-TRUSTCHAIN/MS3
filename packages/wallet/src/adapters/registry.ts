@@ -1,5 +1,3 @@
-// adapters/registry.ts
-
 import { WalletType } from "../types/index.js";
 
 // Type definitions for adapter metadata
