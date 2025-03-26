@@ -15,8 +15,39 @@ const adapterConfigPath = path.join(
 const adapterConfigModule = await import(pathToFileURL(adapterConfigPath).href);
 const { adapterConfigs } = adapterConfigModule;
 
+function ensureAdapterDependencies(adapterName) {
+  const adapterFilePath = path.join(
+    __dirname, "../../packages/wallet/src/adapters", 
+    `${adapterName}Wallet.ts`
+  );
+  
+  const content = fs.readFileSync(adapterFilePath, 'utf8');
+  
+  // Match external package imports
+  const importMatches = content.matchAll(/import.*from\s+['"]([^\.][^'"]+)['"]/g);
+  const packages = [...importMatches]
+    .map(match => match[1])
+    .filter(pkg => !pkg.startsWith('@m3s/'));
+  
+  if (packages.length > 0) {
+    console.log(`Installing adapter dependencies: ${packages.join(', ')}`);
+    try {
+      // Install dependencies using npm
+      require('child_process').execSync(
+        `npm install --no-save ${packages.join(' ')}`,
+        { stdio: 'inherit' }
+      );
+    } catch (err) {
+      console.warn(`Warning: Failed to install some dependencies: ${err.message}`);
+    }
+  }
+}
+
 function generateIntegrationTests(adapterName) {
   console.log(`Generating integration tests for ${adapterName} adapter...`);
+  
+  // Add this line to activate dependency detection
+  ensureAdapterDependencies(adapterName);
 
   const adapterFilePath = path.join(
     __dirname,
@@ -118,7 +149,6 @@ function generateIntegrationTests(adapterName) {
   console.log(`- ${adapterName.toLowerCase()}.html`);
   console.log(`- ${adapterName.toLowerCase()}-bundle.ts`);
 }
-
 
 function updateWebpackConfig(adapterName) {
   const webpackConfigPath = path.join(__dirname, '..', 'webpack.conf.cjs');
