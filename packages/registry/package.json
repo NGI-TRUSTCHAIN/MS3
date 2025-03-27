@@ -1,6 +1,6 @@
 {
   "name": "m3s-registry",
-  "version": "1.0.27",
+  "version": "1.0.30",
   "private": true,
   "description": "Internal adapter registry for M3S modules",
   "type": "module",
