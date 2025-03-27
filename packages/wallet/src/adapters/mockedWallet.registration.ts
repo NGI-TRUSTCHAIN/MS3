@@ -1,4 +1,4 @@
-import { registry } from 'm3s-registry';
+import { registry } from '../registry.js';
 import { WalletType } from '../types/index.js';
 import { MockedWalletAdapter } from './mockedWallet.js';
 

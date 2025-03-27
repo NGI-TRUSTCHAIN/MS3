@@ -1,16 +1,16 @@
 /**
  * Universal Adapter Registry for M3S Modules
- * Internal package - not published to NPM
+ * Independent registry for this package
  */
 
 // Type definitions for module metadata
-interface ModuleMetadata {
+export interface ModuleMetadata {
     name: string;
     version: string;
   }
   
   // Type definitions for adapter metadata
-interface AdapterMetadata {
+  export interface AdapterMetadata {
     name: string;
     module: string;
     adapterType: string;
@@ -117,6 +117,4 @@ interface AdapterMetadata {
   }
   
   // Export the singleton instance
-  const registry = new UniversalRegistry();
-
-  export { registry, ModuleMetadata, AdapterMetadata };
+  export const registry = new UniversalRegistry();

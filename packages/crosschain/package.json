@@ -12,19 +12,5 @@
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
-    "@m3s/registry": "file:../registry",
-    "m3s-registry": "file:m3s-registry-1.0.42.tgz"
-  },
-  "references": [],
-  "exports": {
-    "m3s-registry": {
-      "import": "./dist/internal/registry.js",
-      "require": "./dist/internal/registry.js"
-    }
-  },
-  "files": [
-    "dist",
-    "m3s-registry-1.0.42.tgz"
-  ]
+  "references": []
 }

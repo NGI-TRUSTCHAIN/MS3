@@ -6,10 +6,9 @@
   "workspaces": [
     "packages/*"
   ],
-  "scripts": {
+"scripts": {
     "clean": "rimraf packages/*/dist packages/*/tsconfig.tsbuildinfo",
     "build": "node --loader ts-node/esm scripts/build.ts",
-    "build:registry": "node --loader ts-node/esm scripts/build.ts registry",
     "build:wallet": "node --loader ts-node/esm scripts/build.ts wallet",
     "build:crosschain": "node --loader ts-node/esm scripts/build.ts crosschain",
     "build:smartContract": "node --loader ts-node/esm scripts/build.ts smartContract",
@@ -17,7 +16,6 @@
     "publish:wallet": "node --loader ts-node/esm scripts/publish.ts wallet",
     "publish:crosschain": "node --loader ts-node/esm scripts/publish.ts crosschain",
     "publish:smartContract": "node --loader ts-node/esm scripts/publish.ts smartContract",
-    "pack:registry": "node --loader ts-node/esm scripts/pack-registry.ts",
     "link": "node --loader ts-node/esm scripts/link-packages.ts",
     "release": "npm run build && npm run publish",
     "adapter": "node --loader ts-node/esm scripts/adapter.ts integrate wallet",

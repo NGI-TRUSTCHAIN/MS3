@@ -1,7 +1,7 @@
 import { ICoreWallet, IWalletOptions } from './types/index.js';
 import { createErrorHandlingProxy } from './errors.js';
 import pkgJson from '../package.json' with { type: "json" };
-import { registry } from 'm3s-registry';
+import { registry } from './registry.js';
 
 // Register this module in the registry
 registry.registerModule({ name: 'wallet', version: pkgJson.version });
@@ -9,6 +9,7 @@ registry.registerModule({ name: 'wallet', version: pkgJson.version });
 // Export main components.
 export * from './types/index.js';
 export * from './adapters/index.js';
+export { registry } from './registry.js';
 
 export async function createWallet<T extends ICoreWallet = ICoreWallet>(params: IWalletOptions): Promise<T> {
   const { adapterName, provider, options, neededFeature } = params;
