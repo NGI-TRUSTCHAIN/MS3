@@ -1,6 +1,6 @@
 {
   "name": "@m3s/wallet",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "type": "module",
   "license": "MIT",
   "keywords": [
@@ -35,12 +35,18 @@
     "@web3auth/base": "^9.7.0",
     "@web3auth/ethereum-provider": "^9.7.0",
     "@web3auth/no-modal": "^9.7.0",
-    "@m3s/registry": "file:../registry/m3s-registry-1.0.0.tgz"
+    "@m3s/registry": "file:m3s-registry-1.0.3.tgz"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^1.6.1",
     "jsdom": "^24.0.0",
     "vitest": "^1.6.1"
   },
-  "references": []
+  "references": [],
+  "files": [
+    "dist",
+    "m3s-registry-1.0.1.tgz",
+    "m3s-registry-1.0.2.tgz",
+    "m3s-registry-1.0.3.tgz"
+  ]
 }

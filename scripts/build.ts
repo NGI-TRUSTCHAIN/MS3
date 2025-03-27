@@ -1,12 +1,13 @@
 import { resolve, join, dirname } from "path";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
-import { packRegistry } from "./pack.js";
+import { packRegistry } from "./pack-registry.js";
 
 // Fix path resolution
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = resolve(__dirname, '..');
+
 
 /**
  * Build a specific package

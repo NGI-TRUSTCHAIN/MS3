@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { registry } from '../../registry/src/index.js';
+import { registry } from '@m3s/registry';
 import { createWallet } from '../src/index.js';
 import { WalletType } from '../src/types/index.js';
 import { getChainConfig, getTestPrivateKey } from './utils.js';
