@@ -1,6 +1,7 @@
 import { resolve, join, dirname } from "path";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
+import { packRegistry } from "./pack.js";
 
 // Fix path resolution
 const __filename = fileURLToPath(import.meta.url);
@@ -16,6 +17,12 @@ export function buildPackage(packageName:string) {
   console.log(`Building ${packageName} from ${pkgPath}...`);
   
   try {
+    // Special handling for wallet package to ensure registry is available
+    if (packageName === 'wallet') {
+      // Pack registry and update wallet's dependency before building
+      packRegistry();
+    }
+    
     // Install dependencies
     execSync("npm install --legacy-peer-deps", { stdio: "inherit", cwd: pkgPath });
     
