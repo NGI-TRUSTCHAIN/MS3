@@ -1,0 +1,21 @@
+{
+    "name": "@m3s/registry",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Internal adapter registry for M3S modules",
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "files": [
+      "dist"
+    ],
+    "scripts": {
+      "build": "tsc"
+    },
+    "keywords": [
+      "m3s",
+      "registry",
+      "internal"
+    ],
+    "license": "MIT"
+  }

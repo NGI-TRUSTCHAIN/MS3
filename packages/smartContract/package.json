@@ -13,7 +13,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@m3s/utils": "^1.0.11"
+    "@m3s/registry": "*"
   },
   "references": [
     {

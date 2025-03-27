@@ -1,11 +1,10 @@
-import { adapterRegistry } from './adapters/registry.js';
+import { registry } from '@m3s/registry';
 import { ICoreWallet, IWalletOptions } from './types/index.js';
-import { WalletAdapterFactory } from './factories/walletAdapterFactory.js';
 import { createErrorHandlingProxy } from './errors.js';
-import { VersionRepository } from '@m3s/utils/persistence/versionRepository.js';
 import pkgJson from '../package.json' with { type: "json" };
 
-const version = pkgJson.version;
+// Register this module in the registry
+registry.registerModule({ name: 'wallet', version: pkgJson.version });
 
 // Export main components.
 export * from './types/index.js';
@@ -13,53 +12,44 @@ export * from './adapters/index.js';
 
 export async function createWallet<T extends ICoreWallet = ICoreWallet>(params: IWalletOptions): Promise<T> {
   const { adapterName, provider, options, neededFeature } = params;
- 
-  // Validate adapter exists.
-  const adapterInfo = adapterRegistry.getAdapter(adapterName);
+
+  // Validate adapter exists using the registry directly
+  const adapterInfo = registry.getAdapter('wallet', adapterName);
 
   if (!adapterInfo) {
     throw new Error(`Unknown adapter: ${adapterName}`);
   }
 
   // Check feature compatibility if specified
-  if (neededFeature) {
-    const repo = VersionRepository.getInstance();
-    const currentVersion = version; // From package.json
-    const adapterVersion = '1.0.0'; // Default or get from adapter registry
+  if (neededFeature && !registry.supportsFeature('wallet', adapterName, neededFeature)) {
+    throw new Error(`Feature '${neededFeature}' is not supported by adapter '${adapterName}'`);
+  }
 
-    const isSupported = repo.checkFeatureSupport({
-      moduleName: 'wallet',
-      moduleVersion: currentVersion,
-      adapterName,
-      adapterVersion,
-      featureName: neededFeature
-    });
-
-    if (!isSupported) {
-      throw new Error(
-        `Feature '${neededFeature}' is not supported by adapter '${adapterName}' v${adapterVersion}`
-      );
+  // Check requirements if any
+  if (adapterInfo.requirements && adapterInfo.requirements.length > 0) {
+    for (const req of adapterInfo.requirements) {
+      if (!options || !options[req]) {
+        throw new Error(`Required option '${req}' missing for adapter '${adapterName}'`);
+      }
     }
   }
 
-  // Create adapter instance directly.
-  const factory = await WalletAdapterFactory.create({ adapterName, options });
-  const adapter = factory.instance;
+
+  // Get adapter class directly from registry
+  const AdapterClass = adapterInfo.adapterClass;
+
+  // Create adapter instance
+  const adapter = await AdapterClass.create(params);
 
   if (!adapter) {
     throw new Error(`Adapter "${adapterName}" initialization error.`);
   }
 
-  // Initialize if needed.
-  if (adapter.initialize) {
-    await adapter.initialize(params.options);
-  }
-
-  // Set provider if provided.
+  // Set provider if provided
   if (provider && typeof adapter.setProvider === 'function') {
     await adapter.setProvider(provider);
   }
 
-  // Wrap in error handler and return.
+  // Wrap in error handler and return
   return createErrorHandlingProxy(adapter) as T;
 }

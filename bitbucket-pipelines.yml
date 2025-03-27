@@ -1,17 +1,15 @@
 pipelines:
   custom:
-    integration-test-adapter:
+    test-adapter:
       - step:
-          name: Integration Test Adapter
+          name: Testing Adapter
           script:
             - export ADAPTER_NAME=${BITBUCKET_BRANCH#github/}
             - echo "Validating GitHub adapter: $ADAPTER_NAME"
             - npm ci
             - npm run build
-            - node scripts/generate-integration-tests.js $ADAPTER_NAME
-            - node scripts/update-version-matrix.js $ADAPTER_NAME
-            - npm run test:wallet
-            - echo "To run integration tests manually, go to Bitbucket > Pipelines > Run pipeline > integration-test-adapter"
+            - npm run tests
+            - echo "Running tests for $ADAPTER_NAME"
           artifacts:
             - tests/test-results/**
 
@@ -23,5 +21,4 @@ pipelines:
             - export ADAPTER_NAME=${BITBUCKET_BRANCH#github/}
             - npm ci
             - npm run build
-            - node tests/scripts/generate-integration-tests.js $ADAPTER_NAME
-            - npm run test:wallet
+            - npm run tests

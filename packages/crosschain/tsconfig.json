@@ -1,15 +1,14 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "declaration": true,
     "composite": true,
     "declarationMap": true,
     "sourceMap": true,
     "resolveJsonModule": true
   },
-  "references": [{ "path": "../utils" }, { "path": "../wallet" }],
+  "references": [],
   "include": ["src/**/*", "src/**/*.json"],
   "exclude": ["node_modules", "dist"]
 }

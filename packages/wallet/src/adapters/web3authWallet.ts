@@ -3,7 +3,7 @@ import { ChainNamespaceType, WALLET_ADAPTERS } from "@web3auth/base";
 import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
 import { ethers, TransactionReceipt } from "ethers";
 import { AuthAdapter } from "@web3auth/auth-adapter";
-import { IEVMWallet, TransactionData, TypedData, WalletEvent } from "@m3s/wallet";
+import { IEVMWallet, TransactionData, TypedData, WalletEvent } from "../types/index.js";
 
 /**
  * Web3AuthWalletAdapter configuration arguments.

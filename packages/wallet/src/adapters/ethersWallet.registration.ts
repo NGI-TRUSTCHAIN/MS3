@@ -1,10 +1,11 @@
-import { adapterRegistry } from './registry.js';
+import { registry } from '@m3s/registry';
 import { WalletType } from '../types/index.js';
 import { EvmWalletAdapter } from './ethersWallet.js';
 
-adapterRegistry.register({
-  name: "ethers",
+registry.registerAdapter('wallet', {
+  name: 'ethers',
+  module: 'wallet',
   adapterType: WalletType['evm'],
   adapterClass: EvmWalletAdapter,
-  requirements: [],
+  requirements: []
 });

@@ -1,6 +1,6 @@
 {
   "name": "@m3s/wallet",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "license": "MIT",
   "keywords": [
@@ -21,21 +21,26 @@
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build",
-    "publish:independent": "node ./publish.js"
+    "publish:independent": "node ./publish.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "publishConfig": {
     "access": "public",
     "tag": "latest"
   },
   "dependencies": {
+    "@m3s/registry": "*",
     "@web3auth/auth-adapter": "^9.7.0",
     "@web3auth/base": "^9.7.0",
     "@web3auth/ethereum-provider": "^9.7.0",
     "@web3auth/no-modal": "^9.7.0"
   },
-  "references": [
-    {
-      "path": "../utils"
-    }
-  ]
+  "devDependencies": {
+    "@vitest/coverage-v8": "^1.6.1",
+    "jsdom": "^24.0.0",
+    "vitest": "^1.6.1"
+  },
+  "references": []
 }

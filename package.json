@@ -8,24 +8,20 @@
   ],
   "scripts": {
     "clean": "rimraf packages/*/dist packages/*/tsconfig.tsbuildinfo",
-    "build": "node scripts/build-all.js",
-    "build:utils": "node scripts/build-package.js utils",
-    "build:wallet": "node scripts/build-package.js wallet",
-    "build:crosschain": "node scripts/build-package.js crosschain",
-    "build:smartContract": "node scripts/build-package.js smartContract",
-    "publish:utils": "node scripts/publish-package.js utils",
-    "publish:wallet": "node scripts/publish-package.js wallet",
-    "publish:crosschain": "node scripts/publish-package.js crosschain",
-    "publish:smartContract": "node scripts/publish-package.js smartContract",
-    "publish:all": "node scripts/publish-all.js",
-    "release": "npm run build && npm run publish:all",
-    "test": "cd tests && npm run test",
-    "setup:tests": "cd tests && npm install --legacy-peer-deps",
-    "generate:integration": "cd tests && npm run generate:integration",
-    "build:integration": "npm run setup:tests && cd tests && npm run build:integration",
-    "test:clean": "npm run clean:all && npm run build && npm run build:integration && npm test",
-    "update-matrix": "node scripts/update-version-matrix.js",
-    "preversion": "npm run update-matrix"
+    "build": "node --loader ts-node/esm scripts/build.ts",
+    "build:registry": "node --loader ts-node/esm scripts/build.ts registry",
+    "build:wallet": "node --loader ts-node/esm scripts/build.ts wallet",
+    "build:crosschain": "node --loader ts-node/esm scripts/build.ts crosschain",
+    "build:smartContract": "node --loader ts-node/esm scripts/build.ts smartContract",
+    "publish": "node --loader ts-node/esm scripts/publish.ts",
+    "publish:wallet": "node --loader ts-node/esm scripts/publish.ts wallet",
+    "publish:crosschain": "node --loader ts-node/esm scripts/publish.ts crosschain",
+    "publish:smartContract": "node --loader ts-node/esm scripts/publish.ts smartContract",
+    "release": "npm run build && npm run publish",
+    "adapter": "node --loader ts-node/esm scripts/adapter.ts integrate wallet",
+    "adapter:wallet": "node --loader ts-node/esm scripts/adapter.ts integrate wallet",
+    "adapter:crosschain": "node --loader ts-node/esm scripts/adapter.ts integrate crosschain",
+    "adapter:smartContract": "node --loader ts-node/esm scripts/adapter.ts integrate smartContract"
   },
   "devDependencies": {
     "@babel/core": "^7.26.9",
@@ -35,18 +31,35 @@
     "@types/sinon-chai": "^3.2.3",
     "babel-loader": "^10.0.0",
     "ethereum-waffle": "^4.0.10",
+    "ethers": "^6.13.5",
     "hardhat": "^2.22.19",
     "path-browserify": "^1.0.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5.8.2",
     "webpack": "^5.98.0",
     "webpack-cli": "^6.0.1"
   },
-  "dependencies": {
+  "peerDependencies": {
     "@web3auth/auth-adapter": "^9.7.0",
     "@web3auth/base": "^9.7.0",
     "@web3auth/ethereum-provider": "^9.7.0",
-    "@web3auth/no-modal": "^9.7.0",
-    "dotenv": "^16.4.7",
-    "ethers": "^6.13.5"
+    "@web3auth/no-modal": "^9.7.0"
+  },
+  "peerDependenciesMeta": {
+    "@web3auth/auth-adapter": {
+      "optional": true
+    },
+    "@web3auth/base": {
+      "optional": true
+    },
+    "@web3auth/ethereum-provider": {
+      "optional": true
+    },
+    "@web3auth/no-modal": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "vitest": "^3.0.9"
   }
 }

@@ -1,10 +1,11 @@
-import { adapterRegistry } from './registry.js';
+import { registry } from '@m3s/registry';
 import { WalletType } from '../types/index.js';
-import { web3authWalletAdapter } from './web3authWallet.js';
+import { Web3AuthWalletAdapter } from './web3authWallet.js';
 
-adapterRegistry.register({
-  name: "web3auth",
-  adapterType: WalletType['web3auth'], 
-  adapterClass: web3authWalletAdapter,
-  requirements: [],
+registry.registerAdapter('wallet', {
+  name: 'web3auth',
+  module: 'wallet',
+  adapterType: WalletType['web3auth'],
+  adapterClass: Web3AuthWalletAdapter,
+  requirements: ['web3authConfig']
 });

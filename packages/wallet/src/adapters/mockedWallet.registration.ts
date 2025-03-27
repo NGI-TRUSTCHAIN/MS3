@@ -1,10 +1,11 @@
-import { adapterRegistry } from './registry.js';
-import { MockedWalletAdapter } from './mockedWallet.js';
+import { registry } from '@m3s/registry';
 import { WalletType } from '../types/index.js';
+import { MockedWalletAdapter } from './mockedWallet.js';
 
-adapterRegistry.register({
-  name: "mocked",
+registry.registerAdapter('wallet', {
+  name: 'mocked',
+  module: 'wallet',
   adapterType: WalletType['core'],
   adapterClass: MockedWalletAdapter,
-  requirements: [],
+  requirements: []
 });
