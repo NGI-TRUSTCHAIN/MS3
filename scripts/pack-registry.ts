@@ -11,11 +11,11 @@ export function packRegistry() {
     try {
         const registryPath = join(rootDir, 'packages/registry');
         const walletPath = join(rootDir, 'packages/wallet');
-        
+
         // Build registry
         console.log('Building registry...');
         execSync('npm run build', { stdio: 'inherit', cwd: registryPath });
-        
+
         // Increment version
         console.log('Incrementing registry version...');
         const pkgPath = join(registryPath, 'package.json');
@@ -26,55 +26,67 @@ export function packRegistry() {
         pkgJson.version = newVersion;
         fs.writeFileSync(pkgPath, JSON.stringify(pkgJson, null, 2));
         console.log(`Registry version updated to ${newVersion}`);
-        
+
         // Create tarball
         console.log('Creating registry tarball...');
         execSync('npm pack', { stdio: 'inherit', cwd: registryPath });
-        
+
         // Tarball filename (now without @ prefix)
         const tarballFile = `m3s-registry-${newVersion}.tgz`;
         const srcPath = join(registryPath, tarballFile);
-        
+
         // Check if tarball was created
         if (!fs.existsSync(srcPath)) {
             throw new Error(`Tarball not found at ${srcPath}`);
         }
-        
+
         // Delete old tarballs in wallet directory
         const oldTarballs = fs.readdirSync(walletPath)
             .filter(file => file.startsWith('m3s-registry-') && file.endsWith('.tgz'));
-        
+
         for (const oldFile of oldTarballs) {
             fs.unlinkSync(join(walletPath, oldFile));
             console.log(`Deleted old tarball: ${oldFile}`);
         }
-        
+
         // Copy tarball to wallet directory
         const destPath = join(walletPath, tarballFile);
         fs.copyFileSync(srcPath, destPath);
         fs.unlinkSync(srcPath); // Clean up original
         console.log(`Copied ${tarballFile} to wallet package`);
-        
+
         // Update wallet's package.json with non-scoped name
         const walletPkgPath = join(walletPath, 'package.json');
         const walletPkg = JSON.parse(fs.readFileSync(walletPkgPath, 'utf8'));
         walletPkg.dependencies['m3s-registry'] = `file:${tarballFile}`;  // Non-scoped name
-        
+
+        // Add bundledDependencies field to ensure tarball is included
+        if (!walletPkg.bundledDependencies) {
+            walletPkg.bundledDependencies = [];
+        }
+
+        if (!walletPkg.bundledDependencies.includes('m3s-registry')) {
+            walletPkg.bundledDependencies.push('m3s-registry');
+        }
+
         // Ensure tarball is included in files array
         if (!walletPkg.files) {
             walletPkg.files = ['dist'];
+        }
+        if (!walletPkg.files.includes(tarballFile)) {
+            walletPkg.files.push(tarballFile);
         }
         
         // Remove any old registry tarballs from files array
         walletPkg.files = walletPkg.files.filter(
             (file: any) => !file.startsWith('m3s-registry-') || file === tarballFile
         );
-        
+
         // Add new tarball to files array
         if (!walletPkg.files.includes(tarballFile)) {
             walletPkg.files.push(tarballFile);
         }
-        
+
         fs.writeFileSync(walletPkgPath, JSON.stringify(walletPkg, null, 2));
         console.log(`Updated wallet package.json to use ${tarballFile}`);
         
@@ -84,7 +96,7 @@ export function packRegistry() {
             stdio: 'inherit',
             cwd: walletPath
         });
-        
+
         return tarballFile;
     } catch (error) {
         console.error('Error packing registry:', error);
