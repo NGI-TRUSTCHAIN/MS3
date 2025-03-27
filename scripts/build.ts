@@ -39,7 +39,6 @@ function buildRegistryTarball() {
   return { tarballPath, tarballFile, version: newVersion };
 }
 
-
 /**
  * Copy registry tarball to a package and update its package.json
  */
@@ -86,7 +85,6 @@ function copyRegistryToPackage(packageName:string, tarballPath:string, tarballFi
   console.log(`Updated ${packageName} to use registry tarball ${tarballFile}`);
 }
 
-
 /**
  * Build all packages
  */
@@ -119,17 +117,17 @@ export async function buildPackage(packageName: string) {
  */
 export async function buildAll() {
   try {
-    // 1. COMMON STEP: Build registry and create tarball once
-    const { tarballPath, tarballFile } = buildRegistryTarball();
+    // 1. Build registry first - we only need the source code
+    await buildPackage('registry');
     
-    // 2. COMMON STEP: Bundle registry into all packages
+    // 2. Bundle registry code into all packages
     const packages = ['wallet', 'crosschain', 'smartContract'];
     for (const pkg of packages) {
+      // This bundles the registry source, no tarball needed
       await bundleDependencies(pkg);
-      copyRegistryToPackage(pkg, tarballPath, tarballFile);
     }
     
-    // 3. Build each package
+    // 3. Build each package with the bundled registry
     for (const pkg of packages) {
       await buildPackage(pkg);
     }

@@ -32,28 +32,6 @@ export async function bundleDependencies(packageName: string) {
   // Write the modified registry code to the destination
   fs.writeFileSync(destPath, registryCode);
   console.log(`Registry code bundled to ${destPath}`);
-  
-  // Update package.json to create an alias for m3s-registry
-  const packageJsonPath = path.resolve(process.cwd(), `packages/${packageName}/package.json`);
-  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-  
-  // Add exports field to map 'm3s-registry' to internal implementation
-  if (!packageJson.exports) {
-    packageJson.exports = {};
-  }
-  
-  packageJson.exports['m3s-registry'] = {
-    import: './dist/internal/registry.js',
-    require: './dist/internal/registry.js'
-  };
-  
-  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
-  console.log(`Updated package.json exports to map 'm3s-registry'`);
-  
-  // Now update imports
-  updateImports(packageName);
-  
-  console.log('Bundling complete!');
 }
 
 /**

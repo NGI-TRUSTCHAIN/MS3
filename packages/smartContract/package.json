@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@m3s/registry": "file:../registry",
-    "m3s-registry": "file:m3s-registry-1.0.42.tgz"
+    "m3s-registry": "file:m3s-registry-1.0.40.tgz"
   },
   "references": [],
   "exports": {
@@ -25,6 +25,6 @@
   },
   "files": [
     "dist",
-    "m3s-registry-1.0.42.tgz"
+    "m3s-registry-1.0.40.tgz"
   ]
 }

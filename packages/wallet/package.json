@@ -20,11 +20,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "prepublishOnly": "npm run build",
-    "publish:independent": "node ./publish.js",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "prepublishOnly": "npm run build"
   },
   "publishConfig": {
     "access": "public",
@@ -34,20 +30,22 @@
     "@web3auth/auth-adapter": "^9.7.0",
     "@web3auth/base": "^9.7.0",
     "@web3auth/ethereum-provider": "^9.7.0",
-    "@web3auth/no-modal": "^9.7.0",
-    "m3s-registry": "file:m3s-registry-1.0.42.tgz"
+    "@web3auth/no-modal": "^9.7.0"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^1.6.1",
     "jsdom": "^24.0.0",
     "vitest": "^1.6.1"
   },
-  "references": [],
   "files": [
-    "dist",
-    "m3s-registry-1.0.42.tgz"
+    "dist"
   ],
   "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
     "m3s-registry": {
       "import": "./dist/internal/registry.js",
       "require": "./dist/internal/registry.js"
