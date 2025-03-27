@@ -1,7 +1,6 @@
 import { resolve, join, dirname } from "path";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
-import { packRegistry } from "./pack-registry.js";
 import fs from "fs";
 import { bundleDependencies } from "./bundle.js";
 
@@ -10,64 +9,97 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = resolve(__dirname, '..');
 
+/**
+ * Build registry and create tarball ONCE
+ * @returns {string} Path to the registry tarball
+ */
+function buildRegistryTarball() {
+  console.log('=== Building Registry ===');
+  const registryPath = join(rootDir, 'packages/registry');
+  
+  // Build registry
+  execSync("tsc --build", { stdio: "inherit", cwd: registryPath });
+  
+  // Increment version
+  const pkgPath = join(registryPath, 'package.json');
+  const pkgJson = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+  const versionParts = pkgJson.version.split('.');
+  versionParts[2] = String(parseInt(versionParts[2]) + 1);
+  const newVersion = versionParts.join('.');
+  pkgJson.version = newVersion;
+  fs.writeFileSync(pkgPath, JSON.stringify(pkgJson, null, 2));
+  console.log(`Registry version updated to ${newVersion}`);
+  
+  // Create tarball
+  execSync('npm pack', { stdio: 'inherit', cwd: registryPath });
+  const tarballFile = `m3s-registry-${newVersion}.tgz`;
+  const tarballPath = join(registryPath, tarballFile);
+  
+  console.log(`Created registry tarball: ${tarballFile}`);
+  return { tarballPath, tarballFile, version: newVersion };
+}
+
 
 /**
- * Build a specific package
- * @param {string} packageName Name of the package to build
+ * Copy registry tarball to a package and update its package.json
  */
-export async function buildPackage(packageName:string) {
+function copyRegistryToPackage(packageName:string, tarballPath:string, tarballFile:any) {
   const pkgPath = join(rootDir, `packages/${packageName}`);
-  console.log(`Building ${packageName} from ${pkgPath}...`);
+  const destPath = join(pkgPath, tarballFile);
+  
+  // Remove any old tarballs
+  const oldTarballs = fs.readdirSync(pkgPath)
+    .filter(file => file.startsWith('m3s-registry-') && file.endsWith('.tgz'));
+  
+  for (const oldFile of oldTarballs) {
+    fs.unlinkSync(join(pkgPath, oldFile));
+  }
+  
+  // Copy new tarball
+  fs.copyFileSync(tarballPath, destPath);
+  
+  // Update package.json
+  const pkgJsonPath = join(pkgPath, 'package.json');
+  const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+  
+  // Set dependency
+  pkgJson.dependencies = pkgJson.dependencies || {};
+  pkgJson.dependencies['m3s-registry'] = `file:${tarballFile}`;
+  
+  // Update files array
+  pkgJson.files = pkgJson.files || ['dist'];
+  pkgJson.files = pkgJson.files.filter(
+    (file:any) => !file.startsWith('m3s-registry-') || file === tarballFile
+  );
+  if (!pkgJson.files.includes(tarballFile)) {
+    pkgJson.files.push(tarballFile);
+  }
+  
+  // Ensure exports field for 'm3s-registry'
+  pkgJson.exports = pkgJson.exports || {};
+  pkgJson.exports['m3s-registry'] = {
+    import: './dist/internal/registry.js',
+    require: './dist/internal/registry.js'
+  };
+  
+  fs.writeFileSync(pkgJsonPath, JSON.stringify(pkgJson, null, 2));
+  console.log(`Updated ${packageName} to use registry tarball ${tarballFile}`);
+}
+
+
+/**
+ * Build all packages
+ */
+export async function buildPackage(packageName: string) {
+  const pkgPath = join(rootDir, `packages/${packageName}`);
+  console.log(`\n=== Building ${packageName} ===`);
   
   try {
-    // Special handling for wallet package to ensure registry is available
-    if (packageName === 'wallet') {
-      // First make sure registry is built
-      execSync("npm run build:registry", { stdio: "inherit" });
-      
-      // Bundle registry code (including types)
-      await bundleDependencies('wallet');
-
-      // Clean up node_modules to ensure a fresh install
-      const nodeModulesPath = join(pkgPath, 'node_modules');
-      const packageLockPath = join(pkgPath, 'package-lock.json');
-      
-      if (fs.existsSync(nodeModulesPath)) {
-        console.log(`Cleaning up node_modules in ${packageName}...`);
-        if (process.platform === 'win32') {
-          // Windows-specific command
-          try {
-            execSync(`rmdir /s /q "${nodeModulesPath}"`, { stdio: 'inherit' });
-          } catch (e) {
-            console.log('Could not delete node_modules folder, continuing...');
-          }
-        } else {
-          execSync(`rm -rf ${nodeModulesPath}`, { stdio: 'inherit' });
-        }
-      }
-      
-      if (fs.existsSync(packageLockPath)) {
-        console.log(`Removing package-lock.json in ${packageName}...`);
-        fs.unlinkSync(packageLockPath);
-      }
-      
-      // Then pack registry and update wallet's dependency
-      packRegistry();
-      
-      // Install dependencies including the tarball (just like in your ksides project)
-      console.log(`Installing dependencies for ${packageName}...`);
-      execSync(`npm install --legacy-peer-deps`, { 
-        stdio: 'inherit', 
-        cwd: pkgPath 
-      });
-
-    } else {
-      // For other packages, just install dependencies
-      execSync("npm install --legacy-peer-deps", { 
-        stdio: "inherit", 
-        cwd: pkgPath 
-      });
-    }
+    // For all packages, first install dependencies
+    execSync("npm install --legacy-peer-deps", { 
+      stdio: "inherit", 
+      cwd: pkgPath 
+    });
     
     // Build with TypeScript
     execSync("tsc --build", { 
@@ -76,45 +108,55 @@ export async function buildPackage(packageName:string) {
     });
     
     console.log(`Successfully built ${packageName}`);
-  } catch (error:any) {
+  } catch (error: any) {
     console.error(`Error building ${packageName}:`, error.message);
     process.exit(1);
   }
 }
 
 /**
- * Build all packages in the correct order
+ * Build all packages
  */
-export function buildAllPackages() {
+export async function buildAll() {
   try {
-    // Always build registry first
-    console.log("Building registry package first...");
-    buildPackage('registry');
-  } catch (error:any) {
-    console.error("Error building registry package:", error.message);
-    console.log("Continuing with other packages...");
-  }
-  
-  // Build remaining packages
-  const packages = ['wallet', 'crosschain', 'smartContract'];
-  for (const pkg of packages) {
-    try {
-      buildPackage(pkg);
-    } catch (error:any) {
-      console.error(`Error building ${pkg}:`, error.message);
+    // 1. COMMON STEP: Build registry and create tarball once
+    const { tarballPath, tarballFile } = buildRegistryTarball();
+    
+    // 2. COMMON STEP: Bundle registry into all packages
+    const packages = ['wallet', 'crosschain', 'smartContract'];
+    for (const pkg of packages) {
+      await bundleDependencies(pkg);
+      copyRegistryToPackage(pkg, tarballPath, tarballFile);
     }
+    
+    // 3. Build each package
+    for (const pkg of packages) {
+      await buildPackage(pkg);
+    }
+    
+    console.log("\n✓ All packages built successfully");
+  } catch (error) {
+    console.error("Build failed:", error);
+    process.exit(1);
   }
-  
-  console.log('All packages built successfully');
 }
 
 // CLI entry point
-if (import.meta.url === new URL(import.meta.url).href) {
+if (import.meta.url === import.meta.url) {
   const packageName = process.argv[2];
   
   if (packageName) {
-    buildPackage(packageName);
+    if (packageName === 'registry') {
+      // Just build registry
+      buildRegistryTarball();
+    } else {
+      // For other packages, make sure registry is built first
+      const { tarballPath, tarballFile } = buildRegistryTarball();
+      bundleDependencies(packageName);
+      copyRegistryToPackage(packageName, tarballPath, tarballFile);
+      buildPackage(packageName);
+    }
   } else {
-    buildAllPackages();
+    buildAll();
   }
 }

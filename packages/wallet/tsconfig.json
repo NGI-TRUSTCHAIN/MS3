@@ -6,7 +6,11 @@
     "declarationMap": true,
     "sourceMap": true,
     "composite": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "m3s-registry": ["./src/internal/registry.ts"]
+    }
   },
   "include": ["src/**/*", "src/**/*.json"],
   "exclude": ["node_modules", "dist"]
