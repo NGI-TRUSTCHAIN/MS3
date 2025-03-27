@@ -61,13 +61,13 @@ export function packRegistry() {
         walletPkg.dependencies['m3s-registry'] = `file:${tarballFile}`;  // Non-scoped name
 
         // Add bundledDependencies field to ensure tarball is included
-        if (!walletPkg.bundledDependencies) {
-            walletPkg.bundledDependencies = [];
-        }
+        // if (!walletPkg.bundledDependencies) {
+        //     walletPkg.bundledDependencies = [];
+        // }
 
-        if (!walletPkg.bundledDependencies.includes('m3s-registry')) {
-            walletPkg.bundledDependencies.push('m3s-registry');
-        }
+        // if (!walletPkg.bundledDependencies.includes('m3s-registry')) {
+        //     walletPkg.bundledDependencies.push('m3s-registry');
+        // }
 
         // Ensure tarball is included in files array
         if (!walletPkg.files) {

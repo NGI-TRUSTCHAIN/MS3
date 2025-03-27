@@ -16,5 +16,8 @@
     "@m3s/registry": "file:../registry"
   },
   "references": [
+  ],
+  "bundledDependencies": [
+    "m3s-registry"
   ]
 }
