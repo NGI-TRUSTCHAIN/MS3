@@ -3,6 +3,7 @@ import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import { packRegistry } from "./pack-registry.js";
 import fs from "fs";
+import { bundleDependencies } from "./bundle.js";
 
 // Fix path resolution
 const __filename = fileURLToPath(import.meta.url);
@@ -14,7 +15,7 @@ const rootDir = resolve(__dirname, '..');
  * Build a specific package
  * @param {string} packageName Name of the package to build
  */
-export function buildPackage(packageName:string) {
+export async function buildPackage(packageName:string) {
   const pkgPath = join(rootDir, `packages/${packageName}`);
   console.log(`Building ${packageName} from ${pkgPath}...`);
   
@@ -22,8 +23,11 @@ export function buildPackage(packageName:string) {
     // Special handling for wallet package to ensure registry is available
     if (packageName === 'wallet') {
       // First make sure registry is built
-      execSync("npm run build:registry", { stdio: "inherit", cwd: rootDir });
+      execSync("npm run build:registry", { stdio: "inherit" });
       
+      // Bundle registry code (including types)
+      await bundleDependencies('wallet');
+
       // Clean up node_modules to ensure a fresh install
       const nodeModulesPath = join(pkgPath, 'node_modules');
       const packageLockPath = join(pkgPath, 'package-lock.json');
@@ -48,7 +52,7 @@ export function buildPackage(packageName:string) {
       }
       
       // Then pack registry and update wallet's dependency
-      const tarballFile = packRegistry();
+      packRegistry();
       
       // Install dependencies including the tarball (just like in your ksides project)
       console.log(`Installing dependencies for ${packageName}...`);
@@ -56,6 +60,7 @@ export function buildPackage(packageName:string) {
         stdio: 'inherit', 
         cwd: pkgPath 
       });
+
     } else {
       // For other packages, just install dependencies
       execSync("npm install --legacy-peer-deps", { 

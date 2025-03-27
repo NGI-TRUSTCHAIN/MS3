@@ -60,23 +60,11 @@ export function packRegistry() {
         const walletPkg = JSON.parse(fs.readFileSync(walletPkgPath, 'utf8'));
         walletPkg.dependencies['m3s-registry'] = `file:${tarballFile}`;  // Non-scoped name
 
-        // Add bundledDependencies field to ensure tarball is included
-        // if (!walletPkg.bundledDependencies) {
-        //     walletPkg.bundledDependencies = [];
-        // }
-
-        // if (!walletPkg.bundledDependencies.includes('m3s-registry')) {
-        //     walletPkg.bundledDependencies.push('m3s-registry');
-        // }
-
-        // Ensure tarball is included in files array
+        // Ensure tarball is in files array
         if (!walletPkg.files) {
             walletPkg.files = ['dist'];
         }
-        if (!walletPkg.files.includes(tarballFile)) {
-            walletPkg.files.push(tarballFile);
-        }
-        
+
         // Remove any old registry tarballs from files array
         walletPkg.files = walletPkg.files.filter(
             (file: any) => !file.startsWith('m3s-registry-') || file === tarballFile
@@ -89,7 +77,7 @@ export function packRegistry() {
 
         fs.writeFileSync(walletPkgPath, JSON.stringify(walletPkg, null, 2));
         console.log(`Updated wallet package.json to use ${tarballFile}`);
-        
+
         // Install the tarball in wallet package
         console.log('Installing tarball in wallet package...');
         execSync(`npm install --legacy-peer-deps ${tarballFile}`, {
