@@ -13,11 +13,9 @@
     "access": "public"
   },
   "dependencies": {
-    "@m3s/registry": "*"
+    "@m3s/registry": "file:../registry"
   },
   "references": [
-    {
-      "path": "../utils"
-    }
+  
   ]
 }

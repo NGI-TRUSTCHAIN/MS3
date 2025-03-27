@@ -35,7 +35,7 @@ function updateDependentPackages(packageName:string, version:string) {
  * @param {string} packageName The package to publish
  * @returns {string|undefined} The new version if successful
  */
-export function publishPackage(packageName:string) {
+export async function publishPackage(packageName:string) {
   try {
     const pkgPath = join(rootDir, `packages/${packageName}`);
     const pkgJsonPath = join(pkgPath, "package.json");
