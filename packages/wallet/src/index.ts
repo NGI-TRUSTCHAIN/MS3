@@ -1,7 +1,7 @@
 import { ICoreWallet, IWalletOptions } from './types/index.js';
 import { createErrorHandlingProxy } from './errors.js';
 import pkgJson from '../package.json' with { type: "json" };
-import { registry } from '@m3s/registry';
+import { registry } from 'm3s-registry';
 
 // Register this module in the registry
 registry.registerModule({ name: 'wallet', version: pkgJson.version });

@@ -31,7 +31,7 @@ export function packRegistry() {
         console.log('Creating registry tarball...');
         execSync('npm pack', { stdio: 'inherit', cwd: registryPath });
         
-        // Tarball filename
+        // Tarball filename (now without @ prefix)
         const tarballFile = `m3s-registry-${newVersion}.tgz`;
         const srcPath = join(registryPath, tarballFile);
         
@@ -55,10 +55,10 @@ export function packRegistry() {
         fs.unlinkSync(srcPath); // Clean up original
         console.log(`Copied ${tarballFile} to wallet package`);
         
-        // Update wallet's package.json
+        // Update wallet's package.json with non-scoped name
         const walletPkgPath = join(walletPath, 'package.json');
         const walletPkg = JSON.parse(fs.readFileSync(walletPkgPath, 'utf8'));
-        walletPkg.dependencies['@m3s/registry'] = `file:${tarballFile}`;
+        walletPkg.dependencies['m3s-registry'] = `file:${tarballFile}`;  // Non-scoped name
         
         // Ensure tarball is included in files array
         if (!walletPkg.files) {
@@ -78,7 +78,7 @@ export function packRegistry() {
         fs.writeFileSync(walletPkgPath, JSON.stringify(walletPkg, null, 2));
         console.log(`Updated wallet package.json to use ${tarballFile}`);
         
-        // Install the tarball in wallet package - CRITICAL STEP
+        // Install the tarball in wallet package
         console.log('Installing tarball in wallet package...');
         execSync(`npm install --legacy-peer-deps ${tarballFile}`, {
             stdio: 'inherit',

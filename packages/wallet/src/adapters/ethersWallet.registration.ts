@@ -1,4 +1,4 @@
-import { registry } from '@m3s/registry';
+import { registry } from 'm3s-registry';
 import { WalletType } from '../types/index.js';
 import { EvmWalletAdapter } from './ethersWallet.js';
 

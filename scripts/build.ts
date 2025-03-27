@@ -2,6 +2,7 @@ import { resolve, join, dirname } from "path";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import { packRegistry } from "./pack-registry.js";
+import fs from "fs";
 
 // Fix path resolution
 const __filename = fileURLToPath(import.meta.url);
@@ -20,15 +21,54 @@ export function buildPackage(packageName:string) {
   try {
     // Special handling for wallet package to ensure registry is available
     if (packageName === 'wallet') {
-      // Pack registry and update wallet's dependency before building
-      packRegistry();
+      // First make sure registry is built
+      execSync("npm run build:registry", { stdio: "inherit", cwd: rootDir });
+      
+      // Clean up node_modules to ensure a fresh install
+      const nodeModulesPath = join(pkgPath, 'node_modules');
+      const packageLockPath = join(pkgPath, 'package-lock.json');
+      
+      if (fs.existsSync(nodeModulesPath)) {
+        console.log(`Cleaning up node_modules in ${packageName}...`);
+        if (process.platform === 'win32') {
+          // Windows-specific command
+          try {
+            execSync(`rmdir /s /q "${nodeModulesPath}"`, { stdio: 'inherit' });
+          } catch (e) {
+            console.log('Could not delete node_modules folder, continuing...');
+          }
+        } else {
+          execSync(`rm -rf ${nodeModulesPath}`, { stdio: 'inherit' });
+        }
+      }
+      
+      if (fs.existsSync(packageLockPath)) {
+        console.log(`Removing package-lock.json in ${packageName}...`);
+        fs.unlinkSync(packageLockPath);
+      }
+      
+      // Then pack registry and update wallet's dependency
+      const tarballFile = packRegistry();
+      
+      // Install dependencies including the tarball (just like in your ksides project)
+      console.log(`Installing dependencies for ${packageName}...`);
+      execSync(`npm install --legacy-peer-deps`, { 
+        stdio: 'inherit', 
+        cwd: pkgPath 
+      });
+    } else {
+      // For other packages, just install dependencies
+      execSync("npm install --legacy-peer-deps", { 
+        stdio: "inherit", 
+        cwd: pkgPath 
+      });
     }
     
-    // Install dependencies
-    execSync("npm install --legacy-peer-deps", { stdio: "inherit", cwd: pkgPath });
-    
     // Build with TypeScript
-    execSync("tsc", { stdio: "inherit", cwd: pkgPath });
+    execSync("tsc --build", { 
+      stdio: "inherit", 
+      cwd: pkgPath 
+    });
     
     console.log(`Successfully built ${packageName}`);
   } catch (error:any) {

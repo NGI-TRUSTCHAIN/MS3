@@ -117,4 +117,6 @@ interface AdapterMetadata {
   }
   
   // Export the singleton instance
-  export const registry = new UniversalRegistry();
+  const registry = new UniversalRegistry();
+
+  export { registry, ModuleMetadata, AdapterMetadata };
