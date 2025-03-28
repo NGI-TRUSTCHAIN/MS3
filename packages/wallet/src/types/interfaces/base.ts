@@ -1,3 +1,4 @@
+import { ChainNamespaceType } from "@web3auth/base";
 import { WalletEvent } from "../enums/index.js";
 import { TransactionData } from "../types/index.js";
 
@@ -32,9 +33,43 @@ export interface ICoreWallet {
   signMessage(message: string): Promise<string>;
 }
 
+export interface IChainConfig {
+  chainConfig: {
+    chainNamespace: ChainNamespaceType,
+    chainId: string,
+    rpcTarget: string,
+    displayName: string,
+    blockExplorer: string,
+    ticker: string,
+    tickerName: string
+  },
+}
 export interface IWalletOptions {
   adapterName: string,
   neededFeature?: string,
   provider?: any,
-  options?: any
+  options?: IWeb3AuthOptions | IEVMOptions
+}
+
+export interface IEVMOptions {
+  privateKey?: string,
+}
+
+export interface IWeb3AuthOptions {
+  web3authConfig: {
+    clientId: string,
+    web3AuthNetwork: string,
+    chainConfig: {
+      chainNamespace: ChainNamespaceType,
+      chainId: string,
+      rpcTarget: string,
+      displayName: string,
+      blockExplorer: string,
+      ticker: string,
+      tickerName: string
+    },
+    loginConfig: {
+      loginProvider: string
+    }
+  }
 }

@@ -20,22 +20,18 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test": "vitest run"
   },
   "publishConfig": {
     "access": "public",
     "tag": "latest"
   },
-  "dependencies": {
+  "peerDependencies": {
     "@web3auth/auth-adapter": "^9.7.0",
     "@web3auth/base": "^9.7.0",
     "@web3auth/ethereum-provider": "^9.7.0",
     "@web3auth/no-modal": "^9.7.0"
-  },
-  "devDependencies": {
-    "@vitest/coverage-v8": "^1.6.1",
-    "jsdom": "^24.0.0",
-    "vitest": "^1.6.1"
   },
   "files": [
     "dist"

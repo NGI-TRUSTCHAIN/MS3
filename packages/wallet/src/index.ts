@@ -9,7 +9,6 @@ registry.registerModule({ name: 'wallet', version: pkgJson.version });
 // Export main components.
 export * from './types/index.js';
 export * from './adapters/index.js';
-export { registry } from './registry.js';
 
 export async function createWallet<T extends ICoreWallet = ICoreWallet>(params: IWalletOptions): Promise<T> {
   const { adapterName, provider, options, neededFeature } = params;
@@ -29,12 +28,11 @@ export async function createWallet<T extends ICoreWallet = ICoreWallet>(params: 
   // Check requirements if any
   if (adapterInfo.requirements && adapterInfo.requirements.length > 0) {
     for (const req of adapterInfo.requirements) {
-      if (!options || !options[req]) {
+      if (!options || !(req in options)) {
         throw new Error(`Required option '${req}' missing for adapter '${adapterName}'`);
       }
     }
   }
-
 
   // Get adapter class directly from registry
   const AdapterClass = adapterInfo.adapterClass;

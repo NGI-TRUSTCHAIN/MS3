@@ -12,6 +12,7 @@ interface args {
   }
 }
 
+
 export class EvmWalletAdapter implements IEVMWallet {
   private wallet!: EthersWallet;
   private provider?: Provider;
