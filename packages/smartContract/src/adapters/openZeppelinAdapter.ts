@@ -41,7 +41,7 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
         };
         this.solcVersion = args.solcVersion || '0.8.22';
         this.hardhatConfigFileName = args.hardhatConfig?.configFileName || 'hardhat.config.cjs';
-        this.preserveOutput = args.preserveOutput || false;  // Default to false
+        this.preserveOutput = args.preserveOutput || true;  // Default to true
     }
 
     static async create(args: OpenZeppelinAdapterArgs = {}): Promise<OpenZeppelinAdapter> {
