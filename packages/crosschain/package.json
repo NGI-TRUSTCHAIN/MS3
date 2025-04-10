@@ -7,10 +7,16 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "publishConfig": {
     "access": "public"
   },
-  "references": []
+  "devDependencies": {
+    "vitest": "^0.34.6",
+    "typescript": "^5.0.4"
+  }
 }

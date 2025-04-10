@@ -1,10 +1,12 @@
+import { TEST_PRIVATE_KEY } from "../config.js";
+
 /**
  * Gets the test private key from environment variables
  * @returns The private key to use for testing
  */
 export function getTestPrivateKey(): string {
   // Use the env var if available, otherwise use a default for testing
-  return process.env.TEST_PRIVATE_KEY || '0x1234567890123456789012345678901234567890123456789012345678901234';
+  return TEST_PRIVATE_KEY;
 }
 
 // Cache for network configs - avoid repeated API calls
