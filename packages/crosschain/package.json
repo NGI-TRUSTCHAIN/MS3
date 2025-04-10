@@ -10,13 +10,13 @@
     "prepublishOnly": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:lifi": "vitest run adapters/03_LifiAdapter.test.ts"
   },
   "publishConfig": {
     "access": "public"
   },
-  "devDependencies": {
-    "vitest": "^0.34.6",
-    "typescript": "^5.0.4"
-  }
+  "files": [
+    "dist"
+  ]
 }
