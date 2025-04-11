@@ -1,13 +1,18 @@
-import { TEST_PRIVATE_KEY } from "../config.js";
+import { TEST_PRIVATE_KEY } from '../config.js';
 
 /**
  * Gets the test private key from environment variables
  * @returns The private key to use for testing
  */
-export function getTestPrivateKey(): string {
-  // Use the env var if available, otherwise use a default for testing
+export function getTestPrivateKey() {
+  // Get the private key from environment variables
+  if (!TEST_PRIVATE_KEY) {
+    console.warn('⚠️ TEST_PRIVATE_KEY environment variable not found! Using empty string.');
+    return '';
+  }
   return TEST_PRIVATE_KEY;
 }
+
 
 // Cache for network configs - avoid repeated API calls
 let networkCache: Record<string, any> = {

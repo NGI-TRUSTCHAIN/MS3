@@ -1,4 +1,4 @@
-<!-- filepath: packages/smartContract/README.md -->
+<!-- filepath: packages/smart-contract/README.md -->
 # @m3s/smart-contract
 
 A modular toolkit for generating, compiling, deploying, and interacting with Ethereum‑compatible smart contracts. Using our OpenZeppelin adapter, this module dynamically produces contracts for ERC20, ERC721, and ERC1155 standards with customizable features (such as mintability, burnability, pausability, upgradeability, etc.) during test runs and development builds.
@@ -122,7 +122,7 @@ npm run test
 The key code is contained in the `src` folder, while generated contracts appear in the `contracts` directory only during test runs or build operations. The maintained project structure is as follows:
 
 ```
-smartContract/
+smart-contract/
   ├── src/
   │      ├── adapters/         // Contains the OpenZeppelinAdapter (implements IBaseContractHandler)
   │      ├── types/            // Type definitions and interfaces for contract options and results

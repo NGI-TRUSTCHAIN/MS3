@@ -39,7 +39,7 @@ export async function buildPackage(packageName: string) {
 export async function buildAll() {
   try {
     // Define all packages to build
-    const packages = ['wallet', 'crosschain', 'smartContract'];
+    const packages = ['wallet', 'crosschain', 'smart-contract'];
     
     // Build each package
     for (const pkg of packages) {

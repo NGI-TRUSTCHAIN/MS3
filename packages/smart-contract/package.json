@@ -1,18 +1,13 @@
 {
   "name": "@m3s/smart-contract",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "type": "module",
   "main": "dist/index.js",
   "description": "M3S Smart Contract Module",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "prepublishOnly": "npm run build",
-
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "test:all": "npm run test:core && npm run test:erc20 && npm run test:erc721 && npm run test:erc1155",
+    "test": "npm run test:core && npm run test:erc20 && npm run test:erc721 && npm run test:erc1155",
     "test:core": "vitest run 01_Core.test.ts 02_IBaseContractHandler.test.ts",
     "test:erc20": "vitest run 03_ERC20.test.ts",
     "test:erc721": "vitest run 04_ERC721.test.ts",

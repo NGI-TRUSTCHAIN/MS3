@@ -922,7 +922,7 @@ describe('LiFiAdapter Pattern & Lifecycle Tests', () => {
       } catch (error: any) {
         // This is expected - we should get a timeout error
         console.log('✅ Got expected timeout error:', error.message);
-        expect(error.message.toLowerCase()).toContain('timeout');
+        expect(error.message.toLowerCase()).toContain('timed out');
 
         // Now check if the operation was properly marked as failed
         const testOp = privateAdapter.pendingOperations.entries().next().value;

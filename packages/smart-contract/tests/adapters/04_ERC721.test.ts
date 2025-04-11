@@ -3,7 +3,7 @@ import { createContractHandler } from '../../src/index.js';
 import { IBaseContractHandler } from '../../src/types/index.js';
 import { ethers } from 'ethers';
 import * as path from 'path';
-import { TEST_PRIVATE_KEY, RUN_INTEGRATION_TESTS } from 'packages/smart-contract/config.js';
+import { TEST_PRIVATE_KEY, RUN_INTEGRATION_TESTS } from '../../config.js';
 
 
 // Provider for testnet interactions
@@ -453,5 +453,5 @@ describe('ERC721 Options Tests', () => {
       console.error(`❌ Test failed: ${error.message}`);
       throw error;
     }
-  }, 120000); // Longer timeout for blockchain interaction
+  }, 300000); // Longer timeout for blockchain interaction
 });

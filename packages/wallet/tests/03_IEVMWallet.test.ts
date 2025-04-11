@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { IEVMWallet } from '../src/types/index.js';
-import { testCoreWalletInterface } from './ICoreWallet.test.js';
+import { testCoreWalletInterface } from './02_ICoreWallet.test.js';
 
 export function testEVMWalletInterface(wallet: IEVMWallet, skipConnectivity: boolean = false) {
   // First test the core wallet interface
