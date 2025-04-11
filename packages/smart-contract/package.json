@@ -1,6 +1,6 @@
 {
   "name": "@m3s/smart-contract",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "type": "module",
   "main": "dist/index.js",
   "description": "M3S Smart Contract Module",
@@ -12,6 +12,14 @@
     "test:erc20": "vitest run 03_ERC20.test.ts",
     "test:erc721": "vitest run 04_ERC721.test.ts",
     "test:erc1155": "vitest run 05_ERC1155.test.ts"
+  },
+  "dependencies": {
+    "@openzeppelin/wizard": "^0.5.3",
+    "ethers": "^6.13.5"
+  },
+  "peerDependencies": {
+    "hardhat": "^2.22.19",
+    "@openzeppelin/contracts": "^5.2.0"
   },
   "publishConfig": {
     "access": "public"
