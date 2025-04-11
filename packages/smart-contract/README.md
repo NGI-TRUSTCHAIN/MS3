@@ -1,7 +1,6 @@
-<!-- filepath: packages/smart-contract/README.md -->
 # @m3s/smart-contract
 
-A modular toolkit for generating, compiling, deploying, and interacting with Ethereum‑compatible smart contracts. Using our OpenZeppelin adapter, this module dynamically produces contracts for ERC20, ERC721, and ERC1155 standards with customizable features (such as mintability, burnability, pausability, upgradeability, etc.) during test runs and development builds.
+A modular toolkit for generating, compiling, deploying, and interacting with Ethereum‑compatible smart contracts. Using our OpenZeppelin adapter, this module dynamically produces contracts for ERC20, ERC721, and ERC1155 standards with customizable features (such as mintability, burnability, pausability, upgradeability, etc.).
 
 > ⚠️ **DEVELOPMENT WARNING**  
 > This package is in active development (alpha stage). The API, generated code, and configuration options are subject to breaking changes without notice. Please test thoroughly before integrating into production.
@@ -17,24 +16,6 @@ A modular toolkit for generating, compiling, deploying, and interacting with Eth
 
 ---
 
-## What It Does
-
-1. **Dynamic Contract Generation**  
-   - Based on flexible options (mintable, burnable, pausable, etc.), contracts for ERC20, ERC721, and ERC1155 (and their extensions) are generated on‑the‑fly during test runs.
-   - Note: The contracts output (in the `/contracts` folder) is created temporarily for compilation and testing purposes and should not be considered as maintained source code.
-
-2. **Compilation via Hardhat**  
-   - The generated Solidity source is written to a temporary directory where a minimal Hardhat project is built.
-   - Compilation uses a specified Solidity version (e.g. 0.8.22 with optimizer settings) and produces artifacts (ABI, bytecode).
-
-3. **Deployment & Interaction**  
-   - A unified interface lets you deploy the compiled contract—passing constructor arguments such as an initial owner—and call its methods (e.g. minting, balance queries).
-
-4. **Extensible Adapter Pattern**  
-   - The module’s adapters (currently the OpenZeppelinAdapter) abstract contract generation, compilation, and deployment. This design makes it easier to add or change supported standards.
-
----
-
 ## Installation
 
 Install via npm:
@@ -43,112 +24,183 @@ Install via npm:
 npm install @m3s/smart-contract
 ```
 
----
+## Features
 
-## Usage Example
+- 🔨 **Contract Generation**: Create ERC20, ERC721, and ERC1155 contracts with configurable features
+- 📦 **Seamless Compilation**: Compile contracts using integrated Solidity compiler
+- 🚀 **Easy Deployment**: Deploy contracts with minimal configuration
+- 🔄 **Contract Interaction**: Call and execute methods on deployed contracts
+- 🧩 **Extensible Architecture**: Add custom contract types through the adapter system
 
-Below is an example that demonstrates the entire flow—from generating a contract to deploying and interacting with it. (Replace `YOUR_RPC_URL` and `YOUR_PRIVATE_KEY` with real values.)
+## Contract Features
 
-```typescript
+### ERC20 Token Customization
+
+| Feature   | Description                                               |
+|-----------|-----------------------------------------------------------|
+| name      | Token name (e.g., "My Token")                             |
+| symbol    | Token symbol (e.g., "MTK")                                |
+| premint   | Amount to mint to deployer initially                      |
+| burnable  | Allow token holders to burn their tokens                  |
+| pausable  | Allow contract owner to pause transfers                   |
+| permit    | Enable ERC-2612 gasless approvals                         |
+| votes     | Enable on-chain governance features                       |
+| flashmint | Allow flash loans of the token                           |
+| snapshots | Enable balance snapshots                                  |
+| access    | Define access control ("ownable" or "roles")              |
+
+### ERC721 NFT Customization
+
+| Feature    | Description                                             |
+|------------|---------------------------------------------------------|
+| name       | Collection name (e.g., "My NFTs")                       |
+| symbol     | Collection symbol (e.g., "MNFT")                        |
+| baseUri    | Base URI for token metadata                             |
+| burnable   | Allow token holders to burn their NFTs                 |
+| pausable   | Allow contract owner to pause transfers                |
+| mintable   | Allow the owner to mint new tokens                     |
+| incremental| Use sequential token IDs                                |
+| uriStorage | Store token URIs on-chain                               |
+| enumerable | Enable full enumeration of tokens                      |
+| access     | Define access control ("ownable" or "roles")           |
+
+### ERC1155 Multi-Token Customization
+
+| Feature      | Description                                               |
+|--------------|-----------------------------------------------------------|
+| name         | Collection name (e.g., "My Multi-Tokens")                 |
+| uri          | URI pattern for token metadata                            |
+| burnable     | Allow token holders to burn their tokens                  |
+| pausable     | Allow contract owner to pause transfers                   |
+| mintable     | Allow the owner to mint new tokens                        |
+| supply       | Track total supply for each token ID                      |
+| updatableUri | Allow owner to update the metadata URI                    |
+| access       | Define access control ("ownable" or "roles")              |
+
+## Usage Examples
+
+### Creating and Deploying an ERC20 Token
+
+```javascript
 import { createContractHandler } from '@m3s/smart-contract';
 import { ethers } from 'ethers';
-import * as path from 'path';
 
-// Create a contract handler instance using the OpenZeppelin adapter
-const contractHandler = await createContractHandler({
-  adapterName: 'openZeppelin',
-  // Specify a work directory for temporary generation; note that the output here is transient.
-  options: {
-    workDir: path.join(process.cwd(), 'contracts'),
-    preserveOutput: true  // Enable preservation for debugging; these files are generated on test runs.
-  }
-});
+// Initialize
+const contractHandler = await createContractHandler();
 
-// Generate an ERC1155 contract with multiple features enabled
-const contractSource = await contractHandler.generateContract({
-  standard: 'ERC1155',
-  options: {
-    name: 'ComplexMultiToken',
-    uri: 'ipfs://QmComplexToken/{id}.json',
-    burnable: true,
-    pausable: true,
-    mintable: true,
-    supply: true,
-    updatableUri: true,
-    access: 'ownable'
-  }
-});
+// 1. Generate an ERC20 contract
+const tokenOptions = {
+  name: "MyToken",
+  symbol: "MTK",
+  premint: "1000000000000000000000000", // 1 million tokens with 18 decimals
+  burnable: true,
+  pausable: true,
+  permit: true
+};
 
-// Compile the generated source code using Hardhat
-const compiled = await contractHandler.compile(contractSource);
+const source = await contractHandler.generateERC20(tokenOptions);
 
-// Prepare constructor arguments (e.g. using the deployer’s address)
-const provider = new ethers.JsonRpcProvider('YOUR_RPC_URL'); 
+// 2. Compile the contract
+const compiled = await contractHandler.compile(source);
+
+// 3. Connect to a blockchain
+const provider = new ethers.JsonRpcProvider('YOUR_RPC_URL');
 const signer = new ethers.Wallet('YOUR_PRIVATE_KEY', provider);
-const deployerAddress = await signer.getAddress();
-const constructorArgs = [deployerAddress];
 
-// Deploy the compiled contract to a testnet
-const deployed = await contractHandler.deploy(compiled, constructorArgs, signer);
-console.log(`Contract deployed at: ${deployed.address}`);
+// 4. Deploy the contract
+const deployed = await contractHandler.deploy(compiled, [], signer);
+console.log(`Token deployed at: ${deployed.address}`);
 
-// Example interaction: call balanceOf on the deployed contract
+// 5. Interact with the contract
 const balance = await contractHandler.callMethod(
   deployed.address,
-  compiled.abi,
   'balanceOf',
-  [deployerAddress, 1],
+  [await signer.getAddress()],
   signer
 );
-console.log(`Balance of token 1: ${balance}`);
+console.log(`Token balance: ${ethers.formatUnits(balance, 18)}`);
 ```
 
----
+### Creating and Deploying an NFT Collection
 
-## Testing
+```javascript
+// Generate an ERC721 NFT contract
+const nftOptions = {
+  name: "MyNFTs",
+  symbol: "MNFT",
+  baseUri: "ipfs://QmYourCID/",
+  burnable: true,
+  mintable: true,
+  uriStorage: true,
+  enumerable: true
+};
 
-This package includes a comprehensive test suite that verifies core functionality as well as specific behavior for ERC20, ERC721, and ERC1155 contracts. Note that during tests, the contracts are generated dynamically, compiled, and then deployed for integration checks.
+const source = await contractHandler.generateERC721(nftOptions);
+const compiled = await contractHandler.compile(source);
+const deployed = await contractHandler.deploy(compiled, [], signer);
 
-To run tests with Vitest, use:
-
-```bash
-npm run test
+// Mint a new NFT
+await contractHandler.executeMethod(
+  deployed.address,
+  'safeMint',
+  [
+    "0xRecipientAddress",  // Recipient
+    "1",                   // Token ID
+    "metadata/1.json"      // Token URI suffix
+  ],
+  signer
+);
 ```
 
----
+### Creating and Deploying a Multi-Token Collection
 
-## Project Structure
+```javascript
+// Generate an ERC1155 contract
+const multiTokenOptions = {
+  name: "GameItems",
+  uri: "ipfs://QmYourCID/{id}.json",
+  burnable: true,
+  mintable: true,
+  supply: true,
+  access: "roles" // Use AccessControl with roles
+};
 
-The key code is contained in the `src` folder, while generated contracts appear in the `contracts` directory only during test runs or build operations. The maintained project structure is as follows:
+const source = await contractHandler.generateERC1155(multiTokenOptions);
+const compiled = await contractHandler.compile(source);
+const deployed = await contractHandler.deploy(compiled, [], signer);
 
+// Mint multiple tokens
+await contractHandler.executeMethod(
+  deployed.address,
+  'mintBatch',
+  [
+    "0xRecipientAddress",            // Recipient
+    [1, 2, 3],                       // Token IDs
+    [100, 50, 1],                    // Amounts (100 of ID 1, 50 of ID 2, 1 of ID 3)
+    "0x"                             // Data
+  ],
+  signer
+);
 ```
-smart-contract/
-  ├── src/
-  │      ├── adapters/         // Contains the OpenZeppelinAdapter (implements IBaseContractHandler)
-  │      ├── types/            // Type definitions and interfaces for contract options and results
-  │      ├── registry.ts       // Maps standards to adapter functions
-  │      └── index.ts          // Primary module entry point
-  ├── tests/                  // Comprehensive test suite for all supported standards
-  │      ├── 01_Core.test.ts
-  │      ├── 02_IBaseContractHandler.test.ts
-  │      ├── 03_ERC20.test.ts
-  │      ├── 04_ERC721.test.ts
-  │      └── 05_ERC1155.test.ts
-  ├── package.json
-  ├── tsconfig.json
-  └── README.md
-```
 
-*Note:* The generated contracts and their artifacts (including individual README files with generation timestamps and source hashes) are dynamic outputs of the module’s test and build processes and are not part of the maintained source code.
+## API Reference
 
----
+### Core Functions
 
-## Additional Information
+| Function                 | Description                                        |
+|--------------------------|----------------------------------------------------|
+| createContractHandler()  | Create a contract handler instance                 |
+| generateERC20(options)   | Generate ERC20 token contract source               |
+| generateERC721(options)  | Generate ERC721 NFT contract source                |
+| generateERC1155(options) | Generate ERC1155 multi-token contract source         |
+| compile(source)          | Compile a contract source to bytecode and ABI      |
+| deploy(compiled, args, signer) | Deploy a compiled contract                   |
+| callMethod(address, method, args, signer) | Call a read-only method          |
+| executeMethod(address, method, args, signer) | Execute a state-changing method  |
 
-For further details about generation metadata (timestamps, source hashes, etc.), please check the README files within the generated contract subfolders (e.g. in a run’s temporary `ComplexNFT` or `ComprehensiveToken` directories).
+### Additional Features
 
----
-
-*This README has been aligned with our wallet package’s style to provide consistent messaging regarding development status, usage, and available features across packages.*
-
-Happy coding!
+- **Automated Gas Estimation**: The library handles gas estimation for you.
+- **Error Handling**: Clear error messages for common contract operations.
+- **Network Detection**: Automatically adapts to the connected network.
+- **Contract Verification**: Generate contract source code suitable for block explorer verification.
