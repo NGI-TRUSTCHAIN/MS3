@@ -7,22 +7,15 @@ A flexible wallet interface supporting multiple blockchain wallet types, includi
 ## Development Status
 
 This package is currently in **alpha** stage:
+- 🚧 Core functionality is being implemented and undergoing testing and refinement.
+- ⚠️ APIs may change without warning between versions.
+- 🧪 Some features may not work as expected.
+- 📝 Documentation might be incomplete or outdated until the beta version.
 
-- 🚧 Core functionality is being implemented and undergoing testing and refinement
-- ⚠️ APIs may change without warning between versions
-- 🧪 Some features may not work as expected
-- 📝 Documentation might be incomplete or outdated until the beta version
-
-### Versioning During Development
-
-While in development:
-- We're using `1.x.y` version numbers during initial development  
-- Production-ready releases will be clearly marked  
-- Check the GitHub repository for the latest updates and roadmap
-
-### Providing Feedback
-
-We welcome feedback and contributions! Please open issues on our GitHub repository if you encounter bugs or have suggestions for improvements.
+### Versioning & Feedback
+- We’re using `1.x.y` version numbers during initial development. Production-ready releases will be clearly marked.
+- Check the GitHub repository for the latest updates and roadmap.
+- We welcome feedback and contributions! Please open issues on our GitHub repository if you encounter bugs or have suggestions.
 
 ---
 
@@ -36,15 +29,15 @@ npm install @m3s/wallet
 
 ## Features
 
-- **Universal wallet API** for a consistent interface across different wallet types  
-- **EVM Wallets** support using private keys  
-- **Web3Auth Integration** for OAuth-based blockchain access  
-- **Transaction Signing, Gas Estimation, & Network Management**  
-- **Centralized Network Configuration**  
-- **Event Handling** for account and chain changes  
-- **Standardized Error Handling**  
-- **Network Switching** across EVM chains  
-- **Multi-Account Support**
+- **Universal wallet API** for a consistent interface across different wallet types.
+- **Support for EVM Wallets** using private keys.
+- **Web3Auth Integration** for OAuth-based blockchain access.
+- **Transaction Signing, Gas Estimation, & Network Management**.
+- **Centralized Network Configuration**.
+- **Event Handling** for account and chain changes.
+- **Standardized Error Handling**.
+- **Network Switching** across EVM chains.
+- **Multi-Account Support**.
 
 ---
 
@@ -115,7 +108,7 @@ const web3authConfig = {
   }
 };
 
-// Create the wallet with the standard structure
+// Create the wallet with the Web3Auth adapter
 const params: IWalletOptions = {
   adapterName: 'web3auth',
   options: { web3authConfig }
@@ -124,7 +117,7 @@ const params: IWalletOptions = {
 // Create and initialize the wallet
 const wallet = await createWallet<IEVMWallet>(params);
 
-// This will trigger the Web3Auth login popup
+// Trigger the Web3Auth login popup
 const accounts = await wallet.requestAccounts();
 console.log('Connected account:', accounts[0]);
 
@@ -152,7 +145,7 @@ const tx = {
 const txHash = await wallet.sendTransaction(tx);
 console.log(`Transaction sent: ${txHash}`);
 
-// Get a transaction receipt
+// Retrieve transaction receipt
 const receipt = await wallet.getTransactionReceipt(txHash);
 console.log(`Transaction status: ${receipt.status === 1 ? 'Success' : 'Failed'}`);
 ```
@@ -165,8 +158,8 @@ const tokenAddress = '0xTokenContractAddress';
 const balance = await wallet.getTokenBalance(tokenAddress);
 console.log(`Token balance: ${balance}`);
 
-// Send tokens (requires proper contract ABI and data)
-const data = '0x...'; // Contract call data for transfer
+// Send tokens (ensure proper contract ABI and data)
+const data = '0x...'; // Contract call data for token transfer
 const tokenTx = {
   to: tokenAddress,
   data,
@@ -179,7 +172,7 @@ await wallet.sendTransaction(tokenTx);
 ### Network Switching
 
 ```javascript
-// Switch to Polygon network with Web3Auth
+// Switch to Polygon network using Web3Auth adapter
 await wallet.setProvider({
   chainConfig: {
     chainNamespace: "eip155",
@@ -192,50 +185,19 @@ await wallet.setProvider({
   }
 });
 
-// Switch networks with ethers wallet
+// Alternatively, switch provider using ethers wallet
 import { JsonRpcProvider } from 'ethers';
 const polygonProvider = new JsonRpcProvider("https://polygon-rpc.com");
 await wallet.setProvider(polygonProvider);
 
-// Get current network after switching
+// Get current network
 const network = await wallet.getNetwork();
 console.log(`Current network: ${network.name} (Chain ID: ${network.chainId})`);
 ```
 
 ---
 
-## GitHub Copilot - README Improvements
-
-### Improved Wallet README (Example .txt Format)
-
-#### Features
-
-- Universal wallet API for a consistent interface across different wallet types  
-- Support for EVM-based wallets with private key  
-- Web3Auth integration for OAuth-based blockchain access  
-- Transaction signing, gas estimation, and network management  
-- Centralized network configuration  
-- Event handling for account and chain changes  
-- Error handling and standardized error types  
-- Network switching capabilities across EVM chains  
-- Multi-account support  
-
-#### Wallet Types
-
-**EVM Wallet**  
-Standard Ethereum wallet using a private key or generated randomly.
-
-**Web3Auth Wallet**  
-Social login wallet using OAuth providers.
-
-#### Common Wallet Operations
-
-- **Sending Tokens**  
-- **Working with ERC-20 Tokens**  
-- **Network Switching**  
-- **Error Handling**
-
-#### Error Handling Example
+## Error Handling Example
 
 ```javascript
 import { WalletErrorCode } from '@m3s/wallet';
@@ -255,54 +217,60 @@ try {
 }
 ```
 
-#### API Reference
+---
 
-**Common Methods (All Wallet Types)**
+## API Reference
 
-| Method                 | Description                                    |
-|------------------------|------------------------------------------------|
-| `initialize()`         | Prepare the wallet for use                     |
-| `isInitialized()`      | Check if wallet is properly initialized        |
-| `getWalletName()`      | Get wallet adapter name                        |
-| `getWalletVersion()`   | Get wallet version                             |
-| `isConnected()`        | Check if wallet is connected                   |
-| `requestAccounts()`    | Request user accounts (may trigger login UI)   |
-| `getAccounts()`        | Get current accounts                           |
-| `getNetwork()`         | Get current network information              |
-| `setProvider(provider)`| Change the provider or network                 |
-| `sendTransaction(tx)`  | Send a transaction                             |
-| `signTransaction(tx)`  | Sign a transaction without sending             |
-| `signMessage(message)` | Sign a message                                 |
-| `disconnect()`         | Disconnect the wallet                          |
-| `on(event, callback)`  | Listen for wallet events                       |
-| `off(event, callback)` | Remove an event listener                       |
+### Common Methods (All Wallet Types)
 
-**EVM-Specific Methods**
+| Method                  | Description                                    |
+|-------------------------|------------------------------------------------|
+| `initialize()`          | Prepare the wallet for use                     |
+| `isInitialized()`       | Check if wallet is properly initialized        |
+| `getWalletName()`       | Get wallet adapter name                        |
+| `getWalletVersion()`    | Get wallet version                             |
+| `isConnected()`         | Check if wallet is connected                   |
+| `requestAccounts()`     | Request user accounts (may trigger login UI)   |
+| `getAccounts()`         | Get current accounts                           |
+| `getNetwork()`          | Get current network information              |
+| `setProvider(provider)` | Change the provider or network                 |
+| `sendTransaction(tx)`   | Send a transaction                             |
+| `signTransaction(tx)`   | Sign a transaction without sending             |
+| `signMessage(message)`  | Sign a message                                 |
+| `disconnect()`          | Disconnect the wallet                          |
+| `on(event, callback)`   | Listen for wallet events                       |
+| `off(event, callback)`  | Remove an event listener                       |
 
-| Method                                  | Description                              |
-|-----------------------------------------|------------------------------------------|
-| `signTypedData(data)`                   | Sign typed data (EIP-712)                |
-| `getGasPrice()`                         | Get current gas price                    |
-| `estimateGas(tx)`                       | Estimate gas for transaction             |
-| `getTokenBalance(tokenAddress)`         | Get ERC-20 token balance                 |
-| `getTransactionReceipt(txHash)`         | Get receipt for a transaction            |
-| `getBalance(address)`                   | Get native token balance for an address  |
-| `getPrivateKey()`                       | Get wallet's private key                 |
-| `verifySignature(message, signature, address)` | Verify a message signature         |
+### EVM-Specific Methods
 
-#### Transaction Format
+| Method                                      | Description                              |
+|---------------------------------------------|------------------------------------------|
+| `signTypedData(data)`                       | Sign typed data (EIP-712)                |
+| `getGasPrice()`                             | Get current gas price                    |
+| `estimateGas(tx)`                           | Estimate gas for a transaction           |
+| `getTokenBalance(tokenAddress)`             | Get ERC-20 token balance                 |
+| `getTransactionReceipt(txHash)`             | Get receipt for a transaction            |
+| `getBalance(address)`                       | Get native token balance for an address  |
+| `getPrivateKey()`                           | Get wallet's private key                 |
+| `verifySignature(message, signature, address)` | Verify a message signature           |
+
+---
+
+## Transaction Format
 
 ```javascript
 const tx = {
   to: '0x0000000000000000000000000000000000000000',
-  value: '0.001',  // In ETH for EVM chains
+  value: '0.001',  // Amount in ETH for EVM chains
   data: '0x',      // Optional contract data
   gasLimit: '21000', // Optional gas limit
   gasPrice: '5000000000' // Optional gas price in wei
 };
 ```
 
-#### Typed Data Format (EIP-712)
+---
+
+## Typed Data Format (EIP-712)
 
 ```javascript
 const typedData = {
@@ -325,7 +293,9 @@ const typedData = {
 };
 ```
 
-#### Event Handling
+---
+
+## Event Handling
 
 ```javascript
 // Listen for account changes
@@ -338,13 +308,15 @@ wallet.on(WalletEvent.chainChanged, (chainId) => {
   console.log('Chain changed:', chainId);
 });
 
-// Remove event listener
+// Remove an event listener
 wallet.off(WalletEvent.accountsChanged, listenerFunction);
 ```
 
-#### Network Configuration
+---
 
-- **Web3Auth Adapter** expects network configuration in the following format:
+## Network Configuration
+
+- **Web3Auth Adapter** expects configuration as follows:
 
   ```javascript
   await wallet.setProvider({
@@ -360,7 +332,7 @@ wallet.off(WalletEvent.accountsChanged, listenerFunction);
   });
   ```
 
-- **EVM Wallet Adapter** accepts a standard ethers.js provider:
+- **EVM Wallet Adapter** accepts an ethers.js provider:
 
   ```javascript
   import { JsonRpcProvider } from 'ethers';
@@ -368,10 +340,11 @@ wallet.off(WalletEvent.accountsChanged, listenerFunction);
   await wallet.setProvider(provider);
   ```
 
-#### Supported Networks
+---
+
+## Supported Networks
 
 The wallet supports all EVM-compatible networks, including but not limited to:
-
 - Ethereum (Mainnet, Sepolia, Holesky)
 - Polygon (Mainnet, Mumbai)
 - Arbitrum
@@ -380,4 +353,4 @@ The wallet supports all EVM-compatible networks, including but not limited to:
 - Avalanche
 - Base
 
-Custom networks can be configured through the appropriate provider settings.
+Custom networks can be configured through appropriate provider settings.
