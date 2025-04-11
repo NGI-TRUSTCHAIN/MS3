@@ -1,6 +1,6 @@
 {
   "name": "@m3s/smart-contract",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "type": "module",
   "description": "A modular toolkit for generating, compiling, deploying, and interacting with Ethereum-compatible smart contracts",
   "license": "MIT",
@@ -30,7 +30,7 @@
     "test:erc721": "vitest run 04_ERC721.test.ts",
     "test:erc1155": "vitest run 05_ERC1155.test.ts"
   },
- "dependencies": {
+  "dependencies": {
     "@openzeppelin/wizard": "^0.5.3",
     "ethers": "^6.13.5",
     "hardhat": "^2.22.19"
