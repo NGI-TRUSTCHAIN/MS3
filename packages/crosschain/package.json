@@ -1,8 +1,24 @@
 {
   "name": "@m3s/crosschain",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "type": "module",
-  "description": "M3S Cross Chain Module",
+  "description": "A simplified cross-chain transfer library built on top of LI.FI, enabling token transfers between different blockchain networks with minimal configuration",
+  "license": "MIT",
+  "keywords": [
+    "cross-chain",
+    "bridge",
+    "swap",
+    "token",
+    "ethereum",
+    "blockchain",
+    "lifi",
+    "defi"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git@bitbucket.org:ctb-marisca/ms3-package.git",
+    "directory": "packages/crosschain"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -15,7 +31,8 @@
     "@lifi/sdk": "^3.6.6"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "tag": "latest"
   },
   "files": [
     "dist"

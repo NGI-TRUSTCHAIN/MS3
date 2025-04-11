@@ -1,14 +1,18 @@
 {
   "name": "@m3s/wallet",
-  "version": "1.1.20",
+  "version": "1.1.21",
   "type": "module",
+  "description": "A flexible wallet interface supporting multiple blockchain wallet types, including EVM wallets and Web3Auth integration",
   "license": "MIT",
   "keywords": [
     "wallet",
     "ethereum",
     "web3auth",
     "blockchain",
-    "evm"
+    "evm",
+    "oauth",
+    "crypto",
+    "web3"
   ],
   "repository": {
     "type": "git",
@@ -16,16 +20,11 @@
     "directory": "packages/wallet"
   },
   "main": "dist/index.js",
-  "description": "A flexible wallet interface supporting multiple blockchain wallet types, including EVM wallets and Web3Auth integration",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build",
     "test": "vitest run"
-  },
-  "publishConfig": {
-    "access": "public",
-    "tag": "latest"
   },
   "dependencies": {
     "ethers": "^6.13.5"
@@ -36,7 +35,14 @@
     "@web3auth/ethereum-provider": "^9.7.0",
     "@web3auth/no-modal": "^9.7.0"
   },
+  "publishConfig": {
+    "access": "public",
+    "tag": "latest"
+  },
   "files": [
     "dist"
-  ]
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }
