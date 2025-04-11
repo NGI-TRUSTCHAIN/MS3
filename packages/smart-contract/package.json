@@ -1,6 +1,6 @@
 {
   "name": "@m3s/smart-contract",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "type": "module",
   "description": "A modular toolkit for generating, compiling, deploying, and interacting with Ethereum-compatible smart contracts",
   "license": "MIT",
