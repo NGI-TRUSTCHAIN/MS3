@@ -1,6 +1,6 @@
 {
   "name": "@m3s/crosschain",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "type": "module",
   "description": "M3S Cross Chain Module",
   "main": "dist/index.js",
