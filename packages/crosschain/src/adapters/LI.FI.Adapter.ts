@@ -7,13 +7,9 @@ import {
   executeRoute,
   createConfig,
   QuoteRequest,
-  ExecutionOptions,
-  ExtendedTransactionInfo,
   EVM,
   ChainType,
   ChainId,
-  getStatus,
-  GetStatusRequest,
   getGasRecommendation,
   getActiveRoute,
   RouteExtended,
@@ -53,14 +49,6 @@ export interface LiFiAdapterArgs {
   adapterName: string;
   config?: LiFiConfig;
   options?: any;
-}
-
-
-export interface LoggingStrategy {
-  debug(message: string, data?: any): void;
-  info(message: string, data?: any): void;
-  warn(message: string, data?: any): void;
-  error(message: string, data?: any): void;
 }
 
 /**
@@ -187,43 +175,6 @@ export class LiFiAdapter implements Partial<ICrossChain> {
   }
 
   /**
-   * Marks an operation as failed
-   * @param operationId The ID of the operation
-   * @param errorMessage The error message
-   * @private
-   */
-  private markOperationFailed(operationId: string, errorMessage: string): void {
-    const tracking = this.pendingOperations.get(operationId);
-    if (tracking) {
-      tracking.status = 'FAILED';
-      tracking.error = errorMessage;
-      this.pendingOperations.set(operationId, tracking);
-      this.log('info', `Marked operation ${operationId} as failed: ${errorMessage}`);
-    }
-  }
-
-  /**
-   * Creates tracking for a new operation
-   * @param operationId The operation ID
-   * @param params The operation parameters
-   * @private
-   */
-  private startOperationTracking(operationId: string, params: OperationParams): void {
-    const tracking = {
-      status: 'PENDING' as 'PENDING' | 'COMPLETED' | 'FAILED',
-      startTime: Date.now(),
-      params,
-      transactionHash: '',
-      destinationTransactionHash: '',
-      explorerUrl: '',
-      error: undefined
-    };
-
-    this.pendingOperations.set(operationId, tracking);
-    this.log('info', `Started tracking operation: ${operationId}`);
-  }
-
-  /**
    * Creates a standardized error result
    * @param error The error object
    * @param params The operation parameters
@@ -251,7 +202,7 @@ export class LiFiAdapter implements Partial<ICrossChain> {
    * @param quote The operation quote
    * @private
    */
-  private async prepareRouteForExecution(params: OperationParams, quote: OperationQuote): Promise<RouteExtended> {
+  private async prepareRouteForExecution(params: OperationParams): Promise<RouteExtended> {
     // Get fresh quote for execution
     const quoteRequest: QuoteRequest = {
       fromChain: Number(params.sourceAsset.chainId),
@@ -949,11 +900,8 @@ export class LiFiAdapter implements Partial<ICrossChain> {
     try {
       this.log('info', "Getting operation quote...");
 
-      // Get a quote first
-      const quote = await this.getOperationQuote(params);
-
       // Prepare the route for execution
-      const route = await this.prepareRouteForExecution(params, quote);
+      const route = await this.prepareRouteForExecution(params);
       this.log('info', "Executing route...");
 
       // Create tracking for this operation BEFORE starting execution

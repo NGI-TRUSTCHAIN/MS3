@@ -19,7 +19,7 @@ export * from './adapters/index.js';
  * @throws Error if the adapter is not found or initialization fails
  */
 export async function createCrossChain<T extends ICrossChain = ICrossChain>(params: ICrossChainOptions): Promise<T> {
-  const { adapterName, config, options, neededFeature } = params;
+  const { adapterName, options, neededFeature } = params;
 
   // Validate adapter exists using the registry
   const adapterInfo = registry.getAdapter('crosschain', adapterName);

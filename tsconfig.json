@@ -9,6 +9,8 @@
     "declaration": true,
     "resolveJsonModule": true,
     "baseUrl": ".",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "paths": {
       "@m3s/utils": ["packages/utils/src"],
       "@m3s/utils/*": ["packages/utils/src/*"],

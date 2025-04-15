@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
  * @param AdapterClass The adapter class to test
  * @param mockArgs Mock arguments for constructor testing
  */
-export function testAdapterPattern(AdapterClass: any, mockArgs: any = {}) {
+export function testAdapterPattern(AdapterClass: any, mockArgs: any = {}, hookTimeout = 10000) {
   describe(`${AdapterClass.name} - Constructor Pattern Tests`, () => {
     it('should have a private constructor', () => {
       // Trying to instantiate directly should throw or fail
@@ -38,7 +38,7 @@ export function testAdapterPattern(AdapterClass: any, mockArgs: any = {}) {
         expect(true).toBe(true);
       }
     });
-  });
+  },hookTimeout);
 }
 
 // Add this real test to make Vitest recognize this as a test file

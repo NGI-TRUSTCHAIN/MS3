@@ -1,13 +1,13 @@
 import { ChainNamespaceType } from "@web3auth/base";
 import { WalletEvent } from "../enums/index.js";
-import { TransactionData } from "../types/index.js";
+import { AssetBalance, ProviderConfig, GenericTransactionData } from "../types/base.js";
 
 // TODO: Add ESTE WALLET TIENE QUE SER GENERICO Y NO ESPECIFICO DE EVM, ASEGURARSE.
 export interface ICoreWallet {
   /** General Initialization */
-  initialize(args?: any): Promise<any>;
+  initialize(args?: any): Promise<void>; // Keep args flexible for adapter config
   isInitialized(): boolean;
-  disconnect(): void; // Clean disconnect
+  disconnect(): void;
 
   /** Wallet Metadata */
   getWalletName(): string;
@@ -16,21 +16,27 @@ export interface ICoreWallet {
 
   /** Account Management */
   requestAccounts(): Promise<string[]>;
-  getPrivateKey(): Promise<string>;
+  getPrivateKey(): Promise<string>; // Note: May not be available for all wallet types (e.g., hardware, smart contract wallets)
   getAccounts(): Promise<string[]>;
-  getBalance(account?: string): Promise<string>; // Fetch account balance
-  verifySignature(message: string, signature: string): Promise<boolean>; // Verify signature correctness
-  on(event: WalletEvent, callback: (...args: any[]) => void): void;
-  off(event: WalletEvent, callback: (...args: any[]) => void): void;
+  /** Fetches the native asset balance for the specified account. */
+  getBalance(account?: string): Promise<AssetBalance>;
+  /** Verifies a signature against a message and the expected signer address. */
+  verifySignature(message: string | Uint8Array, signature: string, address: string): Promise<boolean>;
+  on(event: WalletEvent | string, callback: (...args: any[]) => void): void; // Allow string for custom events
+  off(event: WalletEvent | string, callback: (...args: any[]) => void): void;
 
   /** Network Management */
-  getNetwork(): Promise<{ chainId: string; name?: string }>;
-  setProvider(provider: any): Promise<void>;
+  getNetwork(): Promise<{ chainId: string | number; name?: string }>; // Keep chainId flexible
+  /** Sets or switches the network provider using a standard configuration object. */
+  setProvider(config: ProviderConfig): Promise<void>;
 
   /** Transactions & Signing */
-  sendTransaction(tx: TransactionData): Promise<string>;
-  signTransaction(tx: TransactionData): Promise<string>;
-  signMessage(message: string): Promise<string>;
+  /** Sends a transaction using generic data format. Returns a transaction identifier (e.g., hash). */
+  sendTransaction(tx: GenericTransactionData): Promise<string>;
+  /** Signs a transaction using generic data format. Returns the signed transaction data. */
+  signTransaction(tx: GenericTransactionData): Promise<string>; // Return type might need generalization (string | Uint8Array | object) ? Let's keep string for now.
+  /** Signs an arbitrary message. */
+  signMessage(message: string | Uint8Array): Promise<string>; // Allow binary messages
 }
 
 export interface IChainConfig {

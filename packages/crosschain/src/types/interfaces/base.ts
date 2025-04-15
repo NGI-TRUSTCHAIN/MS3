@@ -1,5 +1,3 @@
-import { LiFiExecutionProvider } from "../../index.js";
-
 /**
  * Represents an asset on a blockchain
  */

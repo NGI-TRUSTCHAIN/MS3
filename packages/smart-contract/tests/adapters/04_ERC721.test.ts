@@ -1,6 +1,6 @@
 import { describe, beforeEach, it, expect } from 'vitest';
 import { createContractHandler } from '../../src/index.js';
-import { IBaseContractHandler } from '../../src/types/index.js';
+import { CompiledOutput, DeployedOutput, IBaseContractHandler } from '../../src/types/index.js';
 import { ethers } from 'ethers';
 import * as path from 'path';
 import { TEST_PRIVATE_KEY, RUN_INTEGRATION_TESTS } from '../../config.js';
@@ -250,208 +250,197 @@ describe('ERC721 Options Tests', () => {
 (RUN_INTEGRATION_TESTS ? describe : describe.skip)('Full ERC721 Integration Tests', () => {
   let signer: ethers.Wallet;
   let contractHandler: IBaseContractHandler;
-  
+  let provider: ethers.Provider;
+
   beforeEach(async () => {
-    const provider = getTestProvider();
+    provider = getTestProvider();
     signer = new ethers.Wallet(TEST_PRIVATE_KEY, provider);
-    
+
     contractHandler = await createContractHandler({
       adapterName: 'openZeppelin',
       options: {
-        workDir: path.join(process.cwd(), 'contracts'),
+        workDir: path.join(process.cwd(), 'test-contracts-output', 'erc721'), // Use unique test dir
         preserveOutput: true,
+        providerConfig: { rpcUrl: (provider as any).connection?.url || 'https://ethereum-sepolia-rpc.publicnode.com' } // Pass provider config for reads
       }
     });
+    // Initialization is handled by createContractHandler -> OpenZeppelinAdapter.create
   });
   
   it('should deploy ERC721 with multiple features and verify functionality', async () => {
     console.log('🚀 Starting comprehensive ERC721 test');
-    
-    // Generate contract with multiple features
+
+    // 1. Generate contract
     console.log('1️⃣ Generating feature-rich ERC721 contract...');
     const contractSource = await contractHandler.generateContract({
-      standard: 'ERC721',
-      options: { 
-        name: 'ComplexNFT', 
+      language: 'solidity',
+      template: 'openzeppelin_erc721',
+      options: {
+        name: 'ComplexNFT',
         symbol: 'CNFT',
         baseUri: 'ipfs://QmNFTCollection/',
         enumerable: true,
         uriStorage: true,
-        burnable: true,
-        pausable: true,
         mintable: true,
+        pausable: true,
+        burnable: true,
         incremental: true,
         access: 'ownable'
       }
     });
-    
-    // Compile
+
+    // 2. Compile
     console.log('2️⃣ Compiling the contract...');
-    const compiled = await contractHandler.compile(contractSource);
-    
-    // Prepare constructor args
-    const deployerAddress = await signer.getAddress();
-    const constructorArgs = [deployerAddress]; // Initial owner for ownable
-    
-    // Deploy
+    const compiled: CompiledOutput = await contractHandler.compile({
+        sourceCode: contractSource,
+        language: 'solidity',
+        contractName: 'ComplexNFT'
+    });
+    expect(compiled.artifacts?.abi).toBeDefined();
+    expect(compiled.artifacts?.bytecode).toBeDefined();
+
+    // 3. Deploy
     console.log('3️⃣ Deploying to testnet...');
-    const deployed = await contractHandler.deploy(compiled, constructorArgs, signer);
-    console.log(`Contract deployed at: ${deployed.address}`);
-    
-    // 1. Test minting
- // ... in the integration test section
-    
-    // 1. Test minting
-    console.log('4️⃣ Testing NFT minting...');
-    
-    // When using baseUri, we should only pass the token-specific part
-    const tokenId = 0;
-    const tokenSuffix = '1.json';
-    const expectedTokenURI = `ipfs://QmNFTCollection/${tokenSuffix}`;
-    
+    const deployerAddress = await signer.getAddress();
+    const constructorArgs: any[] = []; // No explicit constructor args needed for standard Ownable OZ template
+    const deployed: DeployedOutput = await contractHandler.deploy({
+        compiledContract: compiled,
+        constructorArgs: constructorArgs,
+        wallet: signer
+    });
+    console.log(`Contract deployed at: ${deployed.contractId}`);
+    expect(deployed.contractId).toMatch(/^0x[a-fA-F0-9]{40}$/);
+
+    // --- Test Features ---
+    const contractId = deployed.contractId;
+    const contractAbi = compiled.artifacts.abi;
+    const tokenId = 0; // First token ID (due to incremental)
+
+    // 1. Mint a token (write)
+    console.log(`Testing mint functionality (minting token ${tokenId})...`);
+    const mintResult = await contractHandler.callMethod({
+        contractId: contractId,
+        contractInterface: contractAbi,
+        functionName: 'safeMint',
+        args: [deployerAddress], // Mint to deployer
+        wallet: signer
+    });
+    const mintReceipt = await provider.waitForTransaction(mintResult.transactionHash, 1, 60000);
+    expect(mintReceipt?.status).toBe(1);
+    console.log(`✅ Token ${tokenId} minted successfully`);
+
+    // Verify ownership (read)
+    const owner = await contractHandler.callMethod({
+        contractId: contractId,
+        contractInterface: contractAbi,
+        functionName: 'ownerOf',
+        args: [tokenId]
+    });
+    expect(owner.toLowerCase()).toBe(deployerAddress.toLowerCase());
+    console.log(`✅ Ownership verified`);
+
+    // 2. Test URI Storage & Base URI (read)
+    console.log('Testing token URI...');
+    const retrievedURI = await contractHandler.callMethod({
+        contractId: contractId,
+        contractInterface: contractAbi,
+        functionName: 'tokenURI',
+        args: [tokenId]
+    });
+    const expectedTokenURI = `ipfs://QmNFTCollection/${tokenId}`;
+    console.log(`Retrieved token URI: ${retrievedURI}`);
+    expect(retrievedURI).toBe(expectedTokenURI);
+    console.log(`✅ Token URI verified`);
+
+    // 3. Test enumerable feature (read)
+    console.log('Testing enumerable feature...');
+    const balance = await contractHandler.callMethod({
+        contractId: contractId,
+        contractInterface: contractAbi,
+        functionName: 'balanceOf',
+        args: [deployerAddress]
+    });
+    expect(Number(balance)).toBe(1);
+
+    const tokenByIndex = await contractHandler.callMethod({
+        contractId: contractId,
+        contractInterface: contractAbi,
+        functionName: 'tokenOfOwnerByIndex',
+        args: [deployerAddress, 0] // First token for this owner
+    });
+    expect(Number(tokenByIndex)).toBe(tokenId); // Should be the token we minted
+    console.log('✅ Enumerable feature verified');
+
+    // 4. Test pause functionality (write)
+    console.log('Testing pause functionality...');
+    const pauseResult = await contractHandler.callMethod({
+        contractId: contractId,
+        contractInterface: contractAbi,
+        functionName: 'pause',
+        args: [],
+        wallet: signer
+    });
+    const pauseReceipt = await provider.waitForTransaction(pauseResult.transactionHash, 1, 60000);
+    expect(pauseReceipt?.status).toBe(1);
+
+    const pausedState = await contractHandler.callMethod({
+        contractId: contractId,
+        contractInterface: contractAbi,
+        functionName: 'paused',
+        args: []
+    });
+    expect(pausedState).toBe(true);
+    console.log('✅ Contract successfully paused');
+
+    // 5. Test unpause (write)
+    console.log('Testing unpause functionality...');
+    const unpauseResult = await contractHandler.callMethod({
+        contractId: contractId,
+        contractInterface: contractAbi,
+        functionName: 'unpause',
+        args: [],
+        wallet: signer
+    });
+    const unpauseReceipt = await provider.waitForTransaction(unpauseResult.transactionHash, 1, 60000);
+    expect(unpauseReceipt?.status).toBe(1);
+
+    const unpausedState = await contractHandler.callMethod({
+        contractId: contractId,
+        contractInterface: contractAbi,
+        functionName: 'paused',
+        args: []
+    });
+    expect(unpausedState).toBe(false);
+    console.log('✅ Contract successfully unpaused');
+
+    // 6. Test burning (write)
+    console.log('Testing burn functionality...');
+    const burnResult = await contractHandler.callMethod({
+        contractId: contractId,
+        contractInterface: contractAbi,
+        functionName: 'burn',
+        args: [tokenId],
+        wallet: signer
+    });
+    const burnReceipt = await provider.waitForTransaction(burnResult.transactionHash, 1, 60000);
+    expect(burnReceipt?.status).toBe(1);
+
+    // Verify token is burned by checking if ownerOf throws (read)
     try {
-      const mint = await contractHandler.callMethod(
-        deployed.address,
-        compiled.abi,
-        'safeMint',
-        [deployerAddress, tokenSuffix], // Only pass the suffix, not the full URI
-        signer
-      );
-      
-      // Await the transaction
-      await mint.wait();
-      console.log('✅ NFT minted successfully');
-      
-      // Check ownership
-      const owner = await contractHandler.callMethod(
-        deployed.address,
-        compiled.abi,
-        'ownerOf',
-        [tokenId],
-        signer
-      );
-      
-      expect(owner.toLowerCase()).toBe(deployerAddress.toLowerCase());
-      console.log(`Token owner verified: ${owner}`);
-      
-      // Check token URI
-      const retrievedURI = await contractHandler.callMethod(
-        deployed.address,
-        compiled.abi,
-        'tokenURI',
-        [tokenId],
-        signer
-      );
-      
-      console.log(`Retrieved token URI: ${retrievedURI}`);
-      console.log(`Expected token URI: ${expectedTokenURI}`);
-      expect(retrievedURI).toBe(expectedTokenURI);
-      console.log(`✅ Token URI verified`);
-      
-      // 2. Test enumerable feature
-      const balance = await contractHandler.callMethod(
-        deployed.address,
-        compiled.abi,
-        'balanceOf',
-        [deployerAddress],
-        signer
-      );
-      
-      expect(Number(balance)).toBe(1);
-      
-      const tokenByIndex = await contractHandler.callMethod(
-        deployed.address,
-        compiled.abi,
-        'tokenOfOwnerByIndex',
-        [deployerAddress, 0],
-        signer
-      );
-      
-      expect(Number(tokenByIndex)).toBe(0);
-      console.log('✅ Enumerable feature verified');
-      
-      // 3. Test pause functionality
-      console.log('Testing pause functionality...');
-      const pause = await contractHandler.callMethod(
-        deployed.address,
-        compiled.abi,
-        'pause',
-        [],
-        signer
-      );
-      
-      // Await the transaction
-      await pause.wait();
-      
-      const paused = await contractHandler.callMethod(
-        deployed.address,
-        compiled.abi,
-        'paused',
-        [],
-        signer
-      );
-      
-      expect(paused).toBe(true);
-      console.log('✅ Contract successfully paused');
-      
-      // 4. Test unpause
-      console.log('Testing unpause functionality...');
-      const unpause = await contractHandler.callMethod(
-        deployed.address,
-        compiled.abi,
-        'unpause',
-        [],
-        signer
-      );
-      
-      // Await the transaction
-      await unpause.wait();
-      
-      const unpaused = await contractHandler.callMethod(
-        deployed.address,
-        compiled.abi,
-        'paused',
-        [],
-        signer
-      );
-      
-      expect(unpaused).toBe(false);
-      console.log('✅ Contract successfully unpaused');
-      
-      // 5. Test burning
-      console.log('Testing burn functionality...');
-      const burn = await contractHandler.callMethod(
-        deployed.address,
-        compiled.abi,
-        'burn',
-        [0], // Burn first token
-        signer
-      );
-      
-      // Await the transaction
-      await burn.wait();
-      
-      // Verify token is burned by checking if it throws when querying owner
-      try {
-        await contractHandler.callMethod(
-          deployed.address,
-          compiled.abi,
-          'ownerOf',
-          [0],
-          signer
-        );
-        
-        // If we get here, the token still exists
-        throw new Error('Token was not burned');
-      } catch (error: any) {
-        // Expected error for non-existent token
-        console.log('✅ Token successfully burned');
-      }
-      
-      console.log('✨ All ERC721 features tested successfully!');
+      await contractHandler.callMethod({
+          contractId: contractId,
+          contractInterface: contractAbi,
+          functionName: 'ownerOf',
+          args: [tokenId]
+      });
+      // If we get here, the token still exists - fail the test
+      throw new Error('Token was not burned successfully');
     } catch (error: any) {
-      console.error(`❌ Test failed: ${error.message}`);
-      throw error;
+      // Expecting an error (like 'ERC721NonexistentToken')
+      expect(error.message).toContain('revert'); // Check for revert reason
+      console.log('✅ Token successfully burned (ownerOf reverted as expected)');
     }
+
+    console.log('✨ All testable ERC721 features verified successfully!');
   }, 300000); // Longer timeout for blockchain interaction
 });

@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Web3AuthWalletAdapter } from '../../src/adapters/web3authWallet.js';
 import { WalletEvent } from '../../src/types/index.js';
-import { getChainConfigAsync } from '../utils.js';
+import { getWorkingChainConfigAsync } from '../utils.js';
 import { testAdapterPattern } from '../01_Core.test.js';
 
 // Mock Web3Auth dependencies
@@ -36,6 +36,7 @@ vi.mock('@web3auth/auth-adapter', () => ({
 // Mock ethers BrowserProvider
 vi.mock('ethers', async () => {
   const actual = await vi.importActual('ethers');
+  
   return {
     ...actual,
     BrowserProvider: vi.fn().mockImplementation(() => ({
@@ -66,7 +67,7 @@ describe('Web3AuthWalletAdapter Tests', () => {
 
   beforeEach(async () => {
     // Get chain config asynchronously before each test
-    chainConfig = await getChainConfigAsync('sepolia', true);
+    chainConfig = await getWorkingChainConfigAsync('sepolia');
   });
 
   // Test constructor pattern
@@ -155,6 +156,7 @@ describe('Web3AuthWalletAdapter Tests', () => {
   // Test some mock functionality with mocked Web3Auth
   describe('Mocked Functionality Tests', () => {
     let adapter: Web3AuthWalletAdapter;
+    let web3authInstance: any; // To access the mock instance
 
     beforeEach(async () => {
       adapter = await Web3AuthWalletAdapter.create({
@@ -177,18 +179,67 @@ describe('Web3AuthWalletAdapter Tests', () => {
         }
       });
       await adapter.initialize();
+      web3authInstance = (adapter as any).web3auth; // Get the internal instance
+
+         // --- ADDED: Simulate Connection ---
+         web3authInstance = (adapter as any).web3auth; // Get the internal instance
+         if (!web3authInstance) {
+           throw new Error("Failed to access internal web3auth mock instance in beforeEach");
+         }
+   
+         try {
+          // Simulate successful connection using the mock's connectTo
+          // Note: The mock connectTo resolves 'true', not a provider. The provider is static in the mock.
+          await web3authInstance.connectTo();
+          web3authInstance.connected = true; // Explicitly set connected flag on the mock instance
+  
+          // Verify state after connection attempt
+          const isInit = (adapter as any).initialized;
+          const isConn = web3authInstance?.connected;
+          const hasProv = !!web3authInstance?.provider;
+          const adapterIsConnected = adapter.isConnected();
+          console.log(`[Web3Auth Mock Test] beforeEach Check: initialized=${isInit}, web3auth.connected=${isConn}, web3auth.provider exists=${hasProv}`);
+          console.log(`[Web3Auth Mock Test] beforeEach Check: adapter.isConnected() returns: ${adapterIsConnected}`);
+  
+          if (!adapterIsConnected) {
+             console.error("!!! [Web3Auth Mock Test] beforeEach ERROR: adapter.isConnected() is false after simulated connection! !!!");
+             // Potentially throw an error here if connection is critical for all tests in this suite
+             // throw new Error("Failed to simulate connection state in beforeEach");
+          } else {
+             console.log("[Web3Auth Mock Test] beforeEach: Simulated connection successful.");
+          }
+  
+        } catch (error) {
+          console.error("[Web3Auth Mock Test] Error during simulated connection in beforeEach:", error);
+          throw error; // Fail fast if connection simulation fails
+        }
+    });
+
+    afterEach(() => {
+        vi.clearAllMocks();
     });
 
     it('should get accounts from provider', async () => {
+      if (!adapter || !adapter.isConnected()) { // Add check here
+         throw new Error("Adapter not connected at the start of 'get accounts' test");
+      }
+      console.log("[Web3Auth Mock Test] Running 'should get accounts from provider'...");
+      // The mock provider's request should be called now
       const accounts = await adapter.getAccounts();
+      console.log("[Web3Auth Mock Test] getAccounts returned:", accounts);
       expect(accounts).toEqual(['0x1234567890123456789012345678901234567890']);
+
+      // Optional: Verify the mock provider's request was called
+      expect(web3authInstance.provider.request).toHaveBeenCalledWith({ method: 'eth_accounts' });
     });
 
     it('should get wallet name', () => {
+      if (!adapter) throw new Error("Adapter not created in 'get wallet name' test");
       expect(adapter.getWalletName()).toBe('Web3AuthWallet');
     });
 
     it('should get a version string', () => {
+      if (!adapter) throw new Error("Adapter not created in 'get version' test");
       expect(adapter.getWalletVersion()).toBe('1.0.0');
     });
   });

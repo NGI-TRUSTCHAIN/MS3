@@ -2,7 +2,8 @@ export enum WalletEvent {
   connect = 'connect',
   disconnect = 'disconnect',
   accountsChanged = 'accountsChanged',
-  chainChanged = 'chainChanged'
+  chainChanged = 'chainChanged',
+  balanceChanged = 'balanceChanged'
 };
 
 export enum SignTypedDataVersion {

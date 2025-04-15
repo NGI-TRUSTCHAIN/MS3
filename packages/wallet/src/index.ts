@@ -11,7 +11,7 @@ export * from './types/index.js';
 export * from './adapters/index.js';
 
 export async function createWallet<T extends ICoreWallet = ICoreWallet>(params: IWalletOptions): Promise<T> {
-  const { adapterName, provider, options, neededFeature } = params;
+  const { adapterName, options, neededFeature } = params;
 
   // Validate adapter exists using the registry directly
   const adapterInfo = registry.getAdapter('wallet', adapterName);
@@ -45,9 +45,9 @@ export async function createWallet<T extends ICoreWallet = ICoreWallet>(params: 
   }
 
   // Set provider if provided
-  if (provider && typeof adapter.setProvider === 'function') {
-    await adapter.setProvider(provider);
-  }
+  // if (provider && typeof adapter.setProvider === 'function') {
+  //   await adapter.setProvider(provider);
+  // }
 
   // Wrap in error handler and return
   return createErrorHandlingProxy(adapter) as T;
