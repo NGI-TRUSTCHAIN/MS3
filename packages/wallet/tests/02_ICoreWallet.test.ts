@@ -52,10 +52,6 @@ export function testCoreWalletInterface(wallet: ICoreWallet, skipConnectivity: b
         expect(typeof wallet.requestAccounts).toBe('function');
       });
 
-      it('should implement getPrivateKey method', () => {
-        expect(typeof wallet.getPrivateKey).toBe('function');
-      });
-
       it('should implement getAccounts method', () => {
         expect(typeof wallet.getAccounts).toBe('function');
       });

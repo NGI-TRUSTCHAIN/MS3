@@ -22,7 +22,6 @@ export class EvmWalletAdapter implements IEVMWallet {
   private privateKey: string;
   public initialized: boolean = false;
   private eventListeners: Map<string, Set<(payload: any) => void>> = new Map();
-  private currentTicker?: string; // ADDED: Store only the ticker symbol
   private readonly name: string;
 
   /** General Initialization */
@@ -43,7 +42,7 @@ export class EvmWalletAdapter implements IEVMWallet {
    * const adapter = new EvmWalletAdapter({ privateKey: 'your-private-key', provider: yourProvider });
    * ```
    */
-   private constructor(args: args) {
+  private constructor(args: args) {
     // super(); // REMOVED: No base class constructor to call
     console.log("Creating EvmWalletAdapter with args:", args);
 
@@ -61,7 +60,6 @@ export class EvmWalletAdapter implements IEVMWallet {
       } else if (typeof args.provider === 'object' && args.provider.rpcUrl) {
         console.log("EvmWalletAdapter: Initial provider configuration provided. Creating provider instance.");
         this.provider = new JsonRpcProvider(args.provider.rpcUrl);
-        this.currentTicker = args.provider.ticker || 'ETH';
       } else {
         console.warn("EvmWalletAdapter: Invalid initial provider configuration provided.");
       }
@@ -134,7 +132,6 @@ export class EvmWalletAdapter implements IEVMWallet {
   disconnect(): void {
     console.log("EvmWalletAdapter disconnecting...");
     this.provider = undefined;
-    this.currentTicker = undefined; // Clear the ticker on disconnect
     // Ensure wallet is disconnected from provider if it exists
     if (this.wallet) {
       this.wallet = this.wallet.connect(null);
@@ -196,18 +193,6 @@ export class EvmWalletAdapter implements IEVMWallet {
   }
 
   /**
-   * Retrieves the private key associated with the wallet.
-   *
-   * @returns {Promise<string>} A promise that resolves to the private key as a string.
-   */
-  async getPrivateKey(): Promise<string> {
-    if (!this.initialized) {
-      throw new Error("Wallet not initialized.");
-    }
-    return this.privateKey;
-  }
-
-  /**
    * Retrieves the list of accounts associated with the wallet.
    *
    * @returns {Promise<string[]>} A promise that resolves to an array containing the wallet's address.
@@ -236,8 +221,10 @@ export class EvmWalletAdapter implements IEVMWallet {
     }
     try {
       const balanceWei = await this.provider.getBalance(address);
-      const decimals = 18; // Assume 18 for native asset
-      const symbol = this.currentTicker || 'ETH';
+      const network = await this.provider.getNetwork(); // <<< Get network info
+      const networkWithCurrency = network as ethers.Network & { nativeCurrency?: { decimals: number; symbol: string } };
+      const decimals = networkWithCurrency.nativeCurrency?.decimals ?? 18;
+      const symbol = networkWithCurrency.nativeCurrency?.symbol ?? 'ETH';
 
       return {
         amount: balanceWei.toString(),
@@ -359,7 +346,7 @@ export class EvmWalletAdapter implements IEVMWallet {
       const timer = setTimeout(() => {
         reject(new Error(`Timeout connecting to ${urlForError} after ${ms}ms`));
       }, ms);
-  
+
       promise
         .then(resolve)
         .catch(reject)
@@ -417,8 +404,8 @@ export class EvmWalletAdapter implements IEVMWallet {
           const configChainIdDec = configChainIdStr.startsWith('0x') ? parseInt(configChainIdStr, 16).toString() : configChainIdStr;
 
           if (networkChainIdStr !== configChainIdHex && networkChainIdStr !== configChainIdDec) {
-             // Throw specific error for chain ID mismatch
-             throw new Error(`RPC URL ${url} returned wrong chainId (${networkChainIdStr}), expected ${config.chainId}`);
+            // Throw specific error for chain ID mismatch
+            throw new Error(`RPC URL ${url} returned wrong chainId (${networkChainIdStr}), expected ${config.chainId}`);
           }
           // If successful, return the provider instance
           return provider;
@@ -435,13 +422,13 @@ export class EvmWalletAdapter implements IEVMWallet {
       } catch (error: any) {
         // Log specific errors clearly
         if (error.message.startsWith('Timeout connecting to')) {
-           console.warn(`[EvmWalletAdapter] Timeout connecting to RPC ${url}: ${error.message}`);
+          console.warn(`[EvmWalletAdapter] Timeout connecting to RPC ${url}: ${error.message}`);
         } else if (error.message.includes('returned wrong chainId')) {
-           // Log chain ID mismatch from the error thrown in checkConnection
-           console.warn(`[EvmWalletAdapter] Chain ID mismatch for RPC ${url}: ${error.message}`);
+          // Log chain ID mismatch from the error thrown in checkConnection
+          console.warn(`[EvmWalletAdapter] Chain ID mismatch for RPC ${url}: ${error.message}`);
         } else {
-           // Log other connection errors (like 429, DNS errors, etc.)
-           console.warn(`[EvmWalletAdapter] Failed to connect to RPC ${url}: ${error.message}`);
+          // Log other connection errors (like 429, DNS errors, etc.)
+          console.warn(`[EvmWalletAdapter] Failed to connect to RPC ${url}: ${error.message}`);
         }
         connectionError = error; // Store the last error to potentially throw later
         connectedProvider = null; // Ensure provider is null on error
@@ -453,19 +440,17 @@ export class EvmWalletAdapter implements IEVMWallet {
       // Disconnect if previously connected
       if (this.provider) {
         this.provider = undefined;
-        this.currentTicker = undefined; // Clear ticker on failure
         if (this.wallet) this.wallet = this.wallet.connect(null);
         this.emitEvent(WalletEvent.disconnect, null);
       }
       throw new Error(`Failed to connect to any provided RPC URL. Last error: ${connectionError?.message || 'Unknown connection error'}`);
     }
 
-      // Successfully connected to one of the URLs
-      this.provider = connectedProvider;
-      this.currentTicker = config.ticker; 
+    // Successfully connected to one of the URLs
+    this.provider = connectedProvider;
 
-     // Reconnect wallet if initialized
-     if (this.initialized && this.wallet) {
+    // Reconnect wallet if initialized
+    if (this.initialized && this.wallet) {
       this.wallet = this.wallet.connect(this.provider);
       console.log("[EvmWalletAdapter] Wallet instance reconnected to new provider");
       // FIX: Use WalletEvent.connected
@@ -478,11 +463,11 @@ export class EvmWalletAdapter implements IEVMWallet {
       }
     } else if (!this.initialized) {
       console.log("[EvmWalletAdapter] Provider set, wallet will connect during initialize()");
-       // Emit chainChanged if it's the very first provider being set
-       if (oldChainId === null) {
-           const newChainId = (await this.provider.getNetwork()).chainId.toString();
-           this.emitEvent(WalletEvent.chainChanged, newChainId);
-       }
+      // Emit chainChanged if it's the very first provider being set
+      if (oldChainId === null) {
+        const newChainId = (await this.provider.getNetwork()).chainId.toString();
+        this.emitEvent(WalletEvent.chainChanged, newChainId);
+      }
     }
   }
 

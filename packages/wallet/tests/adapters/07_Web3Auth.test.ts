@@ -103,7 +103,6 @@ describe('Web3AuthWalletAdapter Tests', () => {
       expect(typeof Web3AuthWalletAdapter.prototype.getWalletVersion).toBe('function');
       expect(typeof Web3AuthWalletAdapter.prototype.isConnected).toBe('function');
       expect(typeof Web3AuthWalletAdapter.prototype.requestAccounts).toBe('function');
-      expect(typeof Web3AuthWalletAdapter.prototype.getPrivateKey).toBe('function');
       expect(typeof Web3AuthWalletAdapter.prototype.getAccounts).toBe('function');
       expect(typeof Web3AuthWalletAdapter.prototype.getBalance).toBe('function');
       expect(typeof Web3AuthWalletAdapter.prototype.verifySignature).toBe('function');

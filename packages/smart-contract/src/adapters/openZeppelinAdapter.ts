@@ -33,15 +33,17 @@ const execAsync = promisify(exec);
 
 // Keep existing args interface for adapter-specific config
 interface OpenZeppelinAdapterArgs {
-    workDir?: string;
-    compilerSettings?: any; // Primarily for Solidity/Hardhat
-    solcVersion?: string;   // Solidity compiler version
-    hardhatConfig?: {
-        configFileName?: string;
-        customSettings?: Record<string, any>;
-    };
-    preserveOutput?: boolean;
-    providerConfig?: ProviderConfig; // For default provider (reads)
+    options?: {
+        workDir?: string;
+        hardhatConfig?: {
+            configFileName?: string;
+            customSettings?: Record<string, any>;
+        };
+        preserveOutput?: boolean;
+        providerConfig?: ProviderConfig;
+        compilerSettings?: any; // Primarily for Solidity/Hardhat
+        solcVersion?: string;
+    }
 }
 
 class CodeGenerator {
@@ -283,6 +285,7 @@ class BlockchainInteractor {
 
     async deployContract(input: DeployInput): Promise<DeployedOutput> {
         const { compiledContract, constructorArgs = [], wallet, deployOptions = {} } = input;
+        
         const contractName = compiledContract.metadata?.contractName || compiledContract.artifacts?.contractName || 'UnknownContract';
         console.log(`[BlockchainInteractor] Deploying ${contractName}...`);
 
@@ -494,6 +497,9 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
     private preserveOutput: boolean;
     private providerConfig?: ProviderConfig; // Store config
     private defaultProvider?: Provider;
+    private generator: CodeGenerator;
+    private solidityCompiler: SolidityCompiler; // Specific compiler instance
+    private interactor: BlockchainInteractor;
 
     // Configuration specific to helpers
     private solidityCompilerConfig: {
@@ -504,31 +510,24 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
         preserveOutput: boolean;
     };
 
-  // Internal helper instances
-    private generator: CodeGenerator;
-    private solidityCompiler: SolidityCompiler; // Specific compiler instance
-    private interactor: BlockchainInteractor;
-
     private constructor(args: OpenZeppelinAdapterArgs = {}) {
-        // Initialize core config
-        this.workDir = args.workDir || path.join(process.cwd(), 'm3s-contracts-output'); // Changed default
-        this.preserveOutput = args.preserveOutput === undefined ? true : args.preserveOutput;
-        this.providerConfig = args.providerConfig;
+        this.workDir = args.options?.workDir || path.join(process.cwd(), 'contracts-output');
+        this.preserveOutput = args.options?.preserveOutput ?? false;
+        this.providerConfig = args.options?.providerConfig;
 
-        // Prepare config for SolidityCompiler
+        // Configuration specific to helpers
         this.solidityCompilerConfig = {
             workDir: this.workDir,
-            solcVersion: args.solcVersion || '0.8.22', // Default solc version
-            compilerSettings: args.compilerSettings || { optimizer: { enabled: true, runs: 200 } },
-            hardhatConfigFileName: args.hardhatConfig?.configFileName || 'hardhat.config.cjs',
+            solcVersion: args.options?.solcVersion || '0.8.22',
+            compilerSettings: args.options?.compilerSettings || { optimizer: { enabled: true, runs: 200 } },
+            hardhatConfigFileName: args.options?.hardhatConfig?.configFileName || 'hardhat.config.cjs',
             preserveOutput: this.preserveOutput,
         };
 
-        // Create helper instances (pass only necessary config)
+        // Create helper instances
         this.generator = new CodeGenerator();
         this.solidityCompiler = new SolidityCompiler(this.solidityCompilerConfig);
-        // Interactor is created in initialize after provider is potentially set up
-        this.interactor = undefined as any; // Placeholder, will be created in initialize
+        this.interactor = undefined as any; // Placeholder
     }
 
     static async create(args: OpenZeppelinAdapterArgs = {}): Promise<OpenZeppelinAdapter> {

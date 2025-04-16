@@ -16,7 +16,6 @@ export interface ICoreWallet {
 
   /** Account Management */
   requestAccounts(): Promise<string[]>;
-  getPrivateKey(): Promise<string>; // Note: May not be available for all wallet types (e.g., hardware, smart contract wallets)
   getAccounts(): Promise<string[]>;
   /** Fetches the native asset balance for the specified account. */
   getBalance(account?: string): Promise<AssetBalance>;

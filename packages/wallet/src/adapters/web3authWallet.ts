@@ -227,32 +227,6 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
   }
 
   /**
-   * Gets the private key from Web3Auth
-   * @returns Promise resolving to the private key
-   * @throws Error if wallet is not connected or private key is unavailable
-   */
-  async getPrivateKey(): Promise<string> {
-    if (!this.isConnected() || !this.web3auth?.provider) {
-      throw new Error("Not connected to Web3Auth or provider unavailable.");
-    }
-
-    try {
-      // Use the standard EIP-1193 method if available, otherwise specific Web3Auth method
-      const privateKey = await this.web3auth.provider.request({
-        method: "eth_private_key" // Check if Web3Auth provider supports this standard method
-      });
-      if (!privateKey) {
-        throw new Error("Private key method not supported or returned null.");
-      }
-      return privateKey as string;
-    } catch (error: unknown) {
-      console.error("Error getting private key:", error);
-      // Consider mapping to a specific WalletErrorCode
-      throw new Error("Unable to get private key from Web3Auth");
-    }
-  }
-
-  /**
  * Gets the current accounts without triggering login flow
  * @returns Promise resolving to an array of account addresses
  */

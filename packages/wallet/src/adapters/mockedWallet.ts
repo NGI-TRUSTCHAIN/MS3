@@ -195,21 +195,6 @@ export class MockedWalletAdapter implements ICoreWallet {
   }
 
   /**
-   * Retrieves the private key.
-   *
-   * @returns {Promise<string>} A promise that resolves to the private key as a string.
-   */
-  async getPrivateKey(): Promise<string> {
-    if (!this.initialized) throw new Error("MockedWalletAdapter not initialized.");
-    if (!this.privateKey) {
-      // This case shouldn't happen if initialize worked correctly
-      throw new Error("Private key not available.");
-    }
-    console.log("[MockedWalletAdapter] Returning private key.");
-    return this.privateKey;
-  }
-
-  /**
    * Retrieves the list of account addresses associated with the wallet.
    *
    * @returns {Promise<string[]>} A promise that resolves to an array of account addresses.

@@ -87,11 +87,6 @@ describe('MockedWalletAdapter Tests', () => {
     expect(walletInstance.getWalletName()).toBe('mocked');
   });
 
-  itif(setupFailed)('should return the private key that was used to create it', async () => {
-    const returnedKey = await walletInstance.getPrivateKey();
-    expect(returnedKey).toBe(privateKey);
-  });
-
   itif(setupFailed)('should be connected after setting provider', () => {
     expect(walletInstance.isConnected()).toBe(true);
   });

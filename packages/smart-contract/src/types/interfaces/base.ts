@@ -60,7 +60,7 @@ export interface CallInput {
   functionName: string; // The name of the function/method to call
   args?: any[]; // Arguments for the function call
   /** The wallet to use for signing (required for write operations) */
-  wallet?: ICoreWallet;
+  wallet?: IEVMWallet;
   /** Optional: The specific interface (ABI, IDL) if not implicitly known by the adapter */
   contractInterface?: any;
   /** Optional: Chain/VM specific call options (e.g., read-only hint, gas limits, fees) */

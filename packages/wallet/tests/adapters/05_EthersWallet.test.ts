@@ -163,14 +163,6 @@ describe('EvmWalletAdapter Tests', () => {
        expect(walletInstance!.getWalletName()).toBe('ethers'); // Should match adapterName passed to create
     });
 
-    it('should return the private key that was used to create it', async () => {
-      // No need for !walletInstance check
-     const returnedKey = await walletInstance!.getPrivateKey();
-     expect(returnedKey).toBe(privateKey);
-   });
-
-    // Add this inside your "When wallet is initialized" describe block
-
     it('should emit accountsChanged event when accounts are requested', async () => {
       // No need for !walletInstance check
      const eventSpy = vi.fn();
