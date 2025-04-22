@@ -1,144 +1,156 @@
-import { polygon, Chain } from 'viem/chains';
-import { createWalletClient, createPublicClient, http } from 'viem';
+import { polygon, optimism, Chain } from 'viem/chains';
+import { createWalletClient, http, PrivateKeyAccount, WalletClient } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+import { IEVMWallet } from '@m3s/wallet/index.js';
+import { LiFiExecutionProvider } from '../../src/index.js';
+import { getWorkingChainConfigAsync } from './networks.js'; // <<< Keep this import
+
+// Helper to get Viem Chain object by ID
+const getViemChain = (chainId: number): Chain => {
+    if (chainId === polygon.id) return polygon;
+    if (chainId === optimism.id) return optimism;
+    // Add other chains your tests might use
+    throw new Error(`Unsupported chainId for Viem in test setup: ${chainId}`);
+};
 
 /**
- * Creates a LI.FI compatible provider for testing purposes
- * @param privateKey - The private key to use for signing transactions
- * @param chains - Optional array of chains to support
- * @returns A LI.FI compatible execution provider
+ * Creates a LI.FI compatible provider from an M3S IEVMWallet implementation.
+ * @param wallet - An initialized IEVMWallet implementation.
+ * @returns A provider compatible with the LiFiAdapter.
  */
-export function createLifiTestProvider(privateKey: string, chains?: Chain[]): any {
-    // Get primary chain for the provider
-    const primaryChain = chains?.[0] || polygon;
-
-    // Create account from private key
-    const account = privateKeyToAccount(privateKey as `0x${string}`);
-
-    // Create a standard public client for read operations - using real RPC
-    const publicClient = createPublicClient({
-        chain: primaryChain,
-        transport: http('https://polygon-rpc.com')  // Use a real RPC endpoint
-    });
-
-    // Create a standard wallet client with your account
-    let walletClient = createWalletClient({
-        account,
-        chain: primaryChain,
-        transport: http('https://polygon-rpc.com')  // Use a real RPC endpoint
-    });
-
-    // Return the provider interface expected by the LiFi adapter
-    return {
-        address: account.address,
-        walletClient,
-        signTransaction: async (tx: any) => {
-            return await account.signTransaction(tx);
-        },
-        switchChain: async (chainId: number) => {
-            // Find the chain in the provided chains list
-            const targetChain = chains?.find(chain => chain.id === chainId);
-            if (!targetChain) {
-                throw new Error(`Chain with ID ${chainId} not supported`);
-            }
-
-            // Create a new wallet client for the target chain
-            const newWalletClient: any = createWalletClient({
-                account,
-                chain: targetChain,
-                transport: http(getRpcUrl(targetChain.id))  // Get appropriate RPC URL for chain
-            });
-
-            // Replace the existing wallet client
-            walletClient = newWalletClient;
-            return true;
-        }
-    };
-}
-
 /**
- * Creates a LI.FI compatible provider from any wallet implementation
- * @param wallet - An ICoreWallet or IEVMWallet implementation
- * @returns A provider compatible with the LiFiAdapter
+ * Creates a LI.FI compatible provider from an M3S IEVMWallet implementation.
+ * Uses dynamic RPC fetching and validation.
+ * @param wallet - An initialized IEVMWallet implementation.
+ * @returns A provider compatible with the LiFiAdapter.
  */
-export function createLifiProviderFromWallet(wallet: any): any {
+export async function createLifiProviderFromWallet(wallet: IEVMWallet): Promise<LiFiExecutionProvider> {
     if (!wallet.isInitialized()) {
         throw new Error("Wallet must be initialized before creating a LiFi provider");
     }
 
+    const privateKey = (wallet as any).privateKey;
+    if (!privateKey || typeof privateKey !== 'string' || !privateKey.startsWith('0x')) {
+        throw new Error("Could not retrieve a valid private key from the M3S wallet instance for test setup.");
+    }
+    const account: PrivateKeyAccount = privateKeyToAccount(privateKey as `0x${string}`);
+
+    let initialViemChain: Chain = polygon; // Default Viem Chain object
+    let initialRpcUrl: string | undefined;
+    let initialChainIdNum: number = polygon.id; // Default numeric ID
+
+    try {
+        const network = await wallet.getNetwork();
+        if (network?.chainId) {
+            const currentChainId = typeof network.chainId === 'string' ? parseInt(network.chainId) : network.chainId;
+            initialChainIdNum = currentChainId; // Store numeric ID
+
+            // Get Viem Chain object
+            try {
+                initialViemChain = getViemChain(currentChainId);
+            } catch (viemChainError) {
+                console.warn(`M3S Wallet initial chain ${currentChainId} not mapped in getViemChain, defaulting Viem object to Polygon. Error: ${viemChainError}`);
+                initialViemChain = polygon;
+                initialChainIdNum = polygon.id; // Reset numeric ID if Viem object defaults
+            }
+
+            // Get validated RPC URL using the dynamic helper
+            console.log('INITIAL CHAIN ID IS THIS --->>> ', initialChainIdNum)
+            const workingConfig = await getWorkingChainConfigAsync(`${initialChainIdNum}`); // Use numeric ID
+            if (workingConfig?.rpcUrl) {
+                initialRpcUrl = workingConfig.rpcUrl;
+                console.log(`[createLifiProviderFromWallet] Using validated RPC for initial chain ${initialChainIdNum}: ${initialRpcUrl}`);
+            } else {
+                console.warn(`[createLifiProviderFromWallet] Could not get working RPC for initial chain ${initialChainIdNum}, falling back to Viem default.`);
+                initialRpcUrl = initialViemChain.rpcUrls.default.http[0];
+            }
+
+        } else {
+             throw new Error("Could not get chainId from M3S wallet network.");
+        }
+    } catch (e) {
+        console.warn("[createLifiProviderFromWallet] Error getting initial network/RPC from M3S wallet, defaulting Viem client to Polygon.", e);
+        initialViemChain = polygon;
+        initialChainIdNum = polygon.id;
+        initialRpcUrl = initialViemChain.rpcUrls.default.http[0]; // Use Viem default as last resort
+    }
+
+    // Ensure we have an RPC URL
+    if (!initialRpcUrl) {
+        console.error("CRITICAL: No RPC URL determined for initial Viem client. Using Polygon default.");
+        initialRpcUrl = polygon.rpcUrls.default.http[0];
+    }
+
+    let currentViemWalletClient: WalletClient = createWalletClient({
+        account,
+        chain: initialViemChain,
+        transport: http(initialRpcUrl) // Use the determined (preferably validated) RPC URL
+    });
+
     return {
         address: async () => {
             const accounts = await wallet.getAccounts();
+            if (accounts.length === 0) {
+                throw new Error("No accounts found in M3S wallet.");
+            }
             return accounts[0];
         },
-
-        walletClient: {
-            account: {
-                address: async () => {
-                    const accounts = await wallet.getAccounts();
-                    return accounts[0];
-                }
-            },
-            sendTransaction: async (tx: any) => {
-                // Forward transaction to wallet
-                const txHash = await wallet.sendTransaction(tx);
-                return { hash: txHash };
-            }
-        },
-
+        walletClient: currentViemWalletClient,
         signTransaction: async (tx: any) => {
-            return await wallet.signTransaction(tx);
+            console.warn("[createLifiProviderFromWallet] LiFi SDK using signTransaction fallback.");
+            const m3sTx: any = { /* ... basic conversion ... */ };
+            return await wallet.signTransaction(m3sTx);
         },
+        switchChain: async (chainId: number): Promise<WalletClient> => {
+            console.log(`[createLifiProviderFromWallet] Received request to switch Viem client to chain ${chainId}`);
+            const currentViemChainId = currentViemWalletClient?.chain?.id;
 
-        switchChain: async (chainId: number) => {
-            // Use the wallet's chain switching capability
-            const chainConfig = {
-                chainId: `0x${chainId.toString(16)}`,
-                name: getChainNameByChainId(chainId),
-                rpcTarget: getRpcUrl(chainId)
-            };
+            if (currentViemChainId === chainId) {
+                 console.log(`[createLifiProviderFromWallet] Viem client already on chain ${chainId}.`);
+                 return currentViemWalletClient;
+            }
 
-            await wallet.setProvider(chainConfig);
-            return true;
+            try {
+                const targetViemChain = getViemChain(chainId); // Get Viem chain object
+
+                // Get validated RPC URL using the dynamic helper
+                const workingConfig = await getWorkingChainConfigAsync(`${chainId}`);
+                let targetRpcUrl: string;
+                if (workingConfig?.rpcUrl) {
+                    targetRpcUrl = workingConfig.rpcUrl;
+                     console.log(`[createLifiProviderFromWallet] Using validated RPC for target chain ${chainId}: ${targetRpcUrl}`);
+                } else {
+                    console.warn(`[createLifiProviderFromWallet] Could not get working RPC for target chain ${chainId}, falling back to Viem default.`);
+                    targetRpcUrl = targetViemChain.rpcUrls.default.http[0];
+                }
+
+                console.log(`[createLifiProviderFromWallet] Creating new Viem client for chain ${chainId} with RPC ${targetRpcUrl}`);
+
+                currentViemWalletClient = createWalletClient({
+                    account,
+                    chain: targetViemChain,
+                    transport: http(targetRpcUrl) // Use the determined (preferably validated) RPC URL
+                });
+                console.log(`[createLifiProviderFromWallet] Switched Viem client successfully. New client UID: ${currentViemWalletClient.uid}`);
+
+                // Switch underlying M3S wallet (using the same workingConfig if available)
+                try {
+                    if (workingConfig) { // Use the config we already fetched
+                        await wallet.setProvider(workingConfig);
+                        console.log(`[createLifiProviderFromWallet] Underlying M3S wallet provider switched to chain ${chainId}.`);
+                    } else {
+                         console.warn(`[createLifiProviderFromWallet] Could not find M3S config (via getWorkingChainConfigAsync) for chain ${chainId} to switch underlying wallet.`);
+                    }
+                } catch (m3sSwitchError) {
+                    console.error(`[createLifiProviderFromWallet] Error switching underlying M3S wallet to ${chainId}:`, m3sSwitchError);
+                }
+
+                return currentViemWalletClient;
+
+            } catch (error) {
+                 console.error(`[createLifiProviderFromWallet] Failed to switch Viem client to chain ${chainId}:`, error);
+                 throw error;
+            }
         }
     };
-}
-
-/**
- * Gets the RPC URL for a specific chain
- * @param chainId - The chain ID to get the RPC URL for
- * @returns The RPC URL for the chain
- */
-export function getRpcUrl(chainId: number): string {
-    // Map of chain IDs to their public RPC endpoints
-    const rpcMap: Record<number, string> = {
-        1: 'https://eth.llamarpc.com',
-        10: 'https://mainnet.optimism.io',
-        56: 'https://bsc-dataseed.binance.org',
-        137: 'https://polygon-rpc.com',
-        42161: 'https://arb1.arbitrum.io/rpc',
-        8453: 'https://mainnet.base.org', // Base
-        // Add more as needed
-    };
-
-    return rpcMap[chainId] || `https://rpc.ankr.com/${getChainNameByChainId(chainId)}`;
-}
-
-/**
- * Gets the chain name for a specific chain ID
- * @param chainId - The chain ID to get the name for
- * @returns The chain name
- */
-export function getChainNameByChainId(chainId: number): string {
-    const chainMap: Record<number, string> = {
-        1: 'eth',
-        10: 'optimism',
-        56: 'bsc',
-        137: 'polygon',
-        42161: 'arbitrum',
-        8453: 'base',
-        // Add more as needed
-    };
-
-    return chainMap[chainId] || 'eth';
 }
