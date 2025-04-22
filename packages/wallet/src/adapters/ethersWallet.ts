@@ -475,53 +475,64 @@ export class EvmWalletAdapter implements IEVMWallet {
     if (!this.initialized || !this.wallet) {
       throw new Error("Wallet not initialized.");
     }
-    const address = this.wallet.address;
 
     const txRequest: ethers.TransactionRequest = {
       to: tx.to,
-      from: address, // Set from address
+      // Convert value string (ETH) to Wei bigint if needed, otherwise pass through
+      value: (typeof tx.value === 'string' && tx.value.includes('.')) ? ethers.parseEther(tx.value) : tx.value,
       data: tx.data ? (typeof tx.data === 'string' ? tx.data : ethers.hexlify(tx.data)) : undefined,
-      value: (typeof tx.value === 'string' && tx.value.length > 0) ? ethers.parseUnits(tx.value, 'ether') : tx.value, // Assume 'ether', might need decimals info
-      // Merge options, prioritizing specific fields over generic ones if they exist
+      chainId: tx.options?.chainId ?? (this.provider ? (await this.getNetwork()).chainId : undefined),
+      // <<< START CHANGE: Only set nonce if explicitly provided in options >>>
+      nonce: tx.options?.nonce,
+      // <<< END CHANGE >>>
       gasLimit: tx.options?.gasLimit,
       gasPrice: tx.options?.gasPrice,
       maxFeePerGas: tx.options?.maxFeePerGas,
       maxPriorityFeePerGas: tx.options?.maxPriorityFeePerGas,
-      nonce: tx.options?.nonce,
-      chainId: tx.options?.chainId,
-      // Add any other relevant options from GenericTransactionData.options
-      ...(tx.options || {})
     };
 
-    // Populate missing fields if provider is available
+    // Gas handling: Prioritize options, then estimate if connected
     if (this.provider) {
-      if (txRequest.nonce === undefined) {
-        txRequest.nonce = await this.provider.getTransactionCount(address);
-      }
-      // Gas handling: Prioritize options, then estimate/fetch
+      // Ensure we have a signer connected to the provider for estimation/fee data
+      const signer = this.wallet.connect(this.provider);
       if (txRequest.gasLimit === undefined) {
         try {
-          // Estimate gas using the partially built request
-          txRequest.gasLimit = await this.estimateGas(tx); // Call internal estimateGas
-        } catch (estError) {
-          console.warn("[EvmWalletAdapter] Failed to estimate gas automatically:", estError);
-          // Decide if we should throw or let the provider handle it
+          // Create a minimal object for estimation as estimateGas doesn't like all fields
+          const estimateParams: ethers.TransactionRequest = {
+            to: txRequest.to,
+            from: await signer.getAddress(), // estimateGas needs 'from'
+            data: txRequest.data,
+            value: txRequest.value
+          };
+          console.log(`[EvmWalletAdapter] Estimating gas for:`, estimateParams);
+          txRequest.gasLimit = await signer.estimateGas(estimateParams);
+          console.log(`[EvmWalletAdapter] Gas estimate: ${txRequest.gasLimit}`);
+        } catch (estimateError: any) {
+          console.error("[EvmWalletAdapter] Gas estimation failed:", estimateError.message);
         }
       }
+      // Fee handling: Prioritize options, then fetch if connected
       if (txRequest.gasPrice === undefined && txRequest.maxFeePerGas === undefined) {
         const feeData = await this.provider.getFeeData();
-        if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
-          txRequest.maxFeePerGas = feeData.maxFeePerGas;
-          txRequest.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
+        if (feeData) {
+          if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
+            // EIP-1559
+            txRequest.maxFeePerGas = feeData.maxFeePerGas;
+            txRequest.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
+          } else if (feeData.gasPrice) {
+            // Legacy
+            txRequest.gasPrice = feeData.gasPrice;
+          }
+          // Log fetched fees
+          console.log(`[EvmWalletAdapter] Fetched fee data: gasPrice=${feeData.gasPrice}, maxFeePerGas=${feeData.maxFeePerGas}, maxPriorityFeePerGas=${feeData.maxPriorityFeePerGas}`);
         } else {
-          txRequest.gasPrice = feeData.gasPrice;
+          console.warn("[EvmWalletAdapter] Could not fetch fee data from provider.");
         }
       }
     } else if (txRequest.nonce === undefined || (txRequest.gasLimit === undefined && txRequest.gasPrice === undefined && txRequest.maxFeePerGas === undefined)) {
       // Cannot automatically populate nonce/gas without provider for signing offline
       console.warn("[EvmWalletAdapter] Signing transaction without provider: Nonce and Gas parameters must be provided in tx.options");
     }
-
 
     // Remove undefined fields before sending/signing
     Object.keys(txRequest).forEach(key => txRequest[key as keyof ethers.TransactionRequest] === undefined && delete txRequest[key as keyof ethers.TransactionRequest]);
@@ -537,19 +548,19 @@ export class EvmWalletAdapter implements IEVMWallet {
    * @throws Will throw an error if the wallet, provider, or initialization is not properly set up.
    */
   async sendTransaction(tx: GenericTransactionData): Promise<string> {
-    if (!this.isConnected() || !this.wallet?.provider) { // Requires connected provider
-      throw new Error("Wallet not initialized or provider not connected.");
+    if (!this.isConnected() || !this.wallet) {
+      throw new Error("EvmWalletAdapter not connected or initialized.");
     }
     try {
       const txRequest = await this.prepareTransactionRequest(tx);
-      console.log("[EvmWalletAdapter] Sending transaction:", txRequest);
-      const txResponse: TransactionResponse = await this.wallet.sendTransaction(txRequest);
-      console.log("[EvmWalletAdapter] Transaction sent, hash:", txResponse.hash);
-      return txResponse.hash;
-    } catch (error) {
+      console.log('[EvmWalletAdapter] Sending transaction:', txRequest); // Log the final prepared tx
+      const response: TransactionResponse = await this.wallet.sendTransaction(txRequest); // <<< Ethers handles nonce if txRequest.nonce is undefined
+      console.log(`[EvmWalletAdapter] Transaction sent, hash: ${response.hash}`);
+      return response.hash;
+    } catch (error: any) {
       console.error("[EvmWalletAdapter] Send transaction failed:", error);
-      // TODO: Map errors to standardized WalletErrorCode
-      throw error; // Re-throw for now
+      // Re-throw as an AdapterError or specific error type if desired
+      throw error; // Re-throw original error for now
     }
   }
 
