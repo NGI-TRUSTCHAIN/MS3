@@ -13,11 +13,7 @@ const getViemChain = (chainId: number): Chain => {
     throw new Error(`Unsupported chainId for Viem in test setup: ${chainId}`);
 };
 
-/**
- * Creates a LI.FI compatible provider from an M3S IEVMWallet implementation.
- * @param wallet - An initialized IEVMWallet implementation.
- * @returns A provider compatible with the LiFiAdapter.
- */
+
 /**
  * Creates a LI.FI compatible provider from an M3S IEVMWallet implementation.
  * Uses dynamic RPC fetching and validation.

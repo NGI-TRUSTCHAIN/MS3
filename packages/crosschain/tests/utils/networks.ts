@@ -242,8 +242,7 @@ export async function getWorkingChainConfigAsync(networkIdentifier: string | num
   // Step 4: Handle failure if no URL worked
   console.error(`[getWorkingChainConfigAsync] No working RPC found for ${baseConfig.name} after testing ${urlsToTest.length} URLs.`);
   return null;
-}
-
+} 
 
 // --- Keep Background Loading ---
 // Initiate loading networks in the background when the module is imported.

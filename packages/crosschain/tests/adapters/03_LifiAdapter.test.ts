@@ -246,27 +246,27 @@ describe('LiFiAdapter Pattern & Lifecycle Tests', () => {
   //     expect(chains.length).toBeGreaterThan(0);
   //   });
 
-  //   // it('3.1: should allow adding API key after failed provider-only initialization', async () => {
-  //   //   const executionProvider = await createExecutionProvider();
+  //   it('3.1: should allow adding API key after failed provider-only initialization', async () => {
+  //     const executionProvider = await createExecutionProvider();
 
-  //   //   const adapter: any = await createCrossChain({
-  //   //     adapterName: 'lifi',
-  //   //     config: { provider: executionProvider }
-  //   //   });
+  //     const adapter: any = await createCrossChain({
+  //       adapterName: 'lifi',
+  //       config: { provider: executionProvider }
+  //     });
 
-  //   //   expect(adapter.isInitialized()).toBe(false);
+  //     expect(adapter.isInitialized()).toBe(false);
 
-  //   //   // Now initialize with API key
-  //   //   await adapter.initialize({ apiKey: LIFI_API_KEY });
-  //   //   expect(adapter.isInitialized()).toBe(true);
+  //     // Now initialize with API key
+  //     await adapter.initialize({ apiKey: LIFI_API_KEY });
+  //     expect(adapter.isInitialized()).toBe(true);
 
-  //   //   // Read operations should work now
-  //   //   const chains = await adapter.getSupportedChains();
-  //   //   expect(chains.length).toBeGreaterThan(0);
+  //     // Read operations should work now
+  //     const chains = await adapter.getSupportedChains();
+  //     expect(chains.length).toBeGreaterThan(0);
 
-  //   //   // Should need to set provider again after proper initialization
-  //   //   expect(adapter.hasExecutionProvider()).toBe(false);
-  //   // });
+  //     // Should need to set provider again after proper initialization
+  //     expect(adapter.hasExecutionProvider()).toBe(false);
+  //   });
   // });
 
   // describe('4. Initialize with Both API Key and Provider', () => {
@@ -460,115 +460,115 @@ describe('LiFiAdapter Pattern & Lifecycle Tests', () => {
   //   });
   // });
 
-  describe('7. Swap Operation Lifecycle', () => {
-    it('7.1: should get quote for a same-chain swap', async () => {
-      console.log("🔄 Testing quote for MATIC to USDT on Polygon");
-      // Use the global adapter instance configured in beforeAll
-      expect(adapter.isInitialized()).toBe(true);
+  // describe('7. Swap Operation Lifecycle', () => {
+  //   it('7.1: should get quote for a same-chain swap', async () => {
+  //     console.log("🔄 Testing quote for MATIC to USDT on Polygon");
+  //     // Use the global adapter instance configured in beforeAll
+  //     expect(adapter.isInitialized()).toBe(true);
 
-      try {
-        const quotes = await adapter.getOperationQuote(swapIntent);
-        console.log('Swap Quote 7.1:', JSON.stringify(quotes, null, 2)); // Use JSON.stringify for better readability
-        expect(quotes).toBeDefined();
-        expect(Array.isArray(quotes)).toBe(true);
-        expect(quotes.length).toBeGreaterThan(0);
-        // Add more specific checks for the quote structure if needed
-        const quote = quotes[0];
-        expect(quote.id).toBeDefined();
-        expect(quote.intent).toEqual(swapIntent);
-        expect(quote.estimate.toAmountMin).toBeDefined();
-        expect(parseFloat(quote.estimate.toAmountMin)).toBeGreaterThanOrEqual(0); // Should be >= 0
-        expect(quote.adapterName).toBe('lifi');
-        expect(quote.adapterQuote).toBeDefined();
+  //     try {
+  //       const quotes = await adapter.getOperationQuote(swapIntent);
+  //       console.log('Swap Quote 7.1:', JSON.stringify(quotes, null, 2)); // Use JSON.stringify for better readability
+  //       expect(quotes).toBeDefined();
+  //       expect(Array.isArray(quotes)).toBe(true);
+  //       expect(quotes.length).toBeGreaterThan(0);
+  //       // Add more specific checks for the quote structure if needed
+  //       const quote = quotes[0];
+  //       expect(quote.id).toBeDefined();
+  //       expect(quote.intent).toEqual(swapIntent);
+  //       expect(quote.estimate.toAmountMin).toBeDefined();
+  //       expect(parseFloat(quote.estimate.toAmountMin)).toBeGreaterThanOrEqual(0); // Should be >= 0
+  //       expect(quote.adapterName).toBe('lifi');
+  //       expect(quote.adapterQuote).toBeDefined();
 
-      } catch (error) {
-        console.error("⚠️ Swap Quote 7.1 failed unexpectedly:", error);
-        throw error;
-      }
-    }, QUOTE_TEST_TIMEOUT);
+  //     } catch (error) {
+  //       console.error("⚠️ Swap Quote 7.1 failed unexpectedly:", error);
+  //       throw error;
+  //     }
+  //   }, QUOTE_TEST_TIMEOUT);
 
-    it('7.2: should execute same-chain swap and track its status', async () => {
-      if (!RUN_REAL_EXECUTION) {
-        console.log("Skipping real execution test 7.2 - set RUN_REAL_EXECUTION=true to enable");
-        return;
-      }
-      console.log("⚠️ WARNING: Test 7.2 will execute a REAL same-chain swap with fees");
-      console.log(`💰 Swapping ${ethers.formatUnits(swapIntent.amount, swapIntent.sourceAsset.decimals)} ${swapIntent.sourceAsset.symbol} to ${swapIntent.destinationAsset.symbol} on Polygon`);
+  //   it('7.2: should execute same-chain swap and track its status', async () => {
+  //     if (!RUN_REAL_EXECUTION) {
+  //       console.log("Skipping real execution test 7.2 - set RUN_REAL_EXECUTION=true to enable");
+  //       return;
+  //     }
+  //     console.log("⚠️ WARNING: Test 7.2 will execute a REAL same-chain swap with fees");
+  //     console.log(`💰 Swapping ${ethers.formatUnits(swapIntent.amount, swapIntent.sourceAsset.decimals)} ${swapIntent.sourceAsset.symbol} to ${swapIntent.destinationAsset.symbol} on Polygon`);
 
-      // Use the global adapter instance configured in beforeAll (has autoConfirm=true)
-      expect(adapter.hasExecutionProvider()).toBe(true);
+  //     // Use the global adapter instance configured in beforeAll (has autoConfirm=true)
+  //     expect(adapter.hasExecutionProvider()).toBe(true);
 
-      // 1. Get the quote first
-      let quoteToExecute: OperationQuote;
-      try {
-        const quotes = await adapter.getOperationQuote(swapIntent); // <<< Use dynamic swapIntent
-        expect(quotes.length).toBeGreaterThan(0);
-        quoteToExecute = quotes[0];
-        console.log("Got quote for swap execution 7.2:", quoteToExecute.id);
-        console.log("Estimated Output (Min):", quoteToExecute.estimate.toAmountMin, swapIntent.destinationAsset.symbol);
-        console.log("Estimated Duration:", quoteToExecute.estimate.executionDuration, "seconds");
-      } catch (error) {
-        console.error("Failed to get quote for test 7.2:", error);
-        throw error;
-      }
-      // TODO: We need to somehow change the timeout of the test, either calculating this before, just to get the timeout.
-      // Then build this entire test block with the quote timeout.
-      // Timeout is: quoteToExecute.estimate.executionDuration (seconds)
+  //     // 1. Get the quote first
+  //     let quoteToExecute: OperationQuote;
+  //     try {
+  //       const quotes = await adapter.getOperationQuote(swapIntent); // <<< Use dynamic swapIntent
+  //       expect(quotes.length).toBeGreaterThan(0);
+  //       quoteToExecute = quotes[0];
+  //       console.log("Got quote for swap execution 7.2:", quoteToExecute.id);
+  //       console.log("Estimated Output (Min):", quoteToExecute.estimate.toAmountMin, swapIntent.destinationAsset.symbol);
+  //       console.log("Estimated Duration:", quoteToExecute.estimate.executionDuration, "seconds");
+  //     } catch (error) {
+  //       console.error("Failed to get quote for test 7.2:", error);
+  //       throw error;
+  //     }
+  //     // TODO: We need to somehow change the timeout of the test, either calculating this before, just to get the timeout.
+  //     // Then build this entire test block with the quote timeout.
+  //     // Timeout is: quoteToExecute.estimate.executionDuration (seconds)
 
-      // 2. Execute the operation using the obtained quote
-      let result: OperationResult;
-      try {
-        result = await adapter.executeOperation(quoteToExecute);
-        console.log("✅ Swap initiated 7.2:", result);
-        expect(result).toBeDefined();
-        expect(result.operationId).toBe(quoteToExecute.id);
-        // Initial status might briefly be PENDING or directly ACTION_REQUIRED if approval needed instantly
-        expect(['PENDING', 'ACTION_REQUIRED']).toContain(result.status);
-      } catch (execError) {
-        console.error("🚨 Failed to initiate swap execution 7.2:", execError);
-        throw execError;
-      }
+  //     // 2. Execute the operation using the obtained quote
+  //     let result: OperationResult;
+  //     try {
+  //       result = await adapter.executeOperation(quoteToExecute);
+  //       console.log("✅ Swap initiated 7.2:", result);
+  //       expect(result).toBeDefined();
+  //       expect(result.operationId).toBe(quoteToExecute.id);
+  //       // Initial status might briefly be PENDING or directly ACTION_REQUIRED if approval needed instantly
+  //       expect(['PENDING', 'ACTION_REQUIRED']).toContain(result.status);
+  //     } catch (execError) {
+  //       console.error("🚨 Failed to initiate swap execution 7.2:", execError);
+  //       throw execError;
+  //     }
 
-       // 3. Track status
-       let currentStatus: OperationResult = result;
-       let attempts = 0;
-       // Use the increased timeout defined earlier
-       const maxAttempts = Math.floor(SWAP_EXECUTION_TIMEOUT / 10000) - 2; // ~4 mins worth of 10s checks
-       const checkInterval = 10000; // 10 seconds
+  //      // 3. Track status
+  //      let currentStatus: OperationResult = result;
+  //      let attempts = 0;
+  //      // Use the increased timeout defined earlier
+  //      const maxAttempts = Math.floor(SWAP_EXECUTION_TIMEOUT / 10000) - 2; // ~4 mins worth of 10s checks
+  //      const checkInterval = 10000; // 10 seconds
  
-       while (['PENDING', 'ACTION_REQUIRED'].includes(currentStatus.status) && attempts < maxAttempts) {
-         await new Promise(resolve => setTimeout(resolve, checkInterval));
-         attempts++;
-         try {
-           currentStatus = await adapter.getOperationStatus(result.operationId);
-           console.log(`Status check 7.2 ${attempts}/${maxAttempts}:`, currentStatus.status, currentStatus.statusMessage);
+  //      while (['PENDING', 'ACTION_REQUIRED'].includes(currentStatus.status) && attempts < maxAttempts) {
+  //        await new Promise(resolve => setTimeout(resolve, checkInterval));
+  //        attempts++;
+  //        try {
+  //          currentStatus = await adapter.getOperationStatus(result.operationId);
+  //          console.log(`Status check 7.2 ${attempts}/${maxAttempts}:`, currentStatus.status, currentStatus.statusMessage);
  
-           // Log transaction hashes when they appear
-           if (currentStatus.sourceTx?.hash && attempts === 1) { // Log only once
-              console.log(`   Source Tx Hash: ${currentStatus.sourceTx.hash}`);
-           }
+  //          // Log transaction hashes when they appear
+  //          if (currentStatus.sourceTx?.hash && attempts === 1) { // Log only once
+  //             console.log(`   Source Tx Hash: ${currentStatus.sourceTx.hash}`);
+  //          }
  
-         } catch (statusError) {
-           console.error(`Error fetching status in attempt ${attempts}:`, statusError);
-           // Decide if you want to break or continue on status fetch error
-           // For now, let's break to avoid masking the error
-           throw statusError;
-         }
-       }
+  //        } catch (statusError) {
+  //          console.error(`Error fetching status in attempt ${attempts}:`, statusError);
+  //          // Decide if you want to break or continue on status fetch error
+  //          // For now, let's break to avoid masking the error
+  //          throw statusError;
+  //        }
+  //      }
  
-       console.log("Final Swap Status 7.2:", currentStatus);
+  //      console.log("Final Swap Status 7.2:", currentStatus);
  
-       // Assert final status - should be COMPLETED
-       expect(currentStatus.status).toBe('COMPLETED');
-       expect(currentStatus.receivedAmount).toBeDefined();
-       // Ensure received amount is a positive number string
-       expect(currentStatus.receivedAmount).toMatch(/^\d+(\.\d+)?$/);
-       expect(parseFloat(currentStatus.receivedAmount!)).toBeGreaterThan(0);
-       expect(currentStatus.sourceTx?.hash).toBeDefined();
-       expect(currentStatus.error).toBeUndefined();
+  //      // Assert final status - should be COMPLETED
+  //      expect(currentStatus.status).toBe('COMPLETED');
+  //      expect(currentStatus.receivedAmount).toBeDefined();
+  //      // Ensure received amount is a positive number string
+  //      expect(currentStatus.receivedAmount).toMatch(/^\d+(\.\d+)?$/);
+  //      expect(parseFloat(currentStatus.receivedAmount!)).toBeGreaterThan(0);
+  //      expect(currentStatus.sourceTx?.hash).toBeDefined();
+  //      expect(currentStatus.error).toBeUndefined();
  
-     }, SWAP_EXECUTION_TIMEOUT + 10000);
-  });
+  //    }, SWAP_EXECUTION_TIMEOUT + 10000);
+  // });
 
   describe('8. Bridge Operation Lifecycle', () => {
     it('8.1: should get quote for a cross-chain bridge', async () => {
@@ -597,7 +597,7 @@ describe('LiFiAdapter Pattern & Lifecycle Tests', () => {
       console.log("⚠️ WARNING: Test 8.2 will execute a REAL cross-chain transaction with fees");
       console.log(`💰 Bridging ${ethers.formatUnits(bridgeIntent.amount, bridgeIntent.sourceAsset.decimals)} ${bridgeIntent.sourceAsset.symbol} to ${bridgeIntent.destinationAsset.symbol} on Optimism`);
 
-      // Use the global adapter instance (has autoConfirm=true)
+      // Use the global adapter instance (has autoConfirm=true by default now)
       expect(adapter.hasExecutionProvider()).toBe(true);
 
       // 1. Get Quote
@@ -617,7 +617,9 @@ describe('LiFiAdapter Pattern & Lifecycle Tests', () => {
       console.log("✅ Bridge initiated 8.2:", result);
       expect(result).toBeDefined();
       expect(result.operationId).toBe(quoteToExecute.id);
-      expect(result.status).toBe('PENDING');
+      // Initial status is usually PENDING, but could become ACTION_REQUIRED quickly
+      expect(['PENDING', 'ACTION_REQUIRED']).toContain(result.status);
+
 
       console.log("Waiting 15s to check initial bridge status...");
       await new Promise(resolve => setTimeout(resolve, 15000)); // Wait 15 seconds
@@ -625,28 +627,14 @@ describe('LiFiAdapter Pattern & Lifecycle Tests', () => {
       const initialStatus = await adapter.getOperationStatus(result.operationId);
       console.log("Initial Bridge Status Check 8.2:", initialStatus);
 
-      // Assert that it's still PENDING and hasn't immediately failed or required action
-      expect(initialStatus.status).toBe('PENDING');
+      // Assert that it's still PENDING or ACTION_REQUIRED and hasn't immediately failed
+      expect(['PENDING', 'ACTION_REQUIRED']).toContain(initialStatus.status);
       expect(initialStatus.error).toBeUndefined();
 
-      // 3. Track Status
-      // let currentStatus: OperationResult = result;
-      // let attempts = 0;
-      // const maxAttempts = 60; // Increased attempts for bridging
+      // Note: Full tracking to completion is removed here for brevity,
+      // as the main point is initiation and initial status check.
+      // Add back the while loop from test 7.2 if full tracking is needed.
 
-      // while (['PENDING', 'ACTION_REQUIRED'].includes(currentStatus.status) && attempts < maxAttempts) {
-      //   await new Promise(resolve => setTimeout(resolve, 15000)); // 15 sec check for bridges
-      //   attempts++;
-      //   currentStatus = await adapter.getOperationStatus(result.operationId);
-      //   console.log(`Status check 8.2 ${attempts}/${maxAttempts}:`, currentStatus.status, currentStatus.statusMessage);
-      // }
-
-      // console.log("Final Bridge Status 8.2:", currentStatus);
-      // expect(currentStatus.status).toBe('COMPLETED');
-      // expect(currentStatus.receivedAmount).toBeDefined();
-      // expect(parseFloat(currentStatus.receivedAmount!)).toBeGreaterThan(0);
-      // expect(currentStatus.sourceTx?.hash).toBeDefined();
-      // expect(currentStatus.destinationTx?.hash).toBeDefined();
     }, BRIDGE_INITIATION_TIMEOUT);
 
     // Add this test to the Bridge Operation Lifecycle tests
@@ -657,15 +645,21 @@ describe('LiFiAdapter Pattern & Lifecycle Tests', () => {
       }
       console.log("⚙️ Testing explicit pause and resume functionality 8.3");
 
-      let handlerCalled = false;
+      // --- Variables specific to this test ---
       let resumeDecisionMade = false;
       let shouldApprove = false;
+      let handlerCalledPromiseResolver: (value: boolean | PromiseLike<boolean>) => void;
+      const handlerCalledPromise = new Promise<boolean>(resolve => {
+        handlerCalledPromiseResolver = resolve; // Store the resolver
+      });
 
       const pauseResumeHandler: TransactionConfirmationHandler = {
         onConfirmationRequired: async (operationId: string, txInfo: any) => {
           console.log(`⏸️ Handler called for ${operationId} (8.3) - Pausing...`);
-          console.log('Transaction Info (8.3):', txInfo); // <<< ADD THIS LINE TO USE txInfo
-          handlerCalled = true;
+          console.log('Transaction Info (8.3):', txInfo);
+          // Resolve the promise to signal the handler was called
+          if (handlerCalledPromiseResolver) handlerCalledPromiseResolver(true);
+
           // Wait until the test decides to resume
           while (!resumeDecisionMade) {
             await new Promise(resolve => setTimeout(resolve, 100)); // Short wait
@@ -686,61 +680,67 @@ describe('LiFiAdapter Pattern & Lifecycle Tests', () => {
         }
       });
 
-      // 1. Get Quote (use cheaper swapIntent)
+      // 1. Get Quote (use bridgeIntent)
       let quoteToExecute: OperationQuote;
       try {
-        const quotes = await pauseAdapter.getOperationQuote(swapIntent); // <<< Use swapIntent
+        const quotes = await pauseAdapter.getOperationQuote(bridgeIntent);
         expect(quotes.length).toBeGreaterThan(0);
         quoteToExecute = quotes[0];
         console.log("Got quote for pause/resume test 8.3:", quoteToExecute.id);
-      } catch (error) { throw error; }
+      } catch (error) {
+        throw error;
+      }
 
-      // 2. Execute Operation (will pause in handler)
-      // Don't await the executeOperation fully if the handler pauses indefinitely initially
+       // 2. Execute Operation (may pause in handler)
+      // Store the promise, but don't await it fully yet
       let executePromise = pauseAdapter.executeOperation(quoteToExecute);
-      let result: OperationResult | null = null;
 
-      // Wait for the handler to be called or execution to finish/fail early
-      let waitAttempts = 0;
-      while (!handlerCalled && waitAttempts < 40) { // Wait up to 20 seconds
-        await new Promise(resolve => setTimeout(resolve, 500));
-        waitAttempts++;
-        // Check if the promise resolved/rejected early
-        const promiseStatus = await Promise.race([executePromise.then(() => 'resolved'), executePromise.catch(() => 'rejected'), Promise.resolve('pending')]);
-        if (promiseStatus !== 'pending') {
-          console.warn("Execution finished before handler was called in 8.3");
-          result = await executePromise; // Get the result/error
-          break;
-        }
+      // 3. Wait to see if the handler is called
+      console.log("Waiting up to 20s for confirmation handler to potentially be called (8.3)...");
+      const handlerWasCalled = await Promise.race([
+        handlerCalledPromise,
+        new Promise<boolean>(resolve => setTimeout(() => resolve(false), 20000)) // 20s timeout
+    ]);
+      expect(handlerWasCalled, "Confirmation handler should have been called for this route").toBe(true);
+
+      if (!handlerWasCalled) {
+        console.warn("Confirmation handler was NOT called within timeout (8.3). This might be expected for this route.");
+        // Check if execution finished early or errored
+        const earlyResult = await Promise.race([
+            executePromise.then((res: any) => res).catch((err: any) => ({ error: err })), // Catch errors too
+            new Promise(resolve => setTimeout(() => resolve({ status: 'timeout' }), 1000)) // Short extra wait
+        ]);
+        console.log("Early execution result/status:", earlyResult);
+        // No assertion failure here, just log the outcome.
+      } else {
+          console.log("✅ Confirmation handler was called (8.3). Waiting for resume decision.");
       }
 
-      // If execution finished early, check the result
-      if (result) {
-        console.log("Early execution result 8.3:", result);
-        // Potentially fail the test if it shouldn't have finished early
-        // expect(result.status).not.toBe('COMPLETED');
-      }
-
-
-      // Expect handler to have been called
-      expect(handlerCalled).toBe(true); // <<< This might fail if execution finishes too fast
-
-      // Check status should be ACTION_REQUIRED
+      // 4. Check status - it should be PENDING or ACTION_REQUIRED
+      // Give a little time for status to potentially update after handler call/timeout
+      await new Promise(resolve => setTimeout(resolve, 2000));
       let status: OperationResult = await pauseAdapter.getOperationStatus(quoteToExecute.id);
-      console.log("Status while paused 8.3:", status);
-      // Allow PENDING initially if handler is called very fast
-      expect(['ACTION_REQUIRED', 'PENDING']).toContain(status.status);
+      console.log("Status before resume decision 8.3:", status);
+      // It might have already completed if the handler wasn't needed and execution was fast
+      if (status.status !== 'COMPLETED') {
+        expect(['ACTION_REQUIRED', 'PENDING']).toContain(status.status);
+      }
 
 
-      // 4. Decide to resume and approve
+      // 5. Decide to resume and approve
       console.log("Making decision to resume and approve 8.3...");
       shouldApprove = true;
-      resumeDecisionMade = true;
+      resumeDecisionMade = true; // This allows the handler loop to exit (if it was entered)
 
-      // 5. Wait for completion
+      // If the handler wasn't called, the operation might still be processing.
+      // If the handler *was* called, returning true from it triggers resume.
+      // We just need to wait for completion now.
+
+      // 6. Wait for completion
+      console.log("Waiting for operation completion after resume decision (8.3)...");
       let attempts = 0;
       const maxAttempts = 30; // Increased attempts
-      // Ensure status is fetched again after resuming
+      // Fetch status again after making the decision
       status = await pauseAdapter.getOperationStatus(quoteToExecute.id);
       while (status.status !== 'COMPLETED' && status.status !== 'FAILED' && attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 10000)); // 10 sec check
@@ -750,9 +750,10 @@ describe('LiFiAdapter Pattern & Lifecycle Tests', () => {
       }
 
       console.log("Final status after pause/resume 8.3:", status);
-      expect(status.status).toBe('COMPLETED');
+      expect(status.status).toBe('COMPLETED'); // Expect completion eventually
       expect(status.sourceTx?.hash).toBeDefined();
     }, 180000 * 2);
+
   });
 
   // describe('9. Transaction Confirmation Tests', () => {

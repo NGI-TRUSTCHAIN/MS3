@@ -21,7 +21,8 @@ import {
   Execution
 } from '@lifi/sdk';
 import { IEVMWallet } from '@m3s/wallet'; // <<< Import IEVMWallet
-
+import { createWalletClient, http } from 'viem';
+import * as viemChains from 'viem/chains'
 
 /**
  * Interface for LI.FI execution provider
@@ -56,9 +57,17 @@ export interface LiFiAdapterArgs {
   options?: any;
 }
 
-/**
- * Internal operation tracking structure
- */
+
+function findViemChain(chainId: number): viemChains.Chain | undefined {
+  for (const key in viemChains) {
+    const chain = (viemChains as any)[key] as viemChains.Chain;
+    if (chain.id === chainId) {
+      return chain;
+    }
+  }
+  return undefined;
+}
+
 /**
  * Internal operation tracking structure - UPDATED
  */
@@ -100,6 +109,7 @@ export class LiFiAdapter implements ICrossChain {
 
   // Keep track of in-progress operations
   private pendingOperations: Map<string, OperationTracking> = new Map();
+  private m3sWalletInstance?: IEVMWallet;
 
   /**
    * Private constructor - use static create method
@@ -177,14 +187,6 @@ export class LiFiAdapter implements ICrossChain {
   }
 
   /**
-   * Determines if the current configuration requires user interaction
-   * @private
-   */
-  private requiresUserInteraction(): boolean {
-    return !this.autoConfirmTransactions && !!this.confirmationHandler;
-  }
-
-  /**
    * Creates a standardized error result - UPDATED RETURN TYPE
    * @param error The error object
    * @param intent The operation intent (extracted from quote)
@@ -217,6 +219,11 @@ export class LiFiAdapter implements ICrossChain {
      */
   private createRouteUpdateHook(operationId: string): (route: RouteExtended) => void {
     return (updatedRoute: RouteExtended) => {
+      this.log('debug', `Route Update Hook Called for ${operationId}`, {
+        routeId: updatedRoute.id,
+        steps: updatedRoute.steps.map(s => ({ id: s.id, type: s.type, tool: s.tool, status: s.execution?.status, process: s.execution?.process.map(p => p.status) }))
+      });
+
       const tracking = this.pendingOperations.get(operationId);
       if (!tracking) {
         this.log('warn', `Tracking not found for ${operationId} in update hook.`);
@@ -228,6 +235,8 @@ export class LiFiAdapter implements ICrossChain {
 
       // --- Update Status ---
       const overallStatus = this.deriveOverallStatus(updatedRoute);
+      this.log('debug', `Derived Overall Status for ${operationId}: ${overallStatus}`);
+
       tracking.status = overallStatus;
 
       // --- Update Transaction Hashes & Explorer URLs ---
@@ -251,6 +260,12 @@ export class LiFiAdapter implements ICrossChain {
         const destProcess = this.findProcessWithTxHash(lastStep);
         if (!tracking.destinationTx) tracking.destinationTx = {}; // Initialize if needed
         if (destProcess && !tracking.destinationTx.hash) {
+          this.log('debug', `Comparing source/dest process hashes for ${operationId}`, {
+            sourceHash: tracking.sourceTx.hash,
+            destHashAttempt: destProcess.txHash,
+            destProcessStatus: destProcess.status,
+            lastStepStatus: lastStep.execution?.status
+          });
           tracking.destinationTx.hash = destProcess.txHash;
           tracking.destinationTx.explorerUrl = destProcess.txLink;
           tracking.destinationTx.chainId = lastStep.action.toChainId; // Ensure chainId is set
@@ -274,14 +289,22 @@ export class LiFiAdapter implements ICrossChain {
         this.log('info', `✅ Operation completed: ${operationId}, Received: ${tracking.receivedAmount}`);
         // Optionally remove from pendingOperations here or after a short delay
       } else if (overallStatus === 'ACTION_REQUIRED') {
+        this.log('info', `🚦 ACTION_REQUIRED detected in hook for ${operationId}`);
+
         tracking.statusMessage = 'Action required by user.';
         // Find the specific action step
         const actionStep = updatedRoute.steps.find(step =>
           this.mapLifiStatus(step.execution?.status) === 'ACTION_REQUIRED'
         );
         if (actionStep) {
+          this.log('info', `📞 Calling handleActionRequiredStep for ${operationId}`);
+
           // Call handler (it might already be called by the SDK, but good to ensure state is updated)
           this.handleActionRequiredStep(operationId, updatedRoute, actionStep);
+        } else {
+          // <<< ADD MISSING STEP LOGGING >>>
+          this.log('warn', `ACTION_REQUIRED status derived, but no specific action step found for ${operationId}`);
+          // <<< END ADDED LOGGING >>>
         }
       } else if (overallStatus === 'PENDING') {
         tracking.statusMessage = 'Operation in progress...';
@@ -305,11 +328,26 @@ export class LiFiAdapter implements ICrossChain {
     updatedRoute: RouteExtended,
     actionStep: any
   ): void {
+    this.log('debug', `handleActionRequiredStep called for ${operationId}`, {
+      actionStepId: actionStep.id,
+      actionStepExecution: actionStep.execution // Log the whole execution object
+    })
+
     const actionProcess = actionStep.execution?.process.find((p: any) =>
       p.status === 'ACTION_REQUIRED' && p.txRequest
     );
 
-    if (!actionProcess?.txRequest) return;
+    this.log('debug', `Found actionProcess for ${operationId}:`, {
+      processExists: !!actionProcess,
+      txRequestExists: !!actionProcess?.txRequest,
+      // Log all processes for comparison
+      allProcesses: actionStep.execution?.process
+    });
+
+    if (!actionProcess?.txRequest) {
+      this.log('warn', `handleActionRequiredStep called for ${operationId}, but no valid actionProcess with txRequest found. Bailing out.`);
+      return; // Keep the return for now, but the logs above will help diagnose
+    }
 
     if (this.autoConfirmTransactions) {
       // Auto-confirm for testing environments
@@ -327,6 +365,7 @@ export class LiFiAdapter implements ICrossChain {
 
       // Stop execution to prevent automatic processing
       stopRouteExecution(updatedRoute);
+      this.log('debug', `Called stopRouteExecution for ${operationId}`); // <<< Add log
 
       // Prepare transaction info for the confirmation handler
       const txInfo = {
@@ -336,6 +375,7 @@ export class LiFiAdapter implements ICrossChain {
         chainId: actionStep.action.fromChainId.toString(),
         data: actionProcess.txRequest.data
       };
+      this.log('debug', `Prepared txInfo for handler ${operationId}`, { txInfo }); // <<< Add log
 
       // Handle confirmation with timeout
       this.handleConfirmation(operationId, txInfo, this.confirmationTimeout)
@@ -645,7 +685,6 @@ export class LiFiAdapter implements ICrossChain {
     };
   }
 
-
   /**
    * Gets a quote for a cross-chain operation - UPDATED PARAMETER & LOGIC
    * @param intent Operation intent
@@ -768,7 +807,6 @@ export class LiFiAdapter implements ICrossChain {
       return this.createErrorResult(error); // Intent might not be available here
     }
   }
-
 
   /**
    * Cancels an in-progress operation - UPDATED RETURN TYPE
@@ -926,11 +964,12 @@ export class LiFiAdapter implements ICrossChain {
 
       executeRoute(route, {
         updateRouteHook: this.createRouteUpdateHook(route.id),
-        executeInBackground: !this.requiresUserInteraction()
+        executeInBackground: !this.confirmationHandler
       });
 
       // Return initial result using the new structure
       this.log("info", `✅ Operation initiated: ${route.id}`);
+
       return {
         operationId: route.id,
         status: 'PENDING',
@@ -947,7 +986,6 @@ export class LiFiAdapter implements ICrossChain {
       return this.createErrorResult(error, intent);
     }
   }
-
 
   /**
    * Checks for timed-out operations and cancels them
@@ -978,7 +1016,6 @@ export class LiFiAdapter implements ICrossChain {
       }
     }
   }
-
 
   /**
    * Gets supported tokens for a specific chain
@@ -1098,62 +1135,84 @@ export class LiFiAdapter implements ICrossChain {
    * This can be called after initialization to add transaction capabilities
    */
   async setExecutionProvider(provider: LiFiExecutionProvider): Promise<void> {
+    // --- Helper to get RPC URL ---
+    const getRpcUrl = (chainId: number): string | undefined => {
+      const chainInfo = this.chains.find(c => c.id === chainId);
+      // Prioritize known RPCs if available, otherwise use the first explorer RPC (less ideal)
+      return chainInfo?.metamask?.rpcUrls?.[0] || chainInfo?.rpcUrls?.[0] || chainInfo?.blockExplorers?.[0]?.apiUrl;
+    };
+
     if (!this.initialized) {
       throw new Error("LiFiAdapter must be initialized before setting execution provider");
     }
 
-
     this.executionProvider = provider;
     this.log('info', `Setting up execution provider with address: ${provider.address}`);
 
-    // --- Helper to find RPC URL for a given chain ID ---
-    const getRpcUrl = (chainId: number): string | undefined => {
-      const chainInfo = this.chains.find(c => c.id === chainId);
-      // Prioritize non-deprecated RPC URLs if available
-      const rpc = chainInfo?.metamask?.rpcUrls?.[0] || chainInfo?.rpcUrls?.[0];
-      if (!rpc) {
-        this.log('warn', `Could not find RPC URL for chainId ${chainId} in LiFi chain data.`);
-      }
-      return rpc;
-    };
-    // --- End Helper ---
+    // --- Store the current Viem client ---
+    let currentViemWalletClient = provider.walletClient as any; // Initial client
 
-
-    // Re-initialize SDK WITH the execution provider
     createConfig({
       integrator: 'm3s',
       apiKey: this.apiKey,
       providers: [
         EVM({
-          // Pass the wallet client directly
-          getWalletClient: async () => provider.walletClient as any, // <<< Use the m3s/wallet instance
-          // Use the provider's switchChain implementation, adapting it for m3s/wallet
-          switchChain: async (chainId: number): Promise<any> => { // <<< Implement switchChain
-            this.log('info', `Attempting to switch chain via walletClient to ${chainId}`);
+          // <<< Provide the *current* Viem client >>>
+          getWalletClient: async () => currentViemWalletClient,
+          // <<< Redefine switchChain >>>
+          switchChain: async (chainId: number): Promise<any> => {
+            this.log('info', `Attempting to switch chain via m3s/wallet to ${chainId}`);
+            if (!this.m3sWalletInstance) {
+              throw new Error("m3s/wallet instance not available for switching chain.");
+            }
             try {
               const rpcUrl = getRpcUrl(chainId);
               if (!rpcUrl) {
                 throw new Error(`No RPC URL found for chain ${chainId}`);
               }
-              // Assuming walletClient has a setProvider method compatible with ProviderConfig
-              // We might need a more robust way to get full chain config if needed by setProvider
-              await provider.walletClient.setProvider({
-                chainConfig: { // <<< Construct basic ProviderConfig
-                  chainId: `0x${chainId.toString(16)}`, // Needs hex
+
+              // --- 1. Switch chain using m3s/wallet ---
+              const chainInfo = this.chains.find(c => c.id === chainId);
+              const providerConfig = {
+                chainConfig: {
+                  chainId: `0x${chainId.toString(16)}`,
                   rpcTarget: rpcUrl,
-                  // Add other fields if necessary and available from this.chains
-                  chainNamespace: 'eip155', // Assuming EVM
-                  displayName: this.chains.find(c => c.id === chainId)?.name || `Chain ${chainId}`,
-                  blockExplorer: this.chains.find(c => c.id === chainId)?.blockExplorers?.[0]?.url || '',
-                  ticker: this.chains.find(c => c.id === chainId)?.nativeCurrency?.symbol || 'ETH',
-                  tickerName: this.chains.find(c => c.id === chainId)?.nativeCurrency?.name || 'Ether',
+                  chainNamespace: 'eip155',
+                  displayName: chainInfo?.name || `Chain ${chainId}`,
+                  blockExplorer: chainInfo?.blockExplorers?.[0]?.url || '',
+                  ticker: chainInfo?.nativeCurrency?.symbol || 'ETH',
+                  tickerName: chainInfo?.nativeCurrency?.name || 'Ether',
                 }
+              };
+              // Use the stored m3s/wallet instance to switch
+              await this.m3sWalletInstance.setProvider(providerConfig);
+              this.log('info', `Successfully switched chain via m3s/wallet to ${chainId}`);
+
+              // --- 2. Create a *new* Viem WalletClient for the new chain ---
+              const viemChain = findViemChain(chainId); // Map ID to Viem chain object
+              if (!viemChain) {
+                throw new Error(`Viem chain configuration not found for chainId: ${chainId}`);
+              }
+              // Ensure we have the account details (might need to get from m3sWalletInstance or provider)
+              const account = (currentViemWalletClient as any).account; // Get account from old client
+              if (!account) {
+                throw new Error("Cannot get account details to create new Viem client.");
+              }
+
+              currentViemWalletClient = createWalletClient({ // Update the stored client
+                account,
+                chain: viemChain,
+                transport: http(rpcUrl)
               });
-              this.log('info', `Successfully switched chain to ${chainId}`);
-              return provider.walletClient; // Return the wallet client instance on success
+              this.log('info', `Created new Viem client for chain ${chainId}`);
+
+              // --- 3. Return the *new* Viem client ---
+              // LiFi SDK's getWalletClient will now get this updated client
+              return currentViemWalletClient;
+
             } catch (error: any) {
               this.log('error', `Failed to switch chain to ${chainId}: ${error.message}`);
-              throw error; // Re-throw the error
+              throw error;
             }
           }
         })
