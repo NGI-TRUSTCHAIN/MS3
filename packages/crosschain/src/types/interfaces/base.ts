@@ -65,7 +65,7 @@ export interface OperationQuote {
     // Add other relevant estimates? e.g., price impact
   };
   /** Timestamp (seconds) until the quote expires */
-  expiresAt: number;
+  expiresAt?: number;
   /** The adapter that generated this quote */
   adapterName: string;
   /** Raw quote data from the adapter, if needed for execution */

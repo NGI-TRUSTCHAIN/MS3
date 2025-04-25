@@ -674,7 +674,7 @@ export class EvmWalletAdapter implements IEVMWallet {
         to: tx.to,
         from: this.wallet.address, // 'from' is often needed
         data: tx.data ? (typeof tx.data === 'string' ? tx.data : ethers.hexlify(tx.data)) : undefined,
-        value: (typeof tx.value === 'string' && tx.value.length > 0) ? ethers.parseUnits(tx.value, 'ether') : tx.value,
+        value: tx.value,
         // Include relevant options if provided
         ...(tx.options || {})
       };

@@ -1,11 +1,11 @@
 import { registry } from '../registry.js';
-import { LiFiAdapter } from './LI.FI.Adapter.js';
+import { MinimalLiFiAdapter } from './LI.FI.Adapter.js';
 import { CrossChainAdapterType } from '../types/index.js';
 
 registry.registerAdapter('crosschain', {
-  name: 'lifi',
+  name: 'lifi-minimal',
   module: 'crosschain',
   adapterType: CrossChainAdapterType['aggregator'],
-  adapterClass: LiFiAdapter,
+  adapterClass: MinimalLiFiAdapter,
   requirements: []
 });
