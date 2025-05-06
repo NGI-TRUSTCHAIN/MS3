@@ -1,14 +1,16 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "../../tsconfig.json", // Or your base config
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
+    "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "composite": true,
-    "resolveJsonModule": true,
-    "baseUrl": ".",
+    "composite": true 
   },
-  "include": ["src/**/*", "src/**/*.json"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "tests"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"],
+  "references": [
+    { "path": "../common" }
+  ]
 }

@@ -1,5 +1,5 @@
 // Export all adapters
-export * from './openZeppelinAdapter.js';
+export * from './openZeppelin/index.js';
 
 // Load all registrations
 import './openZeppelin.registration.js';

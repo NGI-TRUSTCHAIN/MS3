@@ -21,6 +21,7 @@
     "directory": "packages/smart-contract"
   },
   "main": "dist/index.js",
+  "module": "./dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
@@ -31,9 +32,12 @@
     "test:erc1155": "vitest run 05_ERC1155.test.ts"
   },
   "dependencies": {
+    "@m3s/common": "*",
     "@openzeppelin/wizard": "^0.5.3",
+    "@openzeppelin/wizard-cairo": "^1.0.0",
     "ethers": "^6.13.5",
-    "hardhat": "^2.22.19"
+    "hardhat": "^2.22.19",
+    "starknet": "^6.24.1"
   },
   "peerDependencies": {
     "@openzeppelin/contracts": "^5.2.0"

@@ -1,5 +1,4 @@
-import { registry } from '../registry.js';
-import { WalletType } from '../types/index.js';
+import { registry, WalletType } from '@m3s/common';
 import { Web3AuthWalletAdapter } from './web3authWallet.js';
 
 registry.registerAdapter('wallet', {

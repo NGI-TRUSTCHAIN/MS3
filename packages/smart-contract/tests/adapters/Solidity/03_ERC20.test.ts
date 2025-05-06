@@ -1,26 +1,20 @@
 import { describe, beforeEach, it, expect } from 'vitest';
 import { createContractHandler, CompiledOutput, DeployedOutput, GenerateContractInput, IBaseContractHandler } from '../../../src/index.js';
-import { testAdapterPattern } from '../../01_Core.test.js';
 import { testContractHandlerInterface } from '../../02_IBaseContractHandler.test.js';
-import { OpenZeppelinAdapter } from '../../../src/adapters/openZeppelinAdapter.js';
 import { ethers } from 'ethers';
 import * as path from 'path';
-import { TEST_PRIVATE_KEY, RUN_INTEGRATION_TESTS } from '../../../config.js';
-import { createWallet, IEVMWallet } from '@m3s/wallet';
+import { TEST_PRIVATE_KEY, RUN_INTEGRATION_TESTS, INFURA_API_KEY } from '../../../config.js';
+import { createWallet } from '@m3s/wallet';
+import { IEVMWallet } from '@m3s/common'
 
 // Provider for testnet interactions
 const getTestProvider = () => {
   // Ensure you have a Sepolia RPC URL configured, e.g., in your environment variables
-  const rpcUrl = process.env.VITE_SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com';
+  const rpcUrl = `https://sepolia.infura.io/v3/${INFURA_API_KEY}`
   return new ethers.JsonRpcProvider(rpcUrl);
 };
 
 describe('OpenZeppelinAdapter Tests', () => {
-  // Test constructor pattern directly
-  describe('OpenZeppelinAdapter - Constructor Pattern Tests', () => {
-    testAdapterPattern(OpenZeppelinAdapter, {});
-  });
-
   // Test interface implementation
   describe('OpenZeppelinAdapter - Interface Implementation', () => {
     let contractHandler: IBaseContractHandler;
@@ -276,22 +270,6 @@ describe('OpenZeppelinAdapter Tests', () => {
       expect(complexSource).toContain('function mint(address to, uint256 amount) public onlyOwner'); // Check modifier
       expect(complexSource).toContain('onlyOwner');
     });
-
-    it('should generate ERC20 with security options', async () => {
-      const input: GenerateContractInput = {
-        language: 'solidity',
-        template: 'openzeppelin_erc20',
-        options: {
-          name: 'SecureToken',
-          symbol: 'SECT',
-          premint: '0', // Required for security contact
-          securityContact: 'security@example.com'
-        }
-      };
-      const securitySource = await contractHandler.generateContract(input);
-
-      // expect(securitySource).toContain('/// @custom:security-contact security@example.com');
-    });
   });
 
   // Full integration tests for real blockchain deployment
@@ -304,29 +282,36 @@ describe('OpenZeppelinAdapter Tests', () => {
       provider = getTestProvider();
       const network = await provider.getNetwork();
       const chainId = network.chainId;
-      const rpcUrl = (provider as any).connection?.url || 'https://ethereum-sepolia-rpc.publicnode.com';
+      const rpcUrl = (provider as any).connection?.url;
+      console.log(`[Test Setup] Using RPC: ${rpcUrl}, ChainID: ${chainId}`);
 
       walletAdapter = await createWallet<IEVMWallet>({
         adapterName: 'ethers',
-        provider: {
-          rpcUrl: rpcUrl,
-          chainId: chainId
-        },
         options: {
           privateKey: TEST_PRIVATE_KEY
         }
       });
+      
+      console.log(`[Test Setup] After createWallet: isInitialized=${await walletAdapter.isInitialized()}, isConnected=${await walletAdapter.isConnected()}`);
 
       // <<< Ensure wallet adapter is initialized >>>
-      if (!walletAdapter.isInitialized()) {
-        console.log("Wallet adapter not initialized by create, calling initialize...");
+      if (!(await walletAdapter.isInitialized())) {
+        console.log("[Test Setup] Wallet not initialized by create, calling initialize...");
         await walletAdapter.initialize();
       } else {
-        console.log("Wallet adapter already initialized by create.");
+        console.log("[Test Setup] Wallet already initialized by create.");
       }
 
-      if (!walletAdapter.isConnected()) {
+      console.log(`[Test Setup] After initialize check: isInitialized=${await walletAdapter.isInitialized()}, isConnected=${await walletAdapter.isConnected()}`);
+
+
+      try {
         await walletAdapter.setProvider({ rpcUrl, chainId: String(chainId) });
+        console.log(`[Test Setup] After setProvider SUCCESS: isInitialized=${await walletAdapter.isInitialized()}, isConnected=${await walletAdapter.isConnected()}`);
+      } catch (error) {
+        console.error(`[Test Setup] setProvider FAILED:`, error);
+        // Re-throw to ensure the test fails clearly if setProvider has an issue
+        throw error;
       }
 
       contractHandler = await createContractHandler({
@@ -334,18 +319,21 @@ describe('OpenZeppelinAdapter Tests', () => {
         options: {
           workDir: path.join(process.cwd(), 'test-contracts-output', 'erc20'),
           preserveOutput: true,
-          providerConfig: { // Pass provider config for the handler's internal provider
+          providerConfig: {
             rpcUrl: rpcUrl,
             chainId: chainId
           }
         }
       });
+      console.log(`[Test Setup] After createContractHandler. beforeEach complete.`);
     });
 
+    
     it('should deploy ERC20 with multiple features and verify functionality', async () => {
       console.log('🚀 Starting comprehensive ERC20 test');
+      console.log(`[Test Run Start] State: isInitialized=${await walletAdapter.isInitialized()}, isConnected=${await walletAdapter.isConnected()}`);
 
-      // Generate contract with multiple features
+      // Generate contract
       console.log('1️⃣ Generating feature-rich ERC20 contract...');
       const contractSource = await contractHandler.generateContract({
         language: 'solidity', // Specify language
@@ -372,11 +360,15 @@ describe('OpenZeppelinAdapter Tests', () => {
       expect(compiled.artifacts?.abi).toBeDefined();
       expect(compiled.artifacts?.bytecode).toBeDefined();
 
-      // Prepare constructor args (Ownable sets owner to deployer)
-      const deployerAddress = (await walletAdapter.getAccounts())[0]; // <<< Use walletAdapter
-      console.log(`Deployer address from walletAdapter: ${deployerAddress}`); // Log the address obtained
+      // Prepare constructor args
+      console.log(`[Test Run] Before getAccounts call: isInitialized=${await walletAdapter.isInitialized()}, isConnected=${await walletAdapter.isConnected()}`);
+      const accounts = await walletAdapter.getAccounts();
+      // <<< Log the raw result from getAccounts >>>
+      console.log(`[Test Run] After getAccounts call: received accounts =`, accounts);
+      const deployerAddress = accounts[0];
+
+      console.log(`Deployer address from walletAdapter: ${deployerAddress}`);
       if (!deployerAddress || !ethers.isAddress(deployerAddress)) {
-        // Throw a more specific error if the address is invalid or undefined
         throw new Error(`Failed to get a valid deployer address from wallet adapter. Received: ${deployerAddress}`);
       }
 

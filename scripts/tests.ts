@@ -7,7 +7,7 @@ const packages = ['wallet', 'crosschain', 'smart-contract'];
 
 // Get all packages or specific ones from command line args
 const requestedPackages = process.argv.slice(2);
-const packagesToTest = requestedPackages.length > 0 ? 
+const packagesToTest = requestedPackages.length > 0 ?
   requestedPackages : packages;
 
 console.log(`Will test packages in this order: ${packagesToTest.join(', ')}`);
@@ -18,7 +18,7 @@ let failures: string[] = [];
 // Run tests for each package sequentially
 for (const pkg of packagesToTest) {
   console.log(`\n\n========== Testing package: ${pkg} ==========\n`);
-  
+
   try {
     // Verify the package exists
     const packageDir = path.join(process.cwd(), 'packages', pkg);
@@ -27,9 +27,10 @@ for (const pkg of packagesToTest) {
       failures.push(pkg);
       continue;
     }
-    
-    // Run the tests
-    execSync(`cd packages/${pkg} && npm run test`, { stdio: 'inherit' });
+
+    // Run the tests sequentially within the package
+    // The '-- --run' passes the '--run' flag to the underlying vitest command
+    execSync(`cd packages/${pkg} && npm run test -- --run`, { stdio: 'inherit' });
     console.log(`\n✅ Tests passed for package: ${pkg}`);
   } catch (error) {
     console.error(`\n❌ Tests failed for package: ${pkg}`);

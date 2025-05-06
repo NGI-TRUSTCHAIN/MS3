@@ -9,7 +9,8 @@ export default defineConfig({
     // Longer timeouts for integration tests
     testTimeout: 300000, // 5 minutes
     hookTimeout: 300000, // 5 minutes
-    
+    slowTestThreshold: 5000, // Set threshold to 5 seconds
+
     // Other global settings
     sequence: {
       concurrent: false, // Run tests in sequence within files

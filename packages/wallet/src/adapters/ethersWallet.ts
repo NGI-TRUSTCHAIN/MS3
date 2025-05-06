@@ -1,7 +1,6 @@
 import { ethers, Provider, Wallet as EthersWallet, JsonRpcProvider, TransactionResponse } from "ethers";
-import { EIP712TypedData, IEVMWallet } from "../types/interfaces/EVM/index.js";
-import { AssetBalance, GenericTransactionData, IWalletOptions, ProviderConfig, WalletEvent } from "../types/index.js";
 import { TransactionReceipt } from "ethers";
+import { AssetBalance, GenericTransactionData, IWalletOptions, ProviderConfig, WalletEvent, EIP712TypedData, IEVMWallet } from "@m3s/common";
 
 // Define always the constructor arguments in a type.
 interface args extends IWalletOptions {
@@ -43,30 +42,38 @@ export class EvmWalletAdapter implements IEVMWallet {
    * ```
    */
   private constructor(args: args) {
-    // super(); // REMOVED: No base class constructor to call
-    console.log("Creating EvmWalletAdapter with args:", args);
+    // console.debug("Creating EvmWalletAdapter with args:", args);
 
     if (!args.options || !args.options.privateKey) {
       throw new Error("Private key is required in options for EvmWalletAdapter");
     }
-    this.privateKey = args.options.privateKey;
+
+    if (args.options?.privateKey && args.options.privateKey.startsWith('0x')) {
+      this.privateKey = args.options.privateKey;
+      // console.debug("EvmWalletAdapter: Using provided private key.");
+    } else {
+      const randomWallet = ethers.Wallet.createRandom();
+      this.privateKey = randomWallet.privateKey;
+      // console.debug("EvmWalletAdapter: No valid private key provided, generated a new random wallet.");
+    }
+
     this.name = args.adapterName; // Store the adapter name
 
     // Handle initial provider if provided in args
     if (args.provider) {
       if (args.provider instanceof JsonRpcProvider) {
         this.provider = args.provider;
-        console.log("EvmWalletAdapter: Initial provider instance provided.");
+        // console.debug("EvmWalletAdapter: Initial provider instance provided.");
       } else if (typeof args.provider === 'object' && args.provider.rpcUrl) {
-        console.log("EvmWalletAdapter: Initial provider configuration provided. Creating provider instance.");
+        // console.debug("EvmWalletAdapter: Initial provider configuration provided. Creating provider instance.");
         this.provider = new JsonRpcProvider(args.provider.rpcUrl);
       } else {
         console.warn("EvmWalletAdapter: Invalid initial provider configuration provided.");
       }
     } else {
-      console.log("EvmWalletAdapter: No initial provider configuration provided.");
+      // console.debug("EvmWalletAdapter: No initial provider configuration provided.");
     }
-    console.log("EvmWalletAdapter created.");
+    // console.debug("EvmWalletAdapter created.");
   }
 
   /**
@@ -76,11 +83,12 @@ export class EvmWalletAdapter implements IEVMWallet {
    * @returns {Promise<EvmWalletAdapter>} A promise that resolves to the newly created EvmWalletAdapter instance.
    */
   static async create(args: args): Promise<EvmWalletAdapter> {
-    console.log("Creating EvmWalletAdapter with args:", args);
+    // console.debug("Creating EvmWalletAdapter with args:", args);
     // Validate adapterName if necessary
-    if (args.adapterName !== 'ethers') {
-      console.warn(`EvmWalletAdapter created with unexpected adapterName: ${args.adapterName}`);
-    }
+    // if (args.adapterName !== 'ethers') {
+    //   console.warn(`EvmWalletAdapter created with unexpected adapterName: 
+    //     ${JSON.stringify(args, null, 2)}`);
+    // }
     const adapter = new EvmWalletAdapter(args);
     return adapter;
   }
@@ -95,7 +103,7 @@ export class EvmWalletAdapter implements IEVMWallet {
    */
   async initialize(): Promise<void> {
     if (this.initialized) {
-      console.log("EvmWalletAdapter already initialized.");
+      // console.debug("EvmWalletAdapter already initialized.");
       return;
     }
 
@@ -103,12 +111,12 @@ export class EvmWalletAdapter implements IEVMWallet {
       this.wallet = new EthersWallet(this.privateKey);
       if (this.provider) {
         this.wallet = this.wallet.connect(this.provider);
-        console.log("EvmWalletAdapter: Wallet connected to provider during initialization.");
+        // console.debug("EvmWalletAdapter: Wallet connected to provider during initialization.");
       } else {
-        console.log("EvmWalletAdapter: Wallet initialized without provider.");
+        // console.debug("EvmWalletAdapter: Wallet initialized without provider.");
       }
       this.initialized = true;
-      console.log("EvmWalletAdapter initialized successfully.");
+      // console.debug("EvmWalletAdapter initialized successfully.");
     } catch (error) {
       console.error("EvmWalletAdapter initialization failed:", error);
       this.initialized = false; // Ensure state reflects failure
@@ -130,7 +138,7 @@ export class EvmWalletAdapter implements IEVMWallet {
    * This method does not clean up event listeners or other resources.
    */
   disconnect(): void {
-    console.log("EvmWalletAdapter disconnecting...");
+    // console.debug("EvmWalletAdapter disconnecting...");
     this.provider = undefined;
     // Ensure wallet is disconnected from provider if it exists
     if (this.wallet) {
@@ -139,7 +147,7 @@ export class EvmWalletAdapter implements IEVMWallet {
     // Keep private key, reset initialized state
     this.initialized = false; // Mark as not initialized
     this.eventListeners.clear(); // Clear event listeners
-    console.log("EvmWalletAdapter disconnected.");
+    // console.debug("EvmWalletAdapter disconnected.");
     this.emitEvent(WalletEvent.disconnect, null); // Emit disconnect event
   }
 
@@ -170,8 +178,8 @@ export class EvmWalletAdapter implements IEVMWallet {
    * @returns {boolean} `true` if the wallet is connected to a provider, otherwise `false`.
    */
   isConnected(): boolean {
-    // Considered connected if initialized and has a provider connected to the wallet instance
-    return this.initialized && !!this.wallet?.provider;
+    const connected = !!this.wallet && !!this.provider && this.initialized;
+    return connected;
   }
 
   /** Account Management */
@@ -198,11 +206,29 @@ export class EvmWalletAdapter implements IEVMWallet {
    * @returns {Promise<string[]>} A promise that resolves to an array containing the wallet's address.
    */
   async getAccounts(): Promise<string[]> {
-    if (!this.initialized || !this.wallet) {
-      // Return empty if not initialized, don't throw
+    if (!this.wallet) {
+      console.error("[EvmWalletAdapter:getAccounts] FAILED: this.wallet is not set.");
       return [];
     }
-    return [this.wallet.address];
+    if (!this.provider) {
+      console.warn("[EvmWalletAdapter:getAccounts] WARNING: this.provider is not set (needed for isConnected).");
+      // Depending on strictness, you might return [] here, but let's see if getAddress works without provider check
+    }
+    if (!this.initialized) {
+      console.error("[EvmWalletAdapter:getAccounts] FAILED: Adapter not initialized.");
+      return [];
+    }
+
+    try {
+      console.log("[EvmWalletAdapter:getAccounts] Attempting: await this.wallet.getAddress()");
+      const address = await this.wallet.getAddress();
+      console.log("[EvmWalletAdapter:getAccounts] SUCCESS: Retrieved address:", address);
+      return [address];
+    } catch (error) {
+      console.error("[EvmWalletAdapter:getAccounts] ERROR calling this.wallet.getAddress():", error);
+      return [];
+    }
+
   }
 
   /**
@@ -252,7 +278,7 @@ export class EvmWalletAdapter implements IEVMWallet {
     try {
       const recoveredAddress = ethers.verifyMessage(message, signature);
       const result = recoveredAddress.toLowerCase() === address.toLowerCase();
-      console.log(`[EvmWalletAdapter] Signature verification result for ${address}: ${result}`);
+      // console.debug(`[EvmWalletAdapter] Signature verification result for ${address}: ${result}`);
       return result;
     } catch (error) {
       console.error("[EvmWalletAdapter] Signature verification failed:", error);
@@ -266,7 +292,7 @@ export class EvmWalletAdapter implements IEVMWallet {
    * @param payload The payload to pass to the event listeners
    */
   private emitEvent(eventName: WalletEvent | string, payload: any): void {
-    console.log(`[EvmWalletAdapter] Emitting ${eventName} event with:`, payload);
+    // console.debug(`[EvmWalletAdapter] Emitting ${eventName} event with:`, payload);
     const listeners = this.eventListeners.get(eventName);
     listeners?.forEach(callback => {
       try {
@@ -299,7 +325,7 @@ export class EvmWalletAdapter implements IEVMWallet {
       this.eventListeners.set(event, new Set());
     }
     this.eventListeners.get(event)!.add(callback);
-    console.log(`[EvmWalletAdapter] Listener added for ${event}`);
+    // console.debug(`[EvmWalletAdapter] Listener added for ${event}`);
     // Specific logic for provider events like 'network' could be added here if needed
   }
 
@@ -313,7 +339,7 @@ export class EvmWalletAdapter implements IEVMWallet {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
       listeners.delete(callback);
-      console.log(`[EvmWalletAdapter] Listener removed for ${event}`);
+      // console.debug(`[EvmWalletAdapter] Listener removed for ${event}`);
     }
   }
 
@@ -331,7 +357,7 @@ export class EvmWalletAdapter implements IEVMWallet {
     }
     try {
       const network = await this.provider.getNetwork();
-      console.log("[EvmWalletAdapter] getNetwork result:", network);
+      // console.debug("[EvmWalletAdapter] getNetwork result:", network);
       const chainId = `0x${network.chainId.toString(16)}`;
 
       return { chainId, name: network.name }; // Return string chainId
@@ -361,7 +387,7 @@ export class EvmWalletAdapter implements IEVMWallet {
    */
   async setProvider(config: ProviderConfig): Promise<void> {
 
-    console.log('info', "[EvmWalletAdapter] Setting provider with config:", { chainId: config.chainId, name: config.displayName, rpcUrls: config.rpcUrls || [config.rpcUrl] });
+    // console.debug('info', "[EvmWalletAdapter] Setting provider with config:", { chainId: config.chainId, name: config.displayName, rpcUrls: config.rpcUrls || [config.rpcUrl] });
 
     if (!config.chainId) {
       throw new Error("chainId is required in ProviderConfig");
@@ -373,7 +399,7 @@ export class EvmWalletAdapter implements IEVMWallet {
       urlsToTry = config.rpcUrls.filter(url => typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://')));
     } else if (typeof config.rpcUrl === 'string' && (config.rpcUrl.startsWith('http://') || config.rpcUrl.startsWith('https://'))) {
       urlsToTry = [config.rpcUrl];
-      console.log(`[EvmWalletAdapter] Using single rpcUrl: ${config.rpcUrl}`);
+      // console.debug(`[EvmWalletAdapter] Using single rpcUrl: ${config.rpcUrl}`);
     }
 
     if (urlsToTry.length === 0) {
@@ -387,7 +413,7 @@ export class EvmWalletAdapter implements IEVMWallet {
     const CONNECTION_TIMEOUT_MS = 10000; // 10 seconds timeout per RPC URL attempt
 
     for (const url of urlsToTry) {
-      console.log(`[EvmWalletAdapter] Attempting to connect to RPC: ${url}`);
+      // console.debug(`[EvmWalletAdapter] Attempting to connect to RPC: ${url}`);
       try {
         // Define the async connection check logic for this URL
         const checkConnection = async (): Promise<JsonRpcProvider> => {
@@ -415,20 +441,20 @@ export class EvmWalletAdapter implements IEVMWallet {
         connectedProvider = await this.timeout(CONNECTION_TIMEOUT_MS, checkConnection(), url);
 
         // If timeout didn't reject and checkConnection didn't throw, we are connected
-        console.log(`[EvmWalletAdapter] Successfully connected to RPC: ${url} with matching chainId`);
+        // console.debug(`[EvmWalletAdapter] Successfully connected to RPC: ${url} with matching chainId`);
         connectionError = null; // Reset error on success
         break; // Exit loop on successful connection
 
       } catch (error: any) {
         // Log specific errors clearly
         if (error.message.startsWith('Timeout connecting to')) {
-          console.warn(`[EvmWalletAdapter] Timeout connecting to RPC ${url}: ${error.message}`);
+          // console.debug(`[EvmWalletAdapter] Timeout connecting to RPC ${url}: ${error.message}`);
         } else if (error.message.includes('returned wrong chainId')) {
           // Log chain ID mismatch from the error thrown in checkConnection
-          console.warn(`[EvmWalletAdapter] Chain ID mismatch for RPC ${url}: ${error.message}`);
+          // console.debug(`[EvmWalletAdapter] Chain ID mismatch for RPC ${url}: ${error.message}`);
         } else {
           // Log other connection errors (like 429, DNS errors, etc.)
-          console.warn(`[EvmWalletAdapter] Failed to connect to RPC ${url}: ${error.message}`);
+          // console.debug(`[EvmWalletAdapter] Failed to connect to RPC ${url}: ${error.message}`);
         }
         connectionError = error; // Store the last error to potentially throw later
         connectedProvider = null; // Ensure provider is null on error
@@ -452,7 +478,7 @@ export class EvmWalletAdapter implements IEVMWallet {
     // Reconnect wallet if initialized
     if (this.initialized && this.wallet) {
       this.wallet = this.wallet.connect(this.provider);
-      console.log("[EvmWalletAdapter] Wallet instance reconnected to new provider");
+      // console.debug("[EvmWalletAdapter] Wallet instance reconnected to new provider");
       // FIX: Use WalletEvent.connected
       this.emitEvent(WalletEvent.connect, null);
 
@@ -462,7 +488,7 @@ export class EvmWalletAdapter implements IEVMWallet {
         this.emitEvent(WalletEvent.chainChanged, newChainId);
       }
     } else if (!this.initialized) {
-      console.log("[EvmWalletAdapter] Provider set, wallet will connect during initialize()");
+      // console.debug("[EvmWalletAdapter] Provider set, wallet will connect during initialize()");
       // Emit chainChanged if it's the very first provider being set
       if (oldChainId === null) {
         const newChainId = (await this.provider.getNetwork()).chainId.toString();
@@ -476,66 +502,30 @@ export class EvmWalletAdapter implements IEVMWallet {
       throw new Error("Wallet not initialized.");
     }
 
+    // console.debug(`[EvmWalletAdapter:prepare] Received tx.value: ${tx.value} (type: ${typeof tx.value})`);
+    let chainIdBigInt: bigint | undefined;
+    try {
+      // Use provider if available, otherwise rely on options
+      chainIdBigInt = tx.options?.chainId ?? (this.provider ? (await this.provider.getNetwork()).chainId : undefined);
+    } catch (e) {
+      console.warn("[EvmWalletAdapter:prepare] Error getting chainId from provider, relying on options if present.");
+      chainIdBigInt = tx.options?.chainId;
+    }
+
     const txRequest: ethers.TransactionRequest = {
       to: tx.to,
-      // Convert value string (ETH) to Wei bigint if needed, otherwise pass through
-      value: (typeof tx.value === 'string' && tx.value.includes('.')) ? ethers.parseEther(tx.value) : tx.value,
+      value: tx.value, // Assume tx.value is already correct format (bigint wei)
       data: tx.data ? (typeof tx.data === 'string' ? tx.data : ethers.hexlify(tx.data)) : undefined,
-      chainId: tx.options?.chainId ?? (this.provider ? (await this.getNetwork()).chainId : undefined),
-      // <<< START CHANGE: Only set nonce if explicitly provided in options >>>
+      chainId: chainIdBigInt, // Use fetched/provided chainId
       nonce: tx.options?.nonce,
-      // <<< END CHANGE >>>
       gasLimit: tx.options?.gasLimit,
       gasPrice: tx.options?.gasPrice,
       maxFeePerGas: tx.options?.maxFeePerGas,
       maxPriorityFeePerGas: tx.options?.maxPriorityFeePerGas,
     };
 
-    // Gas handling: Prioritize options, then estimate if connected
-    if (this.provider) {
-      // Ensure we have a signer connected to the provider for estimation/fee data
-      const signer = this.wallet.connect(this.provider);
-      if (txRequest.gasLimit === undefined) {
-        try {
-          // Create a minimal object for estimation as estimateGas doesn't like all fields
-          const estimateParams: ethers.TransactionRequest = {
-            to: txRequest.to,
-            from: await signer.getAddress(), // estimateGas needs 'from'
-            data: txRequest.data,
-            value: txRequest.value
-          };
-          console.log(`[EvmWalletAdapter] Estimating gas for:`, estimateParams);
-          txRequest.gasLimit = await signer.estimateGas(estimateParams);
-          console.log(`[EvmWalletAdapter] Gas estimate: ${txRequest.gasLimit}`);
-        } catch (estimateError: any) {
-          console.error("[EvmWalletAdapter] Gas estimation failed:", estimateError.message);
-        }
-      }
-      // Fee handling: Prioritize options, then fetch if connected
-      if (txRequest.gasPrice === undefined && txRequest.maxFeePerGas === undefined) {
-        const feeData = await this.provider.getFeeData();
-        if (feeData) {
-          if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
-            // EIP-1559
-            txRequest.maxFeePerGas = feeData.maxFeePerGas;
-            txRequest.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
-          } else if (feeData.gasPrice) {
-            // Legacy
-            txRequest.gasPrice = feeData.gasPrice;
-          }
-          // Log fetched fees
-          console.log(`[EvmWalletAdapter] Fetched fee data: gasPrice=${feeData.gasPrice}, maxFeePerGas=${feeData.maxFeePerGas}, maxPriorityFeePerGas=${feeData.maxPriorityFeePerGas}`);
-        } else {
-          console.warn("[EvmWalletAdapter] Could not fetch fee data from provider.");
-        }
-      }
-    } else if (txRequest.nonce === undefined || (txRequest.gasLimit === undefined && txRequest.gasPrice === undefined && txRequest.maxFeePerGas === undefined)) {
-      // Cannot automatically populate nonce/gas without provider for signing offline
-      console.warn("[EvmWalletAdapter] Signing transaction without provider: Nonce and Gas parameters must be provided in tx.options");
-    }
-
-    // Remove undefined fields before sending/signing
     Object.keys(txRequest).forEach(key => txRequest[key as keyof ethers.TransactionRequest] === undefined && delete txRequest[key as keyof ethers.TransactionRequest]);
+    // console.debug(`[EvmWalletAdapter:prepare] Returning txRequest.value: ${txRequest.value} (type: ${typeof txRequest.value})`);
 
     return txRequest;
   }
@@ -552,15 +542,34 @@ export class EvmWalletAdapter implements IEVMWallet {
       throw new Error("EvmWalletAdapter not connected or initialized.");
     }
     try {
+      // console.debug(`[EvmWalletAdapter:sendTransaction] Received tx.value: ${tx.value} (type: ${typeof tx.value})`);
+
       const txRequest = await this.prepareTransactionRequest(tx);
-      console.log('[EvmWalletAdapter] Sending transaction:', txRequest); // Log the final prepared tx
+      // <<< START ADD LOGGING >>>
+      // console.debug(`[EvmWalletAdapter] Prepared Tx Request for sendTransaction:`, {
+      //   to: txRequest.to,
+      //   value: txRequest.value?.toString(),
+      //   data: txRequest.data,
+      //   nonce: txRequest.nonce,
+      //   gasLimit: txRequest.gasLimit?.toString(),
+      //   gasPrice: txRequest.gasPrice?.toString(), // Log legacy gasPrice if present
+      //   maxFeePerGas: txRequest.maxFeePerGas?.toString(),
+      //   maxPriorityFeePerGas: txRequest.maxPriorityFeePerGas?.toString(),
+      //   chainId: txRequest.chainId?.toString(),
+      // });
+      // console.debug(`[EvmWalletAdapter:sendTransaction] Sending with txRequest.value: ${txRequest.value} (type: ${typeof txRequest.value})`);
+
+      // console.debug(`[EvmWalletAdapter] Sending transaction via ethers signer...`);
       const response: TransactionResponse = await this.wallet.sendTransaction(txRequest); // <<< Ethers handles nonce if txRequest.nonce is undefined
-      console.log(`[EvmWalletAdapter] Transaction sent, hash: ${response.hash}`);
+      // console.debug(`[EvmWalletAdapter] Transaction sent response hash: ${response.hash}`);
+
       return response.hash;
     } catch (error: any) {
-      console.error("[EvmWalletAdapter] Send transaction failed:", error);
-      // Re-throw as an AdapterError or specific error type if desired
-      throw error; // Re-throw original error for now
+      console.error("[EvmWalletAdapter] Send transaction error:", error);
+      if (error.info?.error) {
+        console.error("[EvmWalletAdapter] Provider error details:", error.info.error);
+      }
+      throw error;
     }
   }
 
@@ -578,7 +587,7 @@ export class EvmWalletAdapter implements IEVMWallet {
     try {
       // prepareTransactionRequest populates necessary fields like nonce/gas if possible
       const txRequest = await this.prepareTransactionRequest(tx);
-      console.log("[EvmWalletAdapter] Signing transaction:", txRequest);
+      // console.debug("[EvmWalletAdapter] Signing transaction:", txRequest);
       return await this.wallet.signTransaction(txRequest);
     } catch (error) {
       console.error("[EvmWalletAdapter] Sign transaction failed:", error);
@@ -598,9 +607,9 @@ export class EvmWalletAdapter implements IEVMWallet {
       throw new Error("Wallet not initialized.");
     }
     try {
-      console.log("[EvmWalletAdapter] Signing message...");
+      // console.debug("[EvmWalletAdapter] Signing message...");
       const signature = await this.wallet.signMessage(message);
-      console.log("[EvmWalletAdapter] Message signed.");
+      // console.debug("[EvmWalletAdapter] Message signed.");
       return signature;
     } catch (error) {
       console.error("[EvmWalletAdapter] Sign message failed:", error);
@@ -624,10 +633,10 @@ export class EvmWalletAdapter implements IEVMWallet {
       throw new Error("Wallet not initialized.");
     }
     try {
-      console.log("[EvmWalletAdapter] Signing typed data:", data);
+      // console.debug("[EvmWalletAdapter] Signing typed data:", data);
       // ethers v6 signTypedData takes domain, types, and the primary message object (named 'message' in our type)
       const signature = await this.wallet.signTypedData(data.domain, data.types, data.value);
-      console.log("[EvmWalletAdapter] Typed data signed.");
+      // console.debug("[EvmWalletAdapter] Typed data signed.");
       return signature;
     } catch (error) {
       console.error("[EvmWalletAdapter] Sign typed data failed:", error);
@@ -667,6 +676,9 @@ export class EvmWalletAdapter implements IEVMWallet {
     if (!this.isConnected() || !this.provider) {
       throw new Error("Provider not set or wallet not connected.");
     }
+
+    // console.debug(`[EvmWalletAdapter:estimateGas] Received tx.value: ${tx.value} (type: ${typeof tx.value})`);
+
     try {
       // Use prepareTransactionRequest to build a structure suitable for estimateGas,
       // but exclude fields that might cause issues (like nonce if we want provider's estimate)
@@ -675,9 +687,11 @@ export class EvmWalletAdapter implements IEVMWallet {
         from: this.wallet.address, // 'from' is often needed
         data: tx.data ? (typeof tx.data === 'string' ? tx.data : ethers.hexlify(tx.data)) : undefined,
         value: tx.value,
-        // Include relevant options if provided
         ...(tx.options || {})
       };
+
+      // console.debug(`[EvmWalletAdapter:estimateGas] Using txForEstimate.value: ${txForEstimate.value} (type: ${typeof txForEstimate.value})`);
+
       // Remove fields that estimateGas might not want/need or that we want the provider to determine
       delete txForEstimate.nonce;
       delete txForEstimate.gasPrice;
@@ -685,9 +699,9 @@ export class EvmWalletAdapter implements IEVMWallet {
       delete txForEstimate.maxPriorityFeePerGas;
       delete txForEstimate.gasLimit; // Remove gasLimit to get an estimate
 
-      console.log("[EvmWalletAdapter] Estimating gas for:", txForEstimate);
+      // console.debug("[EvmWalletAdapter] Estimating gas for:", txForEstimate);
       const estimate = await this.provider.estimateGas(txForEstimate);
-      console.log(`[EvmWalletAdapter] Gas estimate: ${estimate.toString()}`);
+      // console.debug(`[EvmWalletAdapter] Gas estimate: ${estimate.toString()}`);
       return estimate;
     } catch (error) {
       console.error("[EvmWalletAdapter] Estimate gas failed:", error);
@@ -706,9 +720,9 @@ export class EvmWalletAdapter implements IEVMWallet {
       throw new Error("Provider not set or wallet not connected.");
     }
     try {
-      console.log(`[EvmWalletAdapter] Getting receipt for tx: ${txHash}`);
+      // console.debug(`[EvmWalletAdapter] Getting receipt for tx: ${txHash}`);
       const receipt = await this.provider.getTransactionReceipt(txHash);
-      console.log(`[EvmWalletAdapter] Receipt result:`, receipt);
+      // console.debug(`[EvmWalletAdapter] Receipt result:`, receipt);
       return receipt; // Can be null
     } catch (error) {
       console.error(`[EvmWalletAdapter] Get transaction receipt error for ${txHash}:`, error);
@@ -734,9 +748,9 @@ export class EvmWalletAdapter implements IEVMWallet {
 
     try {
       const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, this.provider);
-      console.log(`[EvmWalletAdapter] Getting token balance for ${tokenAddress} on account ${targetAccount}`);
+      // console.debug(`[EvmWalletAdapter] Getting token balance for ${tokenAddress} on account ${targetAccount}`);
       const balance = await tokenContract.balanceOf(targetAccount);
-      console.log(`[EvmWalletAdapter] Token balance result: ${balance.toString()}`);
+      // console.debug(`[EvmWalletAdapter] Token balance result: ${balance.toString()}`);
       return balance.toString(); // Return raw balance string
     } catch (error: any) {
       console.error(`[EvmWalletAdapter] Get token balance error for ${tokenAddress}:`, error);

@@ -1,0 +1,49 @@
+{
+  "name": "@m3s/common",
+  "version": "0.1.0",
+  "description": "Common utilities, types, and registry for M3S packages",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo"
+  },
+  "keywords": [
+    "m3s",
+    "common",
+    "utils",
+    "types",
+    "registry"
+  ],
+  "author": "Your Name/Org",
+  "license": "MIT",
+  "homepage": "https://github.com/your-repo/m3s-package/tree/main/packages/common#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-repo/m3s-package.git",
+    "directory": "packages/common"
+  },
+  "bugs": {
+    "url": "https://github.com/your-repo/m3s-package/issues" 
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

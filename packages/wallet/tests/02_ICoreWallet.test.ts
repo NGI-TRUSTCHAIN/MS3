@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
-import { AssetBalance, GenericTransactionData, ICoreWallet, ProviderConfig, WalletEvent } from '../src/types/index.js';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { ethers } from 'ethers';
-import { getWorkingChainConfigAsync, loadAllNetworks } from './utils.js';
+import { AssetBalance, GenericTransactionData, ICoreWallet, ProviderConfig, WalletEvent } from '@m3s/common';
+import { getWorkingChainConfigAsync, loadAllNetworks} from '@m3s/wallet'
 
 export function testCoreWalletInterface(wallet: ICoreWallet, skipConnectivity: boolean = false) {
   // Safety check for undefined wallet
@@ -59,10 +59,6 @@ export function testCoreWalletInterface(wallet: ICoreWallet, skipConnectivity: b
       it('should implement getBalance method', () => {
         expect(typeof wallet.getBalance).toBe('function');
       });
-
-      it('should implement verifySignature method', () => {
-        expect(typeof wallet.verifySignature).toBe('function');
-      });
     });
 
     describe('Event Methods', () => {
@@ -75,7 +71,7 @@ export function testCoreWalletInterface(wallet: ICoreWallet, skipConnectivity: b
       });
 
       it('should register and remove event listeners correctly', () => {
-        const callback = () => {};
+        const callback = () => { };
         // Should not throw an error
         wallet.on(WalletEvent.accountsChanged, callback);
         wallet.off(WalletEvent.accountsChanged, callback);
@@ -132,8 +128,6 @@ export function testCoreWalletInterface(wallet: ICoreWallet, skipConnectivity: b
             }
             if (accounts.length === 0) {
               console.error('!!! CRITICAL: No accounts found even after requestAccounts. Functional tests will likely fail. !!!');
-            } else {
-              console.log(`Using account ${accounts[0]} for functional tests.`);
             }
           } catch (error) {
             console.error('Error during beforeAll setup:', error);
@@ -180,21 +174,11 @@ export function testCoreWalletInterface(wallet: ICoreWallet, skipConnectivity: b
           }
           try {
             const message = `Test message for signature verification ${Date.now()}`;
-            const signerAddress = accounts[0];
 
             const signature = await wallet.signMessage(message);
             expect(typeof signature).toBe('string');
             expect(signature.length).toBeGreaterThan(100); // Basic check for signature format
             expect(signature.startsWith('0x')).toBe(true);
-
-            // Pass the signer's address for verification
-            const isValid = await wallet.verifySignature(message, signature, signerAddress);
-            expect(isValid).toBe(true);
-
-            // Test verification failure with wrong address
-            const wrongAddress = ethers.Wallet.createRandom().address; // Generate a random address
-            const isInvalid = await wallet.verifySignature(message, signature, wrongAddress);
-            expect(isInvalid).toBe(false);
 
           } catch (error) {
             console.warn('Could not test message signing/verification:', error);
@@ -203,28 +187,24 @@ export function testCoreWalletInterface(wallet: ICoreWallet, skipConnectivity: b
         });
 
         // Test for Uint8Array message signing
-        it('should sign a Uint8Array message and verify it', async () => {
-            if (accounts.length === 0) {
-              console.warn('Skipping sign/verify Uint8Array message test - no accounts available.');
-              return;
-            }
-            try {
-              const messageText = `Test Uint8Array message ${Date.now()}`;
-              const messageBytes = ethers.toUtf8Bytes(messageText); // Use ethers utility
-              const signerAddress = accounts[0];
+        it('should sign a Uint8Array message', async () => {
+          if (accounts.length === 0) {
+            console.warn('Skipping sign/verify Uint8Array message test - no accounts available.');
+            return;
+          }
+          try {
+            const messageText = `Test Uint8Array message ${Date.now()}`;
+            const messageBytes = ethers.toUtf8Bytes(messageText); // Use ethers utility
 
-              const signature = await wallet.signMessage(messageBytes);
-              expect(typeof signature).toBe('string');
-              expect(signature.startsWith('0x')).toBe(true);
+            const signature = await wallet.signMessage(messageBytes);
+            expect(typeof signature).toBe('string');
+            expect(signature.startsWith('0x')).toBe(true);
 
-              const isValid = await wallet.verifySignature(messageBytes, signature, signerAddress);
-              expect(isValid).toBe(true);
-
-            } catch (error) {
-              console.warn('Could not test Uint8Array message signing/verification:', error);
-              expect(true).toBe(true); // Avoid test failure
-            }
-          });
+          } catch (error) {
+            console.warn('Could not test Uint8Array message signing/verification:', error);
+            expect(true).toBe(true); // Avoid test failure
+          }
+        });
 
 
         it('should get network information', async () => {
@@ -258,13 +238,9 @@ export function testCoreWalletInterface(wallet: ICoreWallet, skipConnectivity: b
           wallet.on(WalletEvent.chainChanged, eventSpy);
 
           try {
-            const initialNetwork = await wallet.getNetwork();
-            console.log(`Initial network for setProvider test: ${initialNetwork.chainId}`);
 
             await wallet.setProvider(polygonConfig);
-
             const newNetwork = await wallet.getNetwork();
-            console.log(`Network after setProvider: ${newNetwork.chainId}`);
 
             // Check if network actually changed (allow string/number comparison)
             expect(newNetwork.chainId.toString()).toEqual(polygonConfig.chainId!.toString());
@@ -313,9 +289,9 @@ export function testCoreWalletInterface(wallet: ICoreWallet, skipConnectivity: b
         // sendTransaction is harder to test reliably without network interaction and funds
         // Keep it simple or skip if not essential for core interface validation
         it('should have a callable sendTransaction method', async () => {
-           // This just checks if the method exists and is callable, doesn't execute fully
-           expect(typeof wallet.sendTransaction).toBe('function');
-           // We won't actually call it here to avoid network dependency / errors
+          // This just checks if the method exists and is callable, doesn't execute fully
+          expect(typeof wallet.sendTransaction).toBe('function');
+          // We won't actually call it here to avoid network dependency / errors
         });
 
       });

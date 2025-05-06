@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest';
-import { getWorkingChainConfigAsync, getTestPrivateKey, loadAllNetworks, fetchChainListNetwork } from './utils.js';
 import { EvmWalletAdapter } from '../src/adapters/ethersWallet.js';
-import { ProviderConfig, WalletEvent } from '../src/types/index.js';
+import { ProviderConfig, WalletEvent } from '@m3s/common';
+import { fetchChainListNetwork, loadAllNetworks} from '@m3s/wallet'
+import {getTestPrivateKey} from '../config.js'
 
 describe('Network Switching Functionality', () => {
   // Get test networks
@@ -12,26 +13,20 @@ describe('Network Switching Functionality', () => {
     await loadAllNetworks(); // Ensure shared cache is populated
 
     // Define candidate networks to test
-    const networksToTest = ['sepolia', 'goerli', 'arbitrum', 'optimism', 'polygon'];
+    const networksToTest = ['sepolia', 'arbitrum', 'optimism', 'polygon'];
     const loadedConfigs: Record<string, any> = {}; // Use 'any' temporarily for loading flexibility
 
-    console.log("Attempting to load network configs...");
     for (const name of networksToTest) {
       try {
         // Use the reliable async fetcher
         const config = await fetchChainListNetwork(name);
         if (config && config.chainId) { // Check if config is valid
           loadedConfigs[name] = config;
-          console.log(`[NetworkSwitchingTest] Successfully loaded config for ${name}: ChainID ${config.chainId}`);
-        } else {
-          console.warn(`[NetworkSwitchingTest] Could not load a valid config for ${name}.`);
         }
       } catch (error: any) {
         console.error(`[NetworkSwitchingTest] Error loading config for ${name}:`, error.message);
       }
     }
-    
-    console.log("Configs loaded before filtering:", Object.keys(loadedConfigs).filter(k => loadedConfigs[k]));
 
     // Filter out null/undefined and ensure required fields for ProviderConfig
     networks = Object.entries(loadedConfigs)
@@ -42,7 +37,6 @@ describe('Network Switching Functionality', () => {
         return acc;
       }, {} as Record<string, ProviderConfig>); // Ensure the final type is correct
 
-    console.log("Networks available after filtering:", Object.keys(networks));
   });
 
   it('should support switching between different networks', async () => {
@@ -72,8 +66,6 @@ describe('Network Switching Functionality', () => {
       const networkConfig = networks[networkName];
       if (!networkConfig) continue;
 
-      console.log(`Testing network switch to ${networkName} (${networkConfig.chainId})`);
-
       // Set up event listener
       const eventSpy = vi.fn();
       wallet.on(WalletEvent.chainChanged, eventSpy);
@@ -83,7 +75,6 @@ describe('Network Switching Functionality', () => {
         expect(wallet.isConnected()).toBe(true);
 
         const currentNetwork = await wallet.getNetwork();
-        console.log(`Switched to network: ${currentNetwork.name} (${currentNetwork.chainId})`);
         expect(currentNetwork.chainId.toString()).toEqual(networkConfig.chainId.toString());
 
         if (previousChainId) {

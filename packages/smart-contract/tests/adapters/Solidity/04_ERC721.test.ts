@@ -3,15 +3,10 @@ import { createContractHandler } from '../../../src/index.js';
 import { CompiledOutput, DeployedOutput, GenerateContractInput, IBaseContractHandler } from '../../../src/types/index.js';
 import { ethers } from 'ethers';
 import * as path from 'path';
-import { TEST_PRIVATE_KEY, RUN_INTEGRATION_TESTS } from '../../../config.js';
-import { createWallet, IEVMWallet } from '@m3s/wallet';
+import { TEST_PRIVATE_KEY, RUN_INTEGRATION_TESTS, INFURA_API_KEY } from '../../../config.js';
+import { createWallet } from '@m3s/wallet';
+import { IEVMWallet } from '@m3s/common'
 
-
-// Provider for testnet interactions
-const getTestProvider = () => {
-  const rpcUrl = process.env.VITE_SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com';
-  return new ethers.JsonRpcProvider(rpcUrl);
-};
 
 describe('ERC721 Options Tests', () => {
   let contractHandler: IBaseContractHandler;
@@ -270,35 +265,47 @@ describe('ERC721 Options Tests', () => {
   });
 });
 
-// Full integration tests for real blockchain deployment
 (RUN_INTEGRATION_TESTS ? describe : describe.skip)('Full ERC721 Integration Tests', () => {
-  // <<< Updated setup >>>
-  let walletAdapter: IEVMWallet;
+  let walletAdapter: IEVMWallet; // <<< ADDED
   let contractHandler: IBaseContractHandler;
-  let provider: ethers.Provider;
+  let provider: ethers.Provider; // Add provider
 
   beforeEach(async () => {
-    provider = getTestProvider();
+    const rpcUrl = `https://sepolia.infura.io/v3/${INFURA_API_KEY}`;
+    provider = new ethers.JsonRpcProvider(rpcUrl);
+
     const network = await provider.getNetwork();
     const chainId = network.chainId;
-    const rpcUrl = (provider as any).connection?.url || 'https://ethereum-sepolia-rpc.publicnode.com';
+    console.log(`[Test Setup] Using RPC: ${rpcUrl}, ChainID: ${chainId}`);
 
     walletAdapter = await createWallet<IEVMWallet>({
       adapterName: 'ethers',
-      provider: {
-        rpcUrl: rpcUrl,
-        chainId: chainId
-      },
       options: {
         privateKey: TEST_PRIVATE_KEY
       }
     });
 
-    if (!walletAdapter.isInitialized()) {
+    console.log(`[Test Setup] After createWallet: isInitialized=${await walletAdapter.isInitialized()}, isConnected=${await walletAdapter.isConnected()}`);
+
+    // <<< Ensure wallet adapter is initialized >>>
+    if (!(await walletAdapter.isInitialized())) {
+      console.log("[Test Setup] Wallet not initialized by create, calling initialize...");
       await walletAdapter.initialize();
+    } else {
+      console.log("[Test Setup] Wallet already initialized by create.");
     }
-    if (!walletAdapter.isConnected()) {
+
+    console.log(`[Test Setup] After initialize check: isInitialized=${await walletAdapter.isInitialized()}, isConnected=${await walletAdapter.isConnected()}`);
+
+
+    try {
+      // Use the explicitly defined rpcUrl
       await walletAdapter.setProvider({ rpcUrl, chainId: String(chainId) });
+      console.log(`[Test Setup] After setProvider SUCCESS: isInitialized=${await walletAdapter.isInitialized()}, isConnected=${await walletAdapter.isConnected()}`);
+    } catch (error) {
+      console.error(`[Test Setup] setProvider FAILED:`, error);
+      // Re-throw to ensure the test fails clearly if setProvider has an issue
+      throw error;
     }
 
     contractHandler = await createContractHandler({
@@ -306,17 +313,15 @@ describe('ERC721 Options Tests', () => {
       options: {
         workDir: path.join(process.cwd(), 'test-contracts-output', 'erc721'),
         preserveOutput: true,
-        providerConfig: { // Pass provider config for the handler's internal provider
+        providerConfig: {
           rpcUrl: rpcUrl,
           chainId: chainId
         }
       }
     });
-    // Initialization handled by createContractHandler
+    console.log(`[Test Setup] After createContractHandler. beforeEach complete.`);
   });
-  // <<< End Updated setup >>>
 
-  // <<< Define waitForReceipt helper >>>
   const waitForReceipt = async (txHash: string, maxAttempts = 20, waitTime = 6000): Promise<ethers.TransactionReceipt | null> => {
     for (let i = 0; i < maxAttempts; i++) {
       const receipt = await walletAdapter.getTransactionReceipt(txHash);
@@ -366,8 +371,14 @@ describe('ERC721 Options Tests', () => {
 
     // 3. Deploy
     console.log('3️⃣ Deploying to testnet...');
-    const deployerAddress = (await walletAdapter.getAccounts())[0]; // <<< Use walletAdapter
+
+    console.log(`[Test Run] Before getAccounts call: isInitialized=${await walletAdapter.isInitialized()}, isConnected=${await walletAdapter.isConnected()}`);
+    const accounts = await walletAdapter.getAccounts();
+    // <<< Log the raw result from getAccounts >>>
+    console.log(`[Test Run] After getAccounts call: received accounts =`, accounts);
+    const deployerAddress = accounts[0];
     console.log(`Deployer address from walletAdapter: ${deployerAddress}`);
+
     if (!deployerAddress || !ethers.isAddress(deployerAddress)) {
       throw new Error(`Failed to get a valid deployer address from wallet adapter. Received: ${deployerAddress}`);
     }
@@ -426,15 +437,15 @@ describe('ERC721 Options Tests', () => {
       args: [tokenId]
       // wallet: walletAdapter // Optional for reads
     });
-    
-   // <<< CORRECTED EXPECTATION: OZ concatenates base URI + specific URI when both exist >>>
-   const baseUri = 'ipfs://QmNFTCollection/'; // The base URI used in generation
-   const uriSuffix = `metadata/${tokenId}.json`; // The URI provided during mint
-   const expectedTokenURI = baseUri + uriSuffix; // Concatenated result
-   // <<< END CORRECTION >>>
-   console.log(`Retrieved token URI: ${retrievedURI}`);
-   expect(retrievedURI).toBe(expectedTokenURI);
-   console.log(`✅ Token URI verified`);
+
+    // <<< CORRECTED EXPECTATION: OZ concatenates base URI + specific URI when both exist >>>
+    const baseUri = 'ipfs://QmNFTCollection/'; // The base URI used in generation
+    const uriSuffix = `metadata/${tokenId}.json`; // The URI provided during mint
+    const expectedTokenURI = baseUri + uriSuffix; // Concatenated result
+    // <<< END CORRECTION >>>
+    console.log(`Retrieved token URI: ${retrievedURI}`);
+    expect(retrievedURI).toBe(expectedTokenURI);
+    console.log(`✅ Token URI verified`);
 
     // 3. Test enumerable feature (read)
     console.log('Testing enumerable feature...');

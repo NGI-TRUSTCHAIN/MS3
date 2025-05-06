@@ -1,6 +1,6 @@
-import { registry } from '../registry.js';
 import { ContractHandlerType } from '../types/index.js';
-import { OpenZeppelinAdapter } from './openZeppelinAdapter.js';
+import { OpenZeppelinAdapter } from './openZeppelin/index.js'; // Updated path
+import { registry } from '@m3s/common';
 
 registry.registerAdapter('contractHandler', {
   name: 'openZeppelin',

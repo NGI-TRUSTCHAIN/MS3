@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { EIP712TypedData, GenericTransactionData, IEVMWallet } from '../src/types/index.js';
+import { EIP712TypedData, GenericTransactionData, IEVMWallet } from '@m3s/common';
 import { testCoreWalletInterface } from './02_ICoreWallet.test.js';
 import { ethers } from 'ethers';
 
@@ -54,8 +54,6 @@ export function testEVMWalletInterface(wallet: IEVMWallet, skipConnectivity: boo
              }
              if (accounts.length === 0) {
                console.error('!!! CRITICAL: No accounts found for EVM functional tests. !!!');
-             } else {
-               console.log(`Using account ${accounts[0]} for EVM functional tests.`);
              }
           } catch (error) {
             console.error('Error getting accounts before EVM tests:', error);
@@ -69,7 +67,6 @@ export function testEVMWalletInterface(wallet: IEVMWallet, skipConnectivity: boo
             expect(typeof gasPrice).toBe('bigint');
             // Check if it's positive
             expect(gasPrice).toBeGreaterThan(0n);
-            console.log(`Gas price: ${gasPrice.toString()}`);
           } catch (error) {
             console.warn('Failed to get gas price:', error);
             expect(true).toBe(true); // Avoid test failure
@@ -94,7 +91,6 @@ export function testEVMWalletInterface(wallet: IEVMWallet, skipConnectivity: boo
             expect(typeof gasEstimate).toBe('bigint');
             // Check if it's a plausible value (e.g., >= 21000 for basic transfer)
             expect(gasEstimate).toBeGreaterThanOrEqual(21000n);
-            console.log(`Gas estimate: ${gasEstimate.toString()}`);
           } catch (error) {
             console.warn('Failed to estimate gas:', error);
             expect(true).toBe(true); // Avoid test failure
@@ -111,7 +107,7 @@ export function testEVMWalletInterface(wallet: IEVMWallet, skipConnectivity: boo
           // This test remains conditional on TEST_TOKEN_ADDRESS
           const testTokenAddress = process.env.TEST_TOKEN_ADDRESS;
           if (!testTokenAddress) {
-            console.info('Skipping token balance test - no TEST_TOKEN_ADDRESS in env');
+            console.warn('Skipping token balance test - no TEST_TOKEN_ADDRESS in env');
             return;
           }
           if (accounts.length === 0) {
@@ -124,7 +120,6 @@ export function testEVMWalletInterface(wallet: IEVMWallet, skipConnectivity: boo
             expect(typeof balance).toBe('string');
             // Check if it's a non-negative integer string
             expect(balance).toMatch(/^\d+$/);
-            console.log(`Token ${testTokenAddress} balance: ${balance}`);
           } catch (error) {
             console.warn('Failed to get token balance:', error);
             expect(true).toBe(true); // Avoid test failure
@@ -176,7 +171,6 @@ export function testEVMWalletInterface(wallet: IEVMWallet, skipConnectivity: boo
               signature
             );
             expect(recoveredAddress.toLowerCase()).toEqual(accounts[0].toLowerCase());
-            console.log("EIP-712 Signature verified successfully.");
 
           } catch (error) {
             console.warn('Failed to sign typed data:', error);
