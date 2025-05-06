@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 // Load environment variables from the root .env file
 // Calculate path relative to this file: up from src, crosschain, packages to root
 const envPath = path.resolve(__dirname, '../../../.env');
-console.log(`Crosschain config loading environment variables from: ${envPath}`); // <<< Log the calculated path
+// console.debug(`Crosschain config loading environment variables from: ${envPath}`); // <<< Log the calculated path
 dotenv.config({ path: envPath }); // <<< Use the calculated path
 
 // API Keys and Configuration
@@ -18,8 +18,8 @@ export const TEST_PRIVATE_KEY = process.env.TEST_PRIVATE_KEY || '';
 
 // Test function to verify if .env is loading correctly
 export function verifyDotEnvLoading() {
-  console.log('TEST_PRIVATE_KEY found:', TEST_PRIVATE_KEY ? 'YES ✅' : 'NO ❌');
-  console.log('LIFI_API_KEY found:', LIFI_API_KEY ? 'YES ✅' : 'NO ❌');
+  // console.debug('TEST_PRIVATE_KEY found:', TEST_PRIVATE_KEY ? 'YES ✅' : 'NO ❌');
+  // console.debug('LIFI_API_KEY found:', LIFI_API_KEY ? 'YES ✅' : 'NO ❌');
 }
 
 // Run verification during module load (optional, for debugging)

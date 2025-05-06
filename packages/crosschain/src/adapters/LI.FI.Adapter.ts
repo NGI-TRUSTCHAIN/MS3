@@ -27,7 +27,6 @@ import {
   Execution,
   resumeRoute
 } from '@lifi/sdk';
-import { IEVMWallet } from '@m3s/wallet'; // Still needed for type hints potentially
 
 /**
  * Interface for LI.FI execution provider
@@ -69,6 +68,7 @@ export class MinimalLiFiAdapter implements ICrossChain {
   private apiKey?: string;
   private initialized: boolean = false;
   private executionProvider?: LiFiExecutionProvider;
+  private adapterName = "lifi"
 
   /**
    * Private constructor - use static create method
@@ -229,11 +229,11 @@ export class MinimalLiFiAdapter implements ICrossChain {
           feeUSD: feeUSD,
           gasCosts: gasCostsEstimate,
         },
-        adapterName: 'lifi-minimal',
+        adapterName: this.adapterName,
         adapterQuote: quoteStep, // Store raw quote
       };
 
-      console.log(`[MinimalLiFiAdapter] Quote received: ${operationQuote.id}`);
+      console.log(`[MinimalLiFiAdapter] Quote received: ${operationQuote.id}`, JSON.stringify(operationQuote, null, 2));
       return [operationQuote];
 
     } catch (error: any) {
@@ -276,7 +276,7 @@ export class MinimalLiFiAdapter implements ICrossChain {
         sourceTx: { chainId: quote.intent.sourceAsset.chainId },
         destinationTx: { chainId: quote.intent.destinationAsset.chainId },
         statusMessage: 'Execution initiated via LI.FI SDK.',
-        adapterName: 'lifi-minimal',
+        adapterName: this.adapterName,
       };
 
     } catch (error: any) {
@@ -289,7 +289,7 @@ export class MinimalLiFiAdapter implements ICrossChain {
         destinationTx: { chainId: quote.intent.destinationAsset.chainId },
         error: `Execution failed: ${error.message}`,
         statusMessage: `Execution failed: ${error.message}`,
-        adapterName: 'lifi-minimal',
+        adapterName: this.adapterName,
       };
     }
   }
@@ -313,7 +313,7 @@ export class MinimalLiFiAdapter implements ICrossChain {
           status: 'UNKNOWN',
           sourceTx: {},
           statusMessage: 'Operation not found in active LI.FI routes.',
-          adapterName: 'lifi-minimal',
+          adapterName: this.adapterName,
         };
       }
 
@@ -328,7 +328,7 @@ export class MinimalLiFiAdapter implements ICrossChain {
         sourceTx: {},
         error: `Failed to get status: ${error.message}`,
         statusMessage: `Failed to get status: ${error.message}`,
-        adapterName: 'lifi-minimal',
+        adapterName: this.adapterName,
       };
     }
   }
@@ -353,7 +353,7 @@ export class MinimalLiFiAdapter implements ICrossChain {
           destinationTx: { chainId: activeRoute.toChainId },
           error: reason === 'timeout' ? 'Operation canceled due to timeout' : 'Operation canceled by user',
           statusMessage: reason === 'timeout' ? 'Operation canceled due to timeout' : 'Operation canceled by user',
-          adapterName: 'lifi-minimal',
+          adapterName: this.adapterName,
         };
       } else {
         console.warn(`[MinimalLiFiAdapter] Cannot cancel ${operationId}: No active route found.`);
@@ -363,7 +363,7 @@ export class MinimalLiFiAdapter implements ICrossChain {
           sourceTx: {},
           error: 'Cannot cancel: Operation not found in active routes',
           statusMessage: 'Cannot cancel: Operation not found in active routes',
-          adapterName: 'lifi-minimal',
+          adapterName: this.adapterName,
         };
       }
     } catch (error: any) {
@@ -374,7 +374,7 @@ export class MinimalLiFiAdapter implements ICrossChain {
         sourceTx: {},
         error: `Cancellation failed: ${error.message}`,
         statusMessage: `Cancellation failed: ${error.message}`,
-        adapterName: 'lifi-minimal',
+        adapterName: this.adapterName,
       };
     }
   }
@@ -430,7 +430,7 @@ export class MinimalLiFiAdapter implements ICrossChain {
       receivedAmount: receivedAmount,
       error: error,
       statusMessage: statusMessage,
-      adapterName: 'lifi-minimal',
+      adapterName: this.adapterName,
     };
   }
 
@@ -573,7 +573,7 @@ export class MinimalLiFiAdapter implements ICrossChain {
         sourceTx: { chainId: activeRoute.fromChainId },
         destinationTx: { chainId: activeRoute.toChainId },
         statusMessage: 'Resumption initiated via LI.FI SDK.',
-        adapterName: 'lifi-minimal',
+        adapterName: this.adapterName,
       };
 
     } catch (error: any) {
@@ -586,7 +586,7 @@ export class MinimalLiFiAdapter implements ICrossChain {
         destinationTx: {},
         error: `Resume failed: ${error.message}`,
         statusMessage: `Resume failed: ${error.message}`,
-        adapterName: 'lifi-minimal',
+        adapterName: this.adapterName,
       };
     }
   }

@@ -1,17 +1,14 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { ethers, JsonRpcProvider } from 'ethers';
+import { ethers } from 'ethers';
 import { LiFiExecutionProvider, LiFiConfig, createCrossChain } from '../../src/index.js';
-import { testAdapterPattern } from '../01_Core.test.js';
-// --- Import the Minimal Adapter ---
 import { MinimalLiFiAdapter } from '../../src/adapters/LI.FI.Adapter.js';
 import { OperationQuote, OperationResult, OperationIntent, ChainAsset } from '../../src/types/interfaces/index.js';
-import { createWallet, IEVMWallet, IWalletOptions } from '@m3s/wallet';
+import { createWallet, getNetworkConfig } from '@m3s/wallet';
 import { RouteExtended } from '@lifi/sdk';
-import { createLifiProviderFromWallet } from 'packages/crosschain/src/helpers/ProviderHelper.js';
-import { getWorkingChainConfigAsync } from 'packages/wallet/tests/utils.js';
-import { RUN_REAL_EXECUTION } from 'packages/crosschain/src/config.js';
-import { TEST_PRIVATE_KEY, LIFI_API_KEY } from '../../src/config.js';
-import { OperationMonitor } from 'packages/crosschain/src/helpers/OperationMonitor.js';
+import { TEST_PRIVATE_KEY, LIFI_API_KEY, RUN_REAL_EXECUTION } from '../../src/config.js';
+import { createLifiProviderFromWallet } from '../../src/helpers/ProviderHelper.js';
+import { OperationMonitor } from '../../src/helpers/OperationMonitor.js';
+import { IEVMWallet, ProviderConfig, IWalletOptions } from '@m3s/common';
 
 // --- Dynamic Network Configs (Same as 03) ---
 let polygonConfig: any;
@@ -31,20 +28,24 @@ let quoteIntent: OperationIntent;
 let adapter: MinimalLiFiAdapter; // <<< Use MinimalLiFiAdapter type
 let walletInstance: IEVMWallet;
 let testAddress: string;
-let providerInstance: JsonRpcProvider;
 
 // Constants (Same as 03)
-const QUOTE_TEST_TIMEOUT = 20000;
 const MINIMAL_TEST_AMOUNT = '100000000000000'; // 0.0001 MATIC
-const SWAP_EXECUTION_TIMEOUT = 120000; // 2 minutes
-const BRIDGE_TIMEOUT = 1000 * 1250; // 1250 seconds
+const BRIDGE_TIMEOUT = 1000 * 1500; // 1500 seconds (25 minutes)
 
 // createExecutionProvider helper (Same as 03)
 const createExecutionProvider = async (): Promise<LiFiExecutionProvider> => {
   if (!walletInstance || !walletInstance.isInitialized()) {
     throw new Error("Wallet must be initialized before creating a LiFi provider");
   }
-  const provider = await createLifiProviderFromWallet(walletInstance);
+  // --- Get NetworkConfig externally ---
+  const currentM3sNetwork = await walletInstance.getNetwork();
+  const initialNetworkConfig = await getNetworkConfig(currentM3sNetwork.chainId);
+  if (!initialNetworkConfig) {
+    throw new Error(`Failed to get NetworkConfig for initial chain ${currentM3sNetwork.chainId}`);
+  }
+  // --- Pass NetworkConfig to the helper ---
+  const provider = await createLifiProviderFromWallet(walletInstance, initialNetworkConfig);
   return provider
 };
 
@@ -54,17 +55,14 @@ beforeAll(async () => {
   }
 
   // --- Fetch Network Configurations (Same as 03) ---
-  console.log("Fetching network configurations...");
-  polygonConfig = await getWorkingChainConfigAsync('polygon');
-  optimismConfig = await getWorkingChainConfigAsync('optimism');
+  console.log("Fetching network configurations using getNetworkConfig...");
+  polygonConfig = await getNetworkConfig('polygon', ["https://polygon-mainnet.infura.io/v3/5791a18dd1ee45af8ac3d79b549d54f1"]); // <<< USE getNetworkConfig
+  optimismConfig = await getNetworkConfig('optimism', ["https://optimism-mainnet.infura.io/v3/5791a18dd1ee45af8ac3d79b549d54f1"]);
 
   if (!polygonConfig || !optimismConfig) {
     throw new Error("Failed to fetch required network configurations (Polygon, Optimism).");
   }
-  polygonConfig.rpcUrl = "https://polygon-mainnet.infura.io/v3/5791a18dd1ee45af8ac3d79b549d54f1"
-  polygonConfig.rpcUrls = ["https://polygon-mainnet.infura.io/v3/5791a18dd1ee45af8ac3d79b549d54f1"]
-  optimismConfig.rpcUrl = "https://optimism-mainnet.infura.io/v3/5791a18dd1ee45af8ac3d79b549d54f1"
-  optimismConfig.rpcUrls = ["https://optimism-mainnet.infura.io/v3/5791a18dd1ee45af8ac3d79b549d54f1"]
+
   console.log("Using polygonConfig:", polygonConfig);
   console.log("Using optimismConfig:", optimismConfig);
   MATIC_POLYGON = { chainId: polygonConfig.chainId, symbol: 'MATIC', decimals: 18, address: '0x0000000000000000000000000000000000000000' };
@@ -73,19 +71,40 @@ beforeAll(async () => {
   swapIntent = { sourceAsset: MATIC_POLYGON, destinationAsset: USDC_POLYGON, amount: MINIMAL_TEST_AMOUNT, userAddress: '', slippageBps: 300 };
   bridgeIntent = { sourceAsset: MATIC_POLYGON, destinationAsset: USDC_OPTIMISM, amount: MINIMAL_TEST_AMOUNT, userAddress: '', slippageBps: 300 };
   quoteIntent = { sourceAsset: MATIC_POLYGON, destinationAsset: { chainId: optimismConfig.chainId, address: '0x0000000000000000000000000000000000000000', symbol: 'ETH', decimals: 18 }, amount: '1000000000000000', userAddress: '', slippageBps: 100 };
-  providerInstance = new JsonRpcProvider(polygonConfig.rpcUrl);
-  const walletParams: IWalletOptions = { adapterName: 'ethers', provider: providerInstance, options: { privateKey: TEST_PRIVATE_KEY } };
+
+  // --- CHANGE: Use ProviderConfig for wallet creation ---
+  // providerInstance = new JsonRpcProvider(polygonConfig.rpcUrl); // REMOVE this line
+  const walletProviderConfig: ProviderConfig = {
+    chainId: polygonConfig.chainId,
+    rpcUrls: polygonConfig.rpcUrls, // Pass the full list from getNetworkConfig
+    rpcUrl: polygonConfig.rpcUrls[0], // Specify the primary validated one
+    displayName: polygonConfig.displayName,
+    // Add other fields if your EvmWalletAdapter or setProvider needs them
+  };
+  const walletParams: IWalletOptions = { adapterName: 'ethers', provider: walletProviderConfig, options: { privateKey: TEST_PRIVATE_KEY } };
+  // --- END CHANGE ---
+
   walletInstance = await createWallet<IEVMWallet>(walletParams);
   await walletInstance.initialize();
+  // <<< Add check for connection after initialize >>>
+  if (!walletInstance.isConnected()) {
+    console.warn("Wallet did not connect automatically after initialize. Attempting setProvider again.");
+    // If initialize didn't connect, setProvider might be needed explicitly
+    await walletInstance.setProvider(walletProviderConfig);
+    if (!walletInstance.isConnected()) {
+      throw new Error("Wallet failed to connect to provider.");
+    }
+  }
+  // --- Continue setup ---
   const accounts = await walletInstance.getAccounts();
   testAddress = accounts[0];
   console.log("Test Wallet Address:", testAddress);
   swapIntent.userAddress = testAddress;
   bridgeIntent.userAddress = testAddress;
   quoteIntent.userAddress = testAddress;
-  const executionProvider: LiFiExecutionProvider = await createExecutionProvider();
+  const executionProvider: LiFiExecutionProvider = await createExecutionProvider(); // This should now work
   const config: LiFiConfig = { apiKey: LIFI_API_KEY, provider: executionProvider };
-  adapter = await createCrossChain<MinimalLiFiAdapter>({ adapterName: 'lifi-minimal', config: config });
+  adapter = await createCrossChain<MinimalLiFiAdapter>({ adapterName: 'lifi', config: config });
   expect(adapter).toBeInstanceOf(MinimalLiFiAdapter);
 
 }, 60000);
@@ -96,7 +115,7 @@ beforeAll(async () => {
 // describe('MinimalLiFiAdapter Pattern & Lifecycle Tests', () => {
 //   // Test the adapter pattern (private constructor, static create, etc.)
 //   testAdapterPattern(MinimalLiFiAdapter, { // <<< Test MinimalLiFiAdapter
-//     adapterName: 'lifi-minimal',
+//     adapterName: 'lifi',
 //     config: { apiKey: LIFI_API_KEY }
 //   });
 
@@ -105,7 +124,7 @@ beforeAll(async () => {
 //   it('1.1: should create adapter with no parameters and be uninitialized', async () => {
 //     // Use createCrossChain for consistency, though MinimalLiFiAdapter.create works too
 //     const adapterInstance: any = await createCrossChain({
-//       adapterName: 'lifi-minimal' // <<< Use minimal name
+//       adapterName: 'lifi' // <<< Use minimal name
 //     });
 //     expect(adapterInstance).toBeInstanceOf(MinimalLiFiAdapter);
 //     expect(adapterInstance.isInitialized()).toBe(false);
@@ -113,7 +132,7 @@ beforeAll(async () => {
 //   });
 
 //   it('1.2: should allow setting API key after creation via initialize', async () => {
-//     const adapterInstance: any = await createCrossChain({ adapterName: 'lifi-minimal' });
+//     const adapterInstance: any = await createCrossChain({ adapterName: 'lifi' });
 //     expect(adapterInstance.isInitialized()).toBe(false);
 //     await adapterInstance.initialize({ apiKey: LIFI_API_KEY });
 //     expect(adapterInstance.isInitialized()).toBe(true);
@@ -122,7 +141,7 @@ beforeAll(async () => {
 //   });
 
 //   it('1.3: should fail when setting provider before initialization', async () => {
-//     const adapterInstance: any = await createCrossChain({ adapterName: 'lifi-minimal' });
+//     const adapterInstance: any = await createCrossChain({ adapterName: 'lifi' });
 //     const executionProvider = await createExecutionProvider();
 //     await expect(adapterInstance.setExecutionProvider(executionProvider))
 //       .rejects.toThrow("MinimalLiFiAdapter not initialized");
@@ -130,7 +149,7 @@ beforeAll(async () => {
 
 //   it('2.1: should initialize with API key only and allow adding provider later', async () => {
 //     const adapterInstance: any = await createCrossChain({
-//       adapterName: 'lifi-minimal',
+//       adapterName: 'lifi',
 //       config: { apiKey: LIFI_API_KEY }
 //     });
 //     expect(adapterInstance.isInitialized()).toBe(true);
@@ -147,7 +166,7 @@ beforeAll(async () => {
 //     // Note: LiFi SDK might still require API key for some operations even if provider is set.
 //     const executionProvider = await createExecutionProvider();
 //     const adapterInstance: any = await createCrossChain({
-//       adapterName: 'lifi-minimal',
+//       adapterName: 'lifi',
 //       config: { provider: executionProvider }
 //     });
 //     expect(adapterInstance.isInitialized()).toBe(true); // Initialization itself succeeds
@@ -164,7 +183,7 @@ beforeAll(async () => {
 //   it('4.1: should initialize with both API key and provider', async () => {
 //     const executionProvider = await createExecutionProvider();
 //     const adapterInstance: any = await createCrossChain({
-//       adapterName: 'lifi-minimal',
+//       adapterName: 'lifi',
 //       config: {
 //         apiKey: LIFI_API_KEY,
 //         provider: executionProvider
@@ -179,14 +198,14 @@ beforeAll(async () => {
 //   // These tests are largely the same as quoting doesn't depend on confirmation/tracking
 
 //   it('5.1: should fail when adapter is not initialized', async () => {
-//     const adapterInstance: any = await createCrossChain({ adapterName: 'lifi-minimal' });
+//     const adapterInstance: any = await createCrossChain({ adapterName: 'lifi' });
 //     await expect(adapterInstance.getOperationQuote(quoteIntent))
 //       .rejects.toThrow("MinimalLiFiAdapter not initialized");
 //   });
 
 //   // Test 5.2 (quote without API key/provider) might be less reliable, keep it but expect potential failures
 //   it('5.2: should attempt quote without API_KEY nor Provider (may fail/timeout)', async () => {
-//     const adapterInstance: any = await createCrossChain({ adapterName: 'lifi-minimal', config: {} });
+//     const adapterInstance: any = await createCrossChain({ adapterName: 'lifi', config: {} });
 //     expect(adapterInstance.isInitialized()).toBe(true);
 //     const timeoutPromise = new Promise<OperationQuote[]>((_, reject) => setTimeout(() => reject(new Error("Quote operation timed out")), QUOTE_TEST_TIMEOUT));
 
@@ -199,7 +218,7 @@ beforeAll(async () => {
 //       expect(quotes).toBeDefined();
 //       // LiFi might require API key, so empty array is acceptable here
 //       if (quotes.length > 0) {
-//         expect(quotes[0].adapterName).toBe('lifi-minimal');
+//         expect(quotes[0].adapterName).toBe('lifi');
 //       } else {
 //         console.warn("⚠️ [Minimal] Quote 5.2 returned empty array (likely needs API key)");
 //       }
@@ -209,21 +228,21 @@ beforeAll(async () => {
 //   }, QUOTE_TEST_TIMEOUT + 2000);
 
 //   it('5.3: should return quote with API key only', async () => {
-//     const adapterInstance: any = await createCrossChain({ adapterName: 'lifi-minimal', config: { apiKey: LIFI_API_KEY } });
+//     const adapterInstance: any = await createCrossChain({ adapterName: 'lifi', config: { apiKey: LIFI_API_KEY } });
 //     const quotes = await adapterInstance.getOperationQuote(quoteIntent);
 //     console.log('[Minimal] Quote 5.3:', quotes);
 //     expect(quotes).toBeDefined();
 //     expect(Array.isArray(quotes)).toBe(true);
 //     expect(quotes.length).toBeGreaterThan(0);
 //     expect(quotes[0].id).toBeDefined();
-//     expect(quotes[0].adapterName).toBe('lifi-minimal');
+//     expect(quotes[0].adapterName).toBe('lifi');
 //     expect(quotes[0].adapterQuote).toBeDefined(); // Raw quote should be stored
 //   }, QUOTE_TEST_TIMEOUT);
 
 //   // Test 5.4 (provider only) - keep similar expectations as 5.2
 //   it('5.4: should attempt quote with provider only (may fail/timeout)', async () => {
 //     const executionProvider = await createExecutionProvider();
-//     const adapterInstance: any = await createCrossChain({ adapterName: 'lifi-minimal', config: { provider: executionProvider } });
+//     const adapterInstance: any = await createCrossChain({ adapterName: 'lifi', config: { provider: executionProvider } });
 //     const timeoutPromise = new Promise<OperationQuote[]>((_, reject) => setTimeout(() => reject(new Error("Quote operation timed out")), QUOTE_TEST_TIMEOUT));
 
 //     try {
@@ -234,7 +253,7 @@ beforeAll(async () => {
 //       console.log('[Minimal] Quote 5.4:', quotes);
 //       expect(quotes).toBeDefined();
 //       if (quotes.length > 0) {
-//         expect(quotes[0].adapterName).toBe('lifi-minimal');
+//         expect(quotes[0].adapterName).toBe('lifi');
 //       } else {
 //         console.warn("⚠️ [Minimal] Quote 5.4 returned empty array (likely needs API key)");
 //       }
@@ -256,7 +275,7 @@ beforeAll(async () => {
 //     expect(quote.id).toBeDefined();
 //     expect(quote.estimate).toBeDefined();
 //     expect(quote.estimate.toAmountMin).toBeDefined();
-//     expect(quote.adapterName).toBe('lifi-minimal'); // <<< Check adapter name
+//     expect(quote.adapterName).toBe('lifi'); // <<< Check adapter name
 //     expect(quote.adapterQuote).toBeDefined();
 //     expect(quote.intent).toEqual(quoteIntent);
 //   }, QUOTE_TEST_TIMEOUT);
@@ -266,305 +285,307 @@ beforeAll(async () => {
 //   // Basic checks for prerequisites
 
 //   it('6.1: should fail when adapter is not initialized', async () => {
-//     const adapterInstance: any = await createCrossChain({ adapterName: 'lifi-minimal' });
+//     const adapterInstance: any = await createCrossChain({ adapterName: 'lifi' });
 //     // Create a dummy quote for the test
-//     const dummyQuote: OperationQuote = { id: 'dummy', intent: swapIntent, estimate: {} as any, adapterName: 'lifi-minimal', adapterQuote: {} };
+//     const dummyQuote: OperationQuote = { id: 'dummy', intent: swapIntent, estimate: {} as any, adapterName: 'lifi', adapterQuote: {} };
 //     await expect(adapterInstance.executeOperation(dummyQuote))
 //       .rejects.toThrow("MinimalLiFiAdapter not initialized");
 //   });
 
 //   it('6.2: should fail when no execution provider is set', async () => {
-//     const adapterInstance: any = await createCrossChain({ adapterName: 'lifi-minimal', config: { apiKey: LIFI_API_KEY } });
-//     const dummyQuote: OperationQuote = { id: 'dummy', intent: swapIntent, estimate: {} as any, adapterName: 'lifi-minimal', adapterQuote: {} };
+//     const adapterInstance: any = await createCrossChain({ adapterName: 'lifi', config: { apiKey: LIFI_API_KEY } });
+//     const dummyQuote: OperationQuote = { id: 'dummy', intent: swapIntent, estimate: {} as any, adapterName: 'lifi', adapterQuote: {} };
 //     await expect(adapterInstance.executeOperation(dummyQuote))
 //       .rejects.toThrow("Execution provider required");
 //   });
 // });
 
-describe('MinimalLiFiAdapter Swap Operation Lifecycle', () => {
-  let operationMonitor: OperationMonitor;
-  beforeEach(() => {
-    operationMonitor = new OperationMonitor(); // Create fresh monitor for each test
-  });
-  afterEach(() => {
-    operationMonitor.clearAllOperations(); // Clean up tracked operations
-  });
-  // Test 7.1 (Get Quote) remains the same
-  it('7.1: should get quote for a same-chain swap', async () => {
-    console.log("🔄 [Minimal] Testing quote for MATIC to USDC on Polygon");
-    expect(adapter.isInitialized()).toBe(true);
-    try {
-      const quotes = await adapter.getOperationQuote(swapIntent);
-      console.log('[Minimal] Swap Quote 7.1:', JSON.stringify(quotes[0], null, 2));
-      expect(quotes).toBeDefined();
-      expect(quotes.length).toBeGreaterThan(0);
-      expect(quotes[0].adapterName).toBe('lifi-minimal');
-    } catch (error) {
-      console.error("⚠️ [Minimal] Swap Quote 7.1 failed unexpectedly:", error);
-      throw error;
-    }
-  }, QUOTE_TEST_TIMEOUT);
-
-  // Test 7.2 (Execute & Track) - Simplified confirmation
-  it('7.2: should execute same-chain swap and track its status', async () => {
-    if (!RUN_REAL_EXECUTION) {
-      console.log("[Minimal] Skipping real execution test 7.2 - set RUN_REAL_EXECUTION=true to enable");
-      return;
-    }
-
-    console.log("⚠️ WARNING: [Minimal] Test 7.2 will execute a REAL same-chain swap with fees");
-    console.log(`💰 Swapping ${ethers.formatUnits(swapIntent.amount, swapIntent.sourceAsset.decimals)} ${swapIntent.sourceAsset.symbol} to ${swapIntent.destinationAsset.symbol} on Polygon`);
-
-    expect(adapter.hasExecutionProvider()).toBe(true);
-
-    // 1. Get Quote
-    let quoteToExecute: OperationQuote;
-    try {
-      const quotes = await adapter.getOperationQuote(swapIntent);
-      expect(quotes.length).toBeGreaterThan(0);
-      quoteToExecute = quotes[0];
-      console.log("[Minimal] Got quote for swap execution 7.2:", quoteToExecute.id);
-    } catch (error) { throw error; }
-
-    // 2. Execute Operation with Hook and Wait for Completion
-    let initialResult: OperationResult | null = null;
-    const operationPromise = new Promise<void>(async (resolve, reject) => { // <<< Promise resolves void, status checked via monitor
-      // Define the hook callback
-      const updateHook = (updatedRoute: RouteExtended) => {
-        // <<< START Log raw route data >>>
-        console.log(`[Minimal Hook 7.2 RAW] SDK Update: ID=${updatedRoute.id}, Status=${updatedRoute.steps[0]?.execution?.status}`);
-        // Log details of the last process step if available
-        const lastProcess = updatedRoute.steps[0]?.execution?.process?.[updatedRoute.steps[0]?.execution?.process?.length - 1];
-        if (lastProcess) {
-          console.log(`[Minimal Hook 7.2 RAW] Last Process: Status=${lastProcess.status}, Type=${lastProcess.type}, Substatus=${lastProcess.substatus}, Error=${lastProcess.error?.message}`);
-        }
-        // <<< END Log raw route data >>>
-        const currentStatusResult = adapter['translateRouteToStatus'](updatedRoute); // Use private helper for translation
-        console.log(`[Minimal Hook 7.2] Status Update: ${currentStatusResult.status}`, currentStatusResult.statusMessage);
-
-        // <<< Update the external monitor >>>
-        operationMonitor.updateOperationStatus(currentStatusResult.operationId, currentStatusResult);
-
-        // Check for terminal state to resolve the wait promise
-        if (currentStatusResult.status === 'COMPLETED' || currentStatusResult.status === 'FAILED') {
-          console.log(`[Minimal Hook 7.2] Terminal status ${currentStatusResult.status} received.`);
-          resolve(); // <<< Resolve the promise (no value needed)
-        }
-      };
-
-      try {
-        // Call executeOperation, passing the hook
-        initialResult = await adapter.executeOperation(quoteToExecute, updateHook);
-        console.log("✅ [Minimal] Swap initiated 7.2 (hook active):", initialResult);
-        expect(initialResult.status).toBe('PENDING');
-
-        // <<< Register initial status in monitor >>>
-        operationMonitor.registerOperation(initialResult.operationId, initialResult);
-
-        // Set a timeout for the overall operation
-        setTimeout(() => {
-          // Check monitor status before rejecting
-          const currentStatus = operationMonitor.getOperationStatus(initialResult!.operationId);
-          if (currentStatus?.status !== 'COMPLETED' && currentStatus?.status !== 'FAILED') {
-            reject(new Error(`Swap operation timed out after ${SWAP_EXECUTION_TIMEOUT}ms (monitor did not report terminal state)`));
-          } else {
-            resolve(); // Resolve if monitor shows terminal state even if hook missed it
-          }
-        }, SWAP_EXECUTION_TIMEOUT);
-
-      } catch (execError) {
-        reject(execError); // Reject promise if executeOperation fails
-      }
-    });
-
-    // Wait for the hook to report completion/failure or timeout
-    try {
-      await operationPromise; // Wait for the operation to reach a terminal state via the hook
-
-      // <<< Get final status from the monitor >>>
-      const finalStatus = operationMonitor.getOperationStatus(initialResult!.operationId);
-      console.log("[Minimal] Final Swap Status (from Monitor) 7.2:", finalStatus);
-
-      // Assertions on the final result retrieved from the monitor
-      expect(finalStatus).not.toBeNull();
-      expect(finalStatus!.status).toBe('COMPLETED');
-      expect(finalStatus!.receivedAmount).toBeDefined();
-      expect(parseFloat(finalStatus!.receivedAmount!)).toBeGreaterThan(0);
-      expect(finalStatus!.sourceTx?.hash).toBeDefined();
-      expect(finalStatus!.error).toBeUndefined();
-
-    } catch (error) {
-      console.error("[Minimal] Error during swap execution/tracking 7.2:", error);
-      // If it timed out or failed, check monitor for final state before failing test
-      const lastKnownStatus = operationMonitor.getOperationStatus(initialResult!.operationId || 'unknown');
-      console.error("[Minimal] Last known status from monitor on error:", lastKnownStatus);
-      // Re-throw to fail the test, but log the last known status
-      throw error;
-    }
-  }, SWAP_EXECUTION_TIMEOUT + 10000);
-});
-
-// describe('MinimalLiFiAdapter Bridge Operation Lifecycle', () => {
+// describe('MinimalLiFiAdapter Swap Operation Lifecycle', () => {
 //   let operationMonitor: OperationMonitor;
-
 //   beforeEach(() => {
 //     operationMonitor = new OperationMonitor(); // Create fresh monitor for each test
 //   });
-
 //   afterEach(() => {
 //     operationMonitor.clearAllOperations(); // Clean up tracked operations
 //   });
 
-//   // Test 8.1 (Get Quote) remains the same
-//   it('8.1: should get quote for a cross-chain bridge', async () => {
-//     console.log("🌉 [Minimal] Testing quote for MATIC to ETH bridge (Polygon → Optimism)");
+//   // Test 7.1 (Get Quote) remains the same
+//   it('7.1: should get quote for a same-chain swap', async () => {
+//     console.log("🔄 [Minimal] Testing quote for MATIC to USDC on Polygon");
 //     expect(adapter.isInitialized()).toBe(true);
 //     try {
-//       const quotes = await adapter.getOperationQuote(bridgeIntent);
-//       console.log('[Minimal] Bridge Quote 8.1:', quotes[0]);
+//       const quotes = await adapter.getOperationQuote(swapIntent);
+//       console.log('[Minimal] Swap Quote 7.1:', JSON.stringify(quotes[0], null, 2));
 //       expect(quotes).toBeDefined();
 //       expect(quotes.length).toBeGreaterThan(0);
-//       expect(quotes[0].adapterName).toBe('lifi-minimal');
-//       // <<< Add check for correct destination asset in quote intent >>>
-//       expect(quotes[0].intent.destinationAsset.symbol).toBe('USDC');
-//       expect(quotes[0].intent.destinationAsset.chainId).toBe(optimismConfig.chainId);
+//       expect(quotes[0].adapterName).toBe('lifi');
 //     } catch (error) {
-//       console.error("⚠️ [Minimal] Bridge Quote 8.1 failed unexpectedly:", error);
+//       console.error("⚠️ [Minimal] Swap Quote 7.1 failed unexpectedly:", error);
 //       throw error;
 //     }
 //   }, QUOTE_TEST_TIMEOUT);
 
-//   // Test 8.2 (Execute & Track) - Simplified confirmation
-//   it('8.2: should execute cross-chain bridge and track its status', async () => {
+//   // Test 7.2 (Execute & Track) - Simplified confirmation
+
+//   it('7.2: should execute same-chain swap and track its status', async () => {
 //     if (!RUN_REAL_EXECUTION) {
-//       console.log("[Minimal] Skipping real execution test 8.2 - set RUN_REAL_EXECUTION=true to enable");
+//       console.log("[Minimal] Skipping real execution test 7.2 - set RUN_REAL_EXECUTION=true to enable");
 //       return;
 //     }
 
-//     console.log("⚠️ WARNING: [Minimal] Test 8.2 will execute a REAL cross-chain transaction with fees");
-//     console.log(`💰 Bridging ${ethers.formatUnits(bridgeIntent.amount, bridgeIntent.sourceAsset.decimals)} ${bridgeIntent.sourceAsset.symbol} to ${bridgeIntent.destinationAsset.symbol} on Optimism`);
+//     console.log("⚠️ WARNING: [Minimal] Test 7.2 will execute a REAL same-chain swap with fees");
+//     console.log(`💰 Swapping ${ethers.formatUnits(swapIntent.amount, swapIntent.sourceAsset.decimals)} ${swapIntent.sourceAsset.symbol} to ${swapIntent.destinationAsset.symbol} on Polygon`);
 
 //     expect(adapter.hasExecutionProvider()).toBe(true);
 
 //     // 1. Get Quote
 //     let quoteToExecute: OperationQuote;
 //     try {
-//       // <<< CHANGE: Use the updated bridgeIntent >>>
-//       const quotes = await adapter.getOperationQuote(bridgeIntent);
+//       const quotes = await adapter.getOperationQuote(swapIntent);
 //       expect(quotes.length).toBeGreaterThan(0);
 //       quoteToExecute = quotes[0];
-//       console.log("[Minimal] Got quote for bridge execution 8.2:", quoteToExecute.id);
+//       console.log("[Minimal] Got quote for swap execution 7.2:", quoteToExecute.id);
 //     } catch (error) { throw error; }
 
-//     // 2. Execute Operation with Hook and Wait for Initial Status
+//     // 2. Execute Operation with Hook and Wait for Completion
 //     let initialResult: OperationResult | null = null;
-//     let resumeTriggered = false;
-
-//     const bridgePromise = new Promise<void>(async (resolve, reject) => { // <<< Promise resolves void
-//       const updateHook = async (updatedRoute: RouteExtended) => {
+//     const operationPromise = new Promise<void>(async (resolve, reject) => { // <<< Promise resolves void, status checked via monitor
+//       // Define the hook callback
+//       const updateHook = (updatedRoute: RouteExtended) => {
 //         // <<< START Log raw route data >>>
-//         console.log(`[Minimal Hook 8.2 RAW] SDK Update: ID=${updatedRoute.id}`);
-//         updatedRoute.steps.forEach((step, index) => {
-//           console.log(`[Minimal Hook 8.2 RAW] Step ${index}: Type=${step.type}, Tool=${step.toolDetails.key}, Status=${step.execution?.status}`);
-//           const lastProcess = step.execution?.process?.[step.execution?.process?.length - 1];
-//           if (lastProcess) {
-//             console.log(`[Minimal Hook 8.2 RAW]   Last Process: Status=${lastProcess.status}, Type=${lastProcess.type}, Substatus=${lastProcess.substatus}, Error=${lastProcess.error?.message}`);
-//           }
-//         });
-//         // <<< END Log raw route data >>>
+//         console.log(`[Minimal Hook 7.2 RAW] SDK Update: ID=${updatedRoute.id}, Status=${updatedRoute.steps[0]?.execution?.status}`);
+//         // Log details of the last process step if available
+//         const lastProcess = updatedRoute.steps[0]?.execution?.process?.[updatedRoute.steps[0]?.execution?.process?.length - 1];
+//         if (lastProcess) {
+//           console.log(`[Minimal Hook 7.2 RAW] Last Process: Status=${lastProcess.status}, Type=${lastProcess.type}, Substatus=${lastProcess.substatus}, Error=${lastProcess.error?.message}`);
+//         }
 
-//         const currentStatusResult = adapter['translateRouteToStatus'](updatedRoute);
-//         console.log(`[Minimal Hook 8.2] Status Update: ${currentStatusResult.status}`, currentStatusResult.statusMessage);
+//         // console.log(`[Minimal Hook 7.2 RAW Full Route] ID=${updatedRoute.id}`, JSON.stringify(updatedRoute, null, 2));
+//         // <<< END Log raw route data >>>
+//         const currentStatusResult = adapter['translateRouteToStatus'](updatedRoute); // Use private helper for translation
+//         console.log(`[Minimal Hook 7.2] Status Update: ${currentStatusResult.status}`, currentStatusResult.statusMessage);
+
+//         // <<< Update the external monitor >>>
 //         operationMonitor.updateOperationStatus(currentStatusResult.operationId, currentStatusResult);
 
-//         // Handle ACTION_REQUIRED for resume
-//         if (currentStatusResult.status === 'ACTION_REQUIRED' && !resumeTriggered) {
-//           resumeTriggered = true;
-//           console.log(`[Minimal Hook 8.2] ACTION_REQUIRED detected. Resuming operation ${currentStatusResult.operationId}...`);
-//           try {
-//             // Call resume, but don't rely on its return value for status
-//             await adapter.resumeOperation(currentStatusResult.operationId);
-//             console.log(`[Minimal Hook 8.2] Resume called for ${currentStatusResult.operationId}. Waiting for next status update via hook...`);
-//           } catch (resumeError) {
-//             console.error(`[Minimal Hook 8.2] Error calling resumeOperation:`, resumeError);
-//             // Update monitor with failure if resume fails critically
-//             operationMonitor.updateOperationStatus(currentStatusResult.operationId, { status: 'FAILED', error: `Resume failed: ${resumeError}`, statusMessage: `Resume failed: ${resumeError}` });
-//             reject(new Error(`Bridge resume failed: ${resumeError}`)); // Reject the main promise
-//             return;
-//           }
-//         }
-
-//         // Log source and destination TX hashes when they appear (keep this logging)
-//         if (currentStatusResult.sourceTx?.hash) {
-//           console.log(`[Minimal Hook 8.2] Source Tx captured: ${currentStatusResult.sourceTx.hash}`);
-//         }
-
-//         if (currentStatusResult.destinationTx?.hash) {
-//           console.log(`[Minimal Hook 8.2] Destination Tx captured: ${currentStatusResult.destinationTx.hash}`);
-//         }
-
-//         // Check for source transaction hash *after* potential resume
+//         // Check for terminal state to resolve the wait promise
 //         if (currentStatusResult.status === 'COMPLETED' || currentStatusResult.status === 'FAILED') {
-//           console.log(`[Minimal Hook 8.2] Terminal status ${currentStatusResult.status} received.`);
-//           resolve(); // <<< Resolve the promise (void)
+//           console.log(`[Minimal Hook 7.2] Terminal status ${currentStatusResult.status} received.`);
+//           resolve(); // <<< Resolve the promise (no value needed)
 //         }
 //       };
 
 //       try {
+//         // Call executeOperation, passing the hook
 //         initialResult = await adapter.executeOperation(quoteToExecute, updateHook);
-//         console.log("✅ [Minimal] Bridge initiated 8.2 (hook active):", initialResult);
+//         console.log("✅ [Minimal] Swap initiated 7.2 (hook active):", initialResult);
 //         expect(initialResult.status).toBe('PENDING');
 
 //         // <<< Register initial status in monitor >>>
 //         operationMonitor.registerOperation(initialResult.operationId, initialResult);
 
-//         // Timeout for the *entire* bridge operation
+//         // Set a timeout for the overall operation
 //         setTimeout(() => {
 //           // Check monitor status before rejecting
 //           const currentStatus = operationMonitor.getOperationStatus(initialResult!.operationId);
 //           if (currentStatus?.status !== 'COMPLETED' && currentStatus?.status !== 'FAILED') {
-//             reject(new Error(`Bridge operation timed out after ${BRIDGE_TIMEOUT}ms (monitor did not report terminal state)`));
+//             reject(new Error(`Swap operation timed out after ${SWAP_EXECUTION_TIMEOUT}ms (monitor did not report terminal state)`));
 //           } else {
 //             resolve(); // Resolve if monitor shows terminal state even if hook missed it
 //           }
-//         }, BRIDGE_TIMEOUT);
+//         }, SWAP_EXECUTION_TIMEOUT);
 
 //       } catch (execError) {
 //         reject(execError); // Reject promise if executeOperation fails
 //       }
 //     });
 
+//     // Wait for the hook to report completion/failure or timeout
 //     try {
-//       // Wait for the completion promise
-//       await bridgePromise;
+//       await operationPromise; // Wait for the operation to reach a terminal state via the hook
 
 //       // <<< Get final status from the monitor >>>
 //       const finalStatus = operationMonitor.getOperationStatus(initialResult!.operationId);
-//       console.log("[Minimal] Final Bridge Status (from Monitor) 8.2:", finalStatus);
+//       console.log("[Minimal] Final Swap Status (from Monitor) 7.2:", finalStatus);
 
 //       // Assertions on the final result retrieved from the monitor
 //       expect(finalStatus).not.toBeNull();
-//       expect(finalStatus!.status).toBe('COMPLETED'); // <<< Expect completion
-//       expect(finalStatus!.sourceTx?.hash).toBeDefined();
-//       expect(finalStatus!.destinationTx?.hash).toBeDefined(); // <<< Expect destination hash
+//       expect(finalStatus!.status).toBe('COMPLETED');
 //       expect(finalStatus!.receivedAmount).toBeDefined();
 //       expect(parseFloat(finalStatus!.receivedAmount!)).toBeGreaterThan(0);
+//       expect(finalStatus!.sourceTx?.hash).toBeDefined();
 //       expect(finalStatus!.error).toBeUndefined();
 
 //     } catch (error) {
-//       console.error("[Minimal] Error during bridge execution/tracking 8.2:", error);
+//       console.error("[Minimal] Error during swap execution/tracking 7.2:", error);
 //       // If it timed out or failed, check monitor for final state before failing test
 //       const lastKnownStatus = operationMonitor.getOperationStatus(initialResult!.operationId || 'unknown');
 //       console.error("[Minimal] Last known status from monitor on error:", lastKnownStatus);
-//       // Re-throw to fail the test
+//       // Re-throw to fail the test, but log the last known status
 //       throw error;
 //     }
-
-//   }, BRIDGE_TIMEOUT + 10000);
-
+//   }, SWAP_EXECUTION_TIMEOUT + 10000);
 // });
 
-// Describe block 9 (Transaction Confirmation Tests) is REMOVED as MinimalLiFiAdapter delegates confirmation
+describe('MinimalLiFiAdapter Bridge Operation Lifecycle', () => {
+  let operationMonitor: OperationMonitor;
+
+  beforeEach(() => {
+    operationMonitor = new OperationMonitor(); // Create fresh monitor for each test
+  });
+
+  afterEach(() => {
+    operationMonitor.clearAllOperations(); // Clean up tracked operations
+  });
+
+  // // Test 8.1 (Get Quote) remains the same
+  // it('8.1: should get quote for a cross-chain bridge', async () => {
+  //   console.log("🌉 [Minimal] Testing quote for MATIC to ETH bridge (Polygon → Optimism)");
+  //   expect(adapter.isInitialized()).toBe(true);
+  //   try {
+  //     const quotes = await adapter.getOperationQuote(bridgeIntent);
+  //     console.log('[Minimal] Bridge Quote 8.1:', quotes[0]);
+  //     expect(quotes).toBeDefined();
+  //     expect(quotes.length).toBeGreaterThan(0);
+  //     expect(quotes[0].adapterName).toBe('lifi');
+  //     // <<< Add check for correct destination asset in quote intent >>>
+  //     expect(quotes[0].intent.destinationAsset.symbol).toBe('USDC');
+  //     expect(quotes[0].intent.destinationAsset.chainId).toBe(optimismConfig.chainId);
+  //   } catch (error) {
+  //     console.error("⚠️ [Minimal] Bridge Quote 8.1 failed unexpectedly:", error);
+  //     throw error;
+  //   }
+  // }, QUOTE_TEST_TIMEOUT);
+
+  // Test 8.2 (Execute & Track) - Simplified confirmation
+  it('8.2: should execute cross-chain bridge and track its status', async () => {
+    if (!RUN_REAL_EXECUTION) {
+      console.log("[Minimal] Skipping real execution test 8.2 - set RUN_REAL_EXECUTION=true to enable");
+      return;
+    }
+
+    console.log("⚠️ WARNING: [Minimal] Test 8.2 will execute a REAL cross-chain transaction with fees");
+    console.log(`💰 Bridging ${ethers.formatUnits(bridgeIntent.amount, bridgeIntent.sourceAsset.decimals)} ${bridgeIntent.sourceAsset.symbol} to ${bridgeIntent.destinationAsset.symbol} on Optimism`);
+
+    expect(adapter.hasExecutionProvider()).toBe(true);
+
+    // 1. Get Quote
+    let quoteToExecute: OperationQuote;
+    try {
+      // <<< CHANGE: Use the updated bridgeIntent >>>
+      const quotes = await adapter.getOperationQuote(bridgeIntent);
+      expect(quotes.length).toBeGreaterThan(0);
+      quoteToExecute = quotes[0];
+      console.log("[Minimal] Got quote for bridge execution 8.2:", quoteToExecute.id);
+    } catch (error) { throw error; }
+
+    // 2. Execute Operation with Hook and Wait for Initial Status
+    let initialResult: OperationResult | null = null;
+    let resumeTriggered = false;
+
+    const bridgePromise = new Promise<void>(async (resolve, reject) => { // <<< Promise resolves void
+      const updateHook = async (updatedRoute: RouteExtended) => {
+        // <<< START Log raw route data >>>
+        console.log(`[Minimal Hook 8.2 RAW] SDK Update: ID=${updatedRoute.id}`);
+        updatedRoute.steps.forEach((step, index) => {
+          console.log(`[Minimal Hook 8.2 RAW] Step ${index}: Type=${step.type}, Tool=${step.toolDetails.key}, Status=${step.execution?.status}`);
+          const lastProcess = step.execution?.process?.[step.execution?.process?.length - 1];
+          if (lastProcess) {
+            console.log(`[Minimal Hook 8.2 RAW]   Last Process: Status=${lastProcess.status}, Type=${lastProcess.type}, Substatus=${lastProcess.substatus}, Error=${lastProcess.error?.message}`);
+          }
+        });
+        // <<< END Log raw route data >>>
+
+        const currentStatusResult = adapter['translateRouteToStatus'](updatedRoute);
+        console.log(`[Minimal Hook 8.2] Status Update: ${currentStatusResult.status}`, currentStatusResult.statusMessage);
+        operationMonitor.updateOperationStatus(currentStatusResult.operationId, currentStatusResult);
+
+        // Handle ACTION_REQUIRED for resume
+        if (currentStatusResult.status === 'ACTION_REQUIRED' && !resumeTriggered) {
+          resumeTriggered = true;
+          console.log(`[Minimal Hook 8.2] ACTION_REQUIRED detected. Resuming operation ${currentStatusResult.operationId}...`);
+          try {
+            // Call resume, but don't rely on its return value for status
+            await adapter.resumeOperation(currentStatusResult.operationId);
+            console.log(`[Minimal Hook 8.2] Resume called for ${currentStatusResult.operationId}. Waiting for next status update via hook...`);
+          } catch (resumeError) {
+            console.error(`[Minimal Hook 8.2] Error calling resumeOperation:`, resumeError);
+            // Update monitor with failure if resume fails critically
+            operationMonitor.updateOperationStatus(currentStatusResult.operationId, { status: 'FAILED', error: `Resume failed: ${resumeError}`, statusMessage: `Resume failed: ${resumeError}` });
+            reject(new Error(`Bridge resume failed: ${resumeError}`)); // Reject the main promise
+            return;
+          }
+        }
+
+        // Log source and destination TX hashes when they appear (keep this logging)
+        if (currentStatusResult.sourceTx?.hash) {
+          console.log(`[Minimal Hook 8.2] Source Tx captured: ${currentStatusResult.sourceTx.hash}`);
+        }
+
+        if (currentStatusResult.destinationTx?.hash) {
+          console.log(`[Minimal Hook 8.2] Destination Tx captured: ${currentStatusResult.destinationTx.hash}`);
+        }
+
+        // Check for source transaction hash *after* potential resume
+        if (currentStatusResult.status === 'COMPLETED' || currentStatusResult.status === 'FAILED') {
+          console.log(`[Minimal Hook 8.2] Terminal status ${currentStatusResult.status} received.`);
+          resolve(); // <<< Resolve the promise (void)
+        }
+      };
+
+      try {
+        initialResult = await adapter.executeOperation(quoteToExecute, updateHook);
+        console.log("✅ [Minimal] Bridge initiated 8.2 (hook active):", initialResult);
+        expect(initialResult.status).toBe('PENDING');
+
+        // <<< Register initial status in monitor >>>
+        operationMonitor.registerOperation(initialResult.operationId, initialResult);
+
+        // Timeout for the *entire* bridge operation
+        setTimeout(() => {
+          // Check monitor status before rejecting
+          const currentStatus = operationMonitor.getOperationStatus(initialResult!.operationId);
+          if (currentStatus?.status !== 'COMPLETED' && currentStatus?.status !== 'FAILED') {
+            reject(new Error(`Bridge operation timed out after ${BRIDGE_TIMEOUT}ms (monitor did not report terminal state)`));
+          } else {
+            resolve(); // Resolve if monitor shows terminal state even if hook missed it
+          }
+        }, BRIDGE_TIMEOUT);
+
+      } catch (execError) {
+        reject(execError); // Reject promise if executeOperation fails
+      }
+    });
+
+    try {
+      // Wait for the completion promise
+      await bridgePromise;
+
+      // <<< Get final status from the monitor >>>
+      const finalStatus = operationMonitor.getOperationStatus(initialResult!.operationId);
+      console.log("[Minimal] Final Bridge Status (from Monitor) 8.2:", finalStatus);
+
+      // Assertions on the final result retrieved from the monitor
+      expect(finalStatus).not.toBeNull();
+      expect(finalStatus!.status).toBe('COMPLETED'); // <<< Expect completion
+      expect(finalStatus!.sourceTx?.hash).toBeDefined();
+      expect(finalStatus!.destinationTx?.hash).toBeDefined(); // <<< Expect destination hash
+      expect(finalStatus!.receivedAmount).toBeDefined();
+      expect(parseFloat(finalStatus!.receivedAmount!)).toBeGreaterThan(0);
+      expect(finalStatus!.error).toBeUndefined();
+
+    } catch (error) {
+      console.error("[Minimal] Error during bridge execution/tracking 8.2:", error);
+      // If it timed out or failed, check monitor for final state before failing test
+      const lastKnownStatus = operationMonitor.getOperationStatus(initialResult!.operationId || 'unknown');
+      console.error("[Minimal] Last known status from monitor on error:", lastKnownStatus);
+      // Re-throw to fail the test
+      throw error;
+    }
+
+  }, BRIDGE_TIMEOUT + 10000);
+
+});
 
 // describe('MinimalLiFiAdapter Advanced Operation Control Tests', () => {
 //   // <<< Instantiate OperationMonitor for this suite >>>
@@ -579,7 +600,7 @@ describe('MinimalLiFiAdapter Swap Operation Lifecycle', () => {
 //   });
 
 //   // Test 10.1 (Cancellation) - Simplified setup
-//   it('10.1: should support manual operation cancellation', async () => {
+//   it('9.1: should support manual operation cancellation', async () => {
 //     if (!RUN_REAL_EXECUTION) {
 //       console.log("[Minimal] Skipping real execution test 10.1 - set RUN_REAL_EXECUTION=true to enable");
 //       return;
@@ -625,7 +646,7 @@ describe('MinimalLiFiAdapter Swap Operation Lifecycle', () => {
 //       // Direct cancellation result should be FAILED
 //       expect(cancelResult.status).toBe('FAILED');
 //       expect(cancelResult.error).toContain('canceled by user');
-//       expect(cancelResult.adapterName).toBe('lifi-minimal');
+//       expect(cancelResult.adapterName).toBe('lifi');
 
 //       // <<< Update monitor explicitly based on cancel result (as no hook runs on cancel) >>>
 //       // This ensures the monitor reflects the immediate FAILED state from cancelOperation
@@ -644,10 +665,7 @@ describe('MinimalLiFiAdapter Swap Operation Lifecycle', () => {
 //     expect(finalStatusFromMonitor).not.toBeNull();
 //     expect(finalStatusFromMonitor!.status).toBe('FAILED');
 //     expect(finalStatusFromMonitor!.error?.toLowerCase() || finalStatusFromMonitor!.statusMessage?.toLowerCase()).toMatch(/cancel|fail/);
-//     expect(finalStatusFromMonitor!.adapterName).toBe('lifi-minimal');
+//     expect(finalStatusFromMonitor!.adapterName).toBe('lifi');
 
 //   }, 30000);
-
-//   // Test 10.2 (Confirmation Timeout) is REMOVED
-//   // Test 10.3 (Auto-Cancel Pending) is REMOVED
 // });

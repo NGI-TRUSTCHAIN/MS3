@@ -1,4 +1,5 @@
-import { IEVMWallet } from '@m3s/wallet';
+import { GenericTransactionData, IEVMWallet, ProviderConfig } from '@m3s/common';
+
 import {
     createWalletClient,
     http,
@@ -16,7 +17,7 @@ import {
 
 import * as viemChains from 'viem/chains';
 import { LiFiExecutionProvider } from '../adapters/LI.FI.Adapter.js';
-import { getNetworkConfig, NetworkConfig } from './NetworkConfigHelper.js';
+import { NetworkConfig, getNetworkConfig } from '@m3s/wallet';
 
 /**
  * Maps a chain ID (number or hex string) to a Viem Chain object.
@@ -61,18 +62,43 @@ function createM3sViemAccount(wallet: IEVMWallet, address: Address): LocalAccoun
             transaction: TransactionSerializable,
         ): Promise<Hex> {
             console.log("[ProviderHelper:ViemAccount] Delegating signTransaction to M3S wallet");
-            const m3sTx: any = {
-                to: transaction.to,
-                value: transaction.value?.toString(),
+        
+            // Map directly, preserving types (Viem uses bigint/number)
+            const m3sTx: GenericTransactionData = {
+                to: transaction.to as any,
+                value: transaction.value as any, // Pass bigint directly
                 data: transaction.data,
-                chainId: transaction.chainId,
-                nonce: transaction.nonce,
-                gasLimit: transaction.gas?.toString(),
-                maxFeePerGas: transaction.maxFeePerGas?.toString(),
-                maxPriorityFeePerGas: transaction.maxPriorityFeePerGas?.toString(),
-                gasPrice: transaction.gasPrice?.toString(),
+                // Pass options for gas/nonce etc.
+                options: {
+                    chainId: transaction.chainId, // Pass number directly
+                    nonce: transaction.nonce,     // Pass number directly
+                    gasLimit: transaction.gas, // Pass bigint directly
+                    gasPrice: transaction.gasPrice, // Pass bigint directly
+                    maxFeePerGas: transaction.maxFeePerGas, // Pass bigint directly
+                    maxPriorityFeePerGas: transaction.maxPriorityFeePerGas, // Pass bigint directly
+                    // Add other potential options if needed
+                }
             };
-            Object.keys(m3sTx).forEach(key => m3sTx[key] === undefined && delete m3sTx[key]);
+        
+            // Clean up undefined values within options
+            if (m3sTx.options) {
+                Object.keys(m3sTx.options).forEach(key =>
+                    (m3sTx.options as any)[key] === undefined && delete (m3sTx.options as any)[key]
+                );
+                // If options becomes empty, remove it (optional, but cleaner)
+                if (Object.keys(m3sTx.options).length === 0) {
+                    delete m3sTx.options;
+                }
+            }
+             // Clean up top-level undefined (optional, good practice)
+            if (m3sTx.to === undefined) delete m3sTx.to;
+            if (m3sTx.value === undefined) delete m3sTx.value;
+            if (m3sTx.data === undefined) delete m3sTx.data;
+        
+        
+            console.log("[ProviderHelper:ViemAccount] Mapped m3sTx:", m3sTx); // Log the mapped object
+        
+            // This calls M3S signTransaction
             return await wallet.signTransaction(m3sTx) as Hex;
         },
 
@@ -91,7 +117,6 @@ function createM3sViemAccount(wallet: IEVMWallet, address: Address): LocalAccoun
     };
 }
 
-
 /**
  * Creates a LiFiExecutionProvider from an initialized M3S IEVMWallet instance.
  * Uses dynamic RPC fetching and validation via NetworkConfigHelper.
@@ -103,11 +128,17 @@ function createM3sViemAccount(wallet: IEVMWallet, address: Address): LocalAccoun
  */
 export async function createLifiProviderFromWallet(
     wallet: IEVMWallet,
-    preferredRpcUrls?: string[]
+    initialNetworkConfig: NetworkConfig
+
+    // preferredRpcUrls?: string[]
 ): Promise<LiFiExecutionProvider> {
     if (!wallet.isInitialized()) {
         throw new Error("Wallet must be initialized before creating a LiFi provider");
     }
+    if (!initialNetworkConfig || !initialNetworkConfig.rpcUrls || initialNetworkConfig.rpcUrls.length === 0) {
+        throw new Error("Valid initialNetworkConfig with rpcUrls is required");
+    }
+
     let accountAddress: Address;
     try {
         const accounts = await wallet.getAccounts();
@@ -122,19 +153,11 @@ export async function createLifiProviderFromWallet(
 
     const localAccount = createM3sViemAccount(wallet, accountAddress);
 
-    // ... (Determine Initial Chain and RPCs logic remains the same) ...
-    let initialNetworkConfig: NetworkConfig | null = null;
+    // --- Use the provided initialNetworkConfig ---
     let initialViemChain: Chain | undefined;
-    let initialChainIdNum: number;
+    const initialChainIdNum = parseInt(initialNetworkConfig.chainId, 16); // Already hex from NetworkConfig
+
     try {
-        const currentM3sNetwork = await wallet.getNetwork();
-        initialChainIdNum = typeof currentM3sNetwork.chainId === 'string'
-            ? parseInt(currentM3sNetwork.chainId, currentM3sNetwork.chainId.startsWith('0x') ? 16 : 10)
-            : currentM3sNetwork.chainId;
-        initialNetworkConfig = await getNetworkConfig(initialChainIdNum, preferredRpcUrls);
-        if (!initialNetworkConfig || initialNetworkConfig.rpcUrls.length === 0) {
-            throw new Error(`Failed to get working RPC config for initial chain ${initialChainIdNum}`);
-        }
         initialViemChain = getViemChain(initialChainIdNum);
         if (!initialViemChain) {
             initialViemChain = { /* ... create basic chain ... */
@@ -150,16 +173,19 @@ export async function createLifiProviderFromWallet(
                 rpcUrls: { ...initialViemChain.rpcUrls, default: { http: initialNetworkConfig.rpcUrls }, public: { http: initialNetworkConfig.rpcUrls } }
             };
         }
-        console.log(`[ProviderHelper] Using RPCs for initial chain ${initialChainIdNum}:`, initialNetworkConfig.rpcUrls);
+        console.log(`[ProviderHelper] Using provided RPCs for initial chain ${initialChainIdNum}:`, initialNetworkConfig.rpcUrls);
     } catch (e: any) {
-        console.error(`[ProviderHelper] Error getting initial network/RPC: ${e.message}.`);
-        throw new Error(`Failed to configure initial provider: ${e.message}`);
+        // This catch block might be less likely now, but keep for safety
+        console.error(`[ProviderHelper] Error processing provided initial config: ${e.message}.`);
+        throw new Error(`Failed to configure initial provider from provided config: ${e.message}`);
     }
+    // --- End using provided initialNetworkConfig ---
+
 
     let currentViemWalletClient: WalletClient = createWalletClient({
         account: localAccount,
         chain: initialViemChain,
-        transport: fallback(initialNetworkConfig.rpcUrls.map(url => http(url)))
+        transport: fallback(initialNetworkConfig.rpcUrls.map(url => http(url))) // Use URLs from provided config
     });
     console.log(`[ProviderHelper] Initial Viem client created for chain ${initialViemChain.id} with fallback and custom M3S local account.`);
 
@@ -174,6 +200,7 @@ export async function createLifiProviderFromWallet(
         switchChain: async (chainId: number): Promise<WalletClient> => {
             if (currentViemWalletClient?.chain?.id === chainId) return currentViemWalletClient;
             try {
+                // <<< getNetworkConfig is needed HERE to fetch config for the TARGET chain >>>
                 const targetNetworkConfig = await getNetworkConfig(chainId);
                 if (!targetNetworkConfig || targetNetworkConfig.rpcUrls.length === 0) throw new Error(`Failed RPC config for ${chainId}`);
                 let targetViemChain = getViemChain(chainId);
@@ -193,10 +220,23 @@ export async function createLifiProviderFromWallet(
                 currentViemWalletClient = createWalletClient({
                     account: localAccount,
                     chain: targetViemChain,
-                    transport: fallback(targetNetworkConfig.rpcUrls.map(url => http(url)))
+                    transport: fallback(targetNetworkConfig.rpcUrls.map((url: string) => http(url)))
                 });
                 console.log(`[ProviderHelper] Switched Viem client successfully.`);
-                try { await wallet.setProvider(targetNetworkConfig); console.log(`[ProviderHelper] M3S wallet switched.`); }
+                try {
+                    // <<< Convert NetworkConfig back to ProviderConfig for setProvider >>>
+                    const providerConfig: ProviderConfig = {
+                        chainId: targetNetworkConfig.chainId,
+                        rpcUrls: targetNetworkConfig.rpcUrls,
+                        rpcUrl: targetNetworkConfig.rpcUrls[0], // Provide the primary validated one
+                        displayName: targetNetworkConfig.displayName,
+                        blockExplorer: targetNetworkConfig.blockExplorer,
+                        ticker: targetNetworkConfig.ticker,
+                        tickerName: targetNetworkConfig.tickerName,
+                    };
+                    await wallet.setProvider(providerConfig);
+                    console.log(`[ProviderHelper] M3S wallet switched.`);
+                }
                 catch (m3sSwitchError) { console.error(`[ProviderHelper] M3S switch error:`, m3sSwitchError); }
                 return currentViemWalletClient;
             } catch (error: any) {

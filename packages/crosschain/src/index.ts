@@ -2,7 +2,7 @@ import { ICrossChain } from './types/interfaces/index.js';
 import { ICrossChainOptions } from './types/index.js';
 import { createErrorHandlingProxy } from './errors.js';
 import pkgJson from '../package.json' with { type: "json" };
-import { registry } from './registry.js';
+import { registry } from '@m3s/common';
 
 // Register this module in the registry
 registry.registerModule({ name: 'crosschain', version: pkgJson.version });
