@@ -44,8 +44,6 @@ interface args {
   options: Web3AuthAdapterOptions// Use the specific type
 };
 
-
-
 /**
  * Web3AuthWalletAdapter is an implementation of the IEVMWallet interface using Web3AuthNoModal.
  * It provides methods to initialize the wallet, connect to a provider, and perform various

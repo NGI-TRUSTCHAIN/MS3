@@ -8,10 +8,13 @@ import { createWallet } from '@m3s/wallet';
 import { IEVMWallet } from '@m3s/common'
 
 // Provider for testnet interactions
-const getTestProvider = () => {
+const getTestProviderAndUrl = () => {
   // Ensure you have a Sepolia RPC URL configured, e.g., in your environment variables
-  const rpcUrl = `https://sepolia.infura.io/v3/${INFURA_API_KEY}`
-  return new ethers.JsonRpcProvider(rpcUrl);
+  const rpcUrl = `https://sepolia.infura.io/v3/${INFURA_API_KEY}`;
+  if (!INFURA_API_KEY) {
+    console.warn("INFURA_API_KEY is not set. Testnet interactions might fail.");
+  }
+  return { provider: new ethers.JsonRpcProvider(rpcUrl), rpcUrl };
 };
 
 describe('OpenZeppelinAdapter Tests', () => {
@@ -279,10 +282,12 @@ describe('OpenZeppelinAdapter Tests', () => {
     let provider: ethers.Provider; // Add provider
 
     beforeEach(async () => {
-      provider = getTestProvider();
+      const { provider: testProvider, rpcUrl } = getTestProviderAndUrl();
+      provider = testProvider;
+
       const network = await provider.getNetwork();
       const chainId = network.chainId;
-      const rpcUrl = (provider as any).connection?.url;
+
       console.log(`[Test Setup] Using RPC: ${rpcUrl}, ChainID: ${chainId}`);
 
       walletAdapter = await createWallet<IEVMWallet>({
@@ -294,7 +299,6 @@ describe('OpenZeppelinAdapter Tests', () => {
       
       console.log(`[Test Setup] After createWallet: isInitialized=${await walletAdapter.isInitialized()}, isConnected=${await walletAdapter.isConnected()}`);
 
-      // <<< Ensure wallet adapter is initialized >>>
       if (!(await walletAdapter.isInitialized())) {
         console.log("[Test Setup] Wallet not initialized by create, calling initialize...");
         await walletAdapter.initialize();
