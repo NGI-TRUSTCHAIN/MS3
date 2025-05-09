@@ -32,7 +32,7 @@
     "test:erc1155": "vitest run 05_ERC1155.test.ts"
   },
   "dependencies": {
-    "@m3s/common": "*",
+    "@m3s/common": "^0.1.1",
     "@openzeppelin/wizard": "^0.5.3",
     "@openzeppelin/wizard-cairo": "^1.0.0",
     "ethers": "^6.13.5",

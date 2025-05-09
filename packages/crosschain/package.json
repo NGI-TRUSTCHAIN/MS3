@@ -28,7 +28,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@m3s/common": "*",
+    "@m3s/common": "^0.1.1",
     "ethers": "^6.13.5",
     "@lifi/sdk": "^3.6.6"
   },

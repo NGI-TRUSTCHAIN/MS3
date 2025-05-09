@@ -13,6 +13,7 @@
     "build:crosschain": "node --loader ts-node/esm scripts/build.ts crosschain",
     "build:smart-contract": "node --loader ts-node/esm scripts/build.ts smart-contract",
     "publish": "node --loader ts-node/esm scripts/publish.ts",
+    "publish:common": "node --loader ts-node/esm scripts/publish.ts common",
     "publish:wallet": "node --loader ts-node/esm scripts/publish.ts wallet",
     "publish:crosschain": "node --loader ts-node/esm scripts/publish.ts crosschain",
     "publish:smart-contract": "node --loader ts-node/esm scripts/publish.ts smart-contract",

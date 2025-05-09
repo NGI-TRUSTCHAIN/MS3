@@ -8,7 +8,7 @@
     "sourceMap": true,
     "resolveJsonModule": true
   },
-  "references": [],
+  "references": [{ "path": "../common" }],
   "include": ["src/**/*", "src/**/*.json"],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "tests"]
 }
