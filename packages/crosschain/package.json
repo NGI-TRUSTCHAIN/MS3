@@ -1,6 +1,6 @@
 {
   "name": "@m3s/crosschain",
-  "version": "1.0.13",
+  "version": "1.1.0",
   "type": "module",
   "description": "A simplified cross-chain transfer library built on top of LI.FI, enabling token transfers between different blockchain networks with minimal configuration",
   "license": "MIT",
@@ -19,16 +19,25 @@
     "url": "git@bitbucket.org:ctb-marisca/ms3-package.git",
     "directory": "packages/crosschain"
   },
-  "main": "dist/index.js",
-  "module": "./dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.cjs.js",
+  "module": "./dist/index.esm.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.cjs.js"
+    },
+    "./package.json": "./package.json"
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -b",
     "prepublishOnly": "npm run build",
     "test": "vitest run"
   },
   "dependencies": {
-    "@m3s/common": "^0.1.1",
+    "@m3s/common": "workspace:^",
+    "@m3s/wallet": "*",
     "ethers": "^6.13.5",
     "@lifi/sdk": "^3.6.6"
   },
@@ -37,6 +46,7 @@
     "tag": "latest"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ]
 }
