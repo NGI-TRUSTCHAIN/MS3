@@ -1,6 +1,6 @@
 {
   "name": "@m3s/smart-contract",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "description": "A modular toolkit for generating, compiling, deploying, and interacting with Ethereum-compatible smart contracts",
   "license": "MIT",
@@ -20,11 +20,19 @@
     "url": "git@bitbucket.org:ctb-marisca/ms3-package.git",
     "directory": "packages/smart-contract"
   },
-  "main": "dist/index.js",
-  "module": "./dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.cjs.js",
+  "module": "./dist/index.esm.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.cjs.js"
+    },
+    "./package.json": "./package.json"
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -b",
     "test": "npm run test:core && npm run test:erc20 && npm run test:erc721 && npm run test:erc1155",
     "test:core": "vitest run 01_Core.test.ts 02_IBaseContractHandler.test.ts",
     "test:erc20": "vitest run 03_ERC20.test.ts",
@@ -48,6 +56,7 @@
     "tag": "latest"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ]
 }
