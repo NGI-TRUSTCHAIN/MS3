@@ -1,6 +1,6 @@
 {
   "name": "@m3s/smart-contract",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "description": "A modular toolkit for generating, compiling, deploying, and interacting with Ethereum-compatible smart contracts",
   "license": "MIT",
@@ -41,7 +41,7 @@
   },
   "dependencies": {
     "@m3s/common": "*",
-    "@m3s/wallet": "^1.2.1",
+    "@m3s/wallet": "^1.2.2",
     "@openzeppelin/wizard": "^0.5.3",
     "@openzeppelin/wizard-cairo": "^1.0.0",
     "ethers": "^6.13.5",
