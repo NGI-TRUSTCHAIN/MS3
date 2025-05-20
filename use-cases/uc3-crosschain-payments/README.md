@@ -35,4 +35,4 @@ npm install
 ```bash
 npm run start
 ```
-- Check the documentation to implement digital signature at https://changetheblock.com/projects/ms3
+- Check the documentation to implement digital signature at http://changetheblock.com/projects/ms3/docs/getting-started

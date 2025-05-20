@@ -1,27 +1,8 @@
 {
-    "name": "m3s-uc3",
-    "version": "1.0.0",
-    "description": "UC3 test",
-    "scripts": {
-      "start": "webpack serve --mode development --open",
-      "build": "webpack --mode production"
-    },
-    "dependencies": {
-      "@m3s/wallet": "^1.0.94",
-      "ethers": "^6.13.5"
-    },
-    "devDependencies": {
-      "@babel/core": "^7.26.10",
-      "@babel/preset-env": "^7.26.9",
-      "babel-loader": "^10.0.0",
-      "buffer": "^6.0.3",
-      "crypto-browserify": "^3.12.1",
-      "html-webpack-plugin": "^5.6.0",
-      "path-browserify": "^1.0.1",
-      "stream-browserify": "^3.0.0",
-      "webpack": "^5.98.0",
-      "webpack-cli": "^6.0.1",
-      "webpack-dev-server": "^5.0.4"
-    }
+  "name": "uc3-crosschain-thinkaloud",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "npx serve public"
   }
-  
+}
