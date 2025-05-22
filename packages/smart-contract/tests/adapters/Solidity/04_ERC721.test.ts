@@ -2,10 +2,9 @@ import { describe, beforeEach, it, expect } from 'vitest';
 import { createContractHandler } from '../../../src/index.js';
 import { CompiledOutput, DeployedOutput, GenerateContractInput, IBaseContractHandler } from '../../../src/types/index.js';
 import { ethers } from 'ethers';
-import * as path from 'path';
 import { TEST_PRIVATE_KEY, RUN_INTEGRATION_TESTS, INFURA_API_KEY } from '../../../config.js';
-import { createWallet } from '@m3s/wallet';
-import { IEVMWallet } from '@m3s/common'
+import { createWallet, IEVMWallet } from '@m3s/wallet';
+import { NetworkHelper } from '@m3s/common';
 
 
 describe('ERC721 Options Tests', () => {
@@ -15,7 +14,7 @@ describe('ERC721 Options Tests', () => {
     contractHandler = await createContractHandler({
       adapterName: 'openZeppelin',
       options: {
-        workDir: path.join(process.cwd(), 'test-contracts-output', 'erc721-gen'), // <<< Use unique dir
+        // workDir: path.join(process.cwd(), 'test-contracts-output', 'erc721-gen'), // <<< Use unique dir
         preserveOutput: true,
       }
     });
@@ -185,14 +184,17 @@ describe('ERC721 Options Tests', () => {
         name: 'RolesNFT',
         symbol: 'RNFT',
         mintable: true,
+        pausable: true,
         access: 'roles'
       }
     };
-    const rolesSource = await contractHandler.generateContract(rolesInput); // <<< Use generateContract
 
+    const rolesSource = await contractHandler.generateContract(rolesInput);
     expect(rolesSource).toContain('import {AccessControl}');
     expect(rolesSource).toContain('MINTER_ROLE');
+    expect(rolesSource).toContain('PAUSER_ROLE'); // Add check for PAUSER_ROLE
     expect(rolesSource).toContain('onlyRole(MINTER_ROLE)');
+    expect(rolesSource).toContain('onlyRole(PAUSER_ROLE)');
 
     // Test ownable
     const ownableInput: GenerateContractInput = { // <<< Use GenerateContractInput
@@ -266,82 +268,73 @@ describe('ERC721 Options Tests', () => {
 });
 
 (RUN_INTEGRATION_TESTS ? describe : describe.skip)('Full ERC721 Integration Tests', () => {
-  let walletAdapter: IEVMWallet; // <<< ADDED
+  let walletAdapter: IEVMWallet;
   let contractHandler: IBaseContractHandler;
-  let provider: ethers.Provider; // Add provider
 
   beforeEach(async () => {
-    const rpcUrl = `https://sepolia.infura.io/v3/${INFURA_API_KEY}`;
-    provider = new ethers.JsonRpcProvider(rpcUrl);
+    const networkHelper = NetworkHelper.getInstance();
+    await networkHelper.ensureInitialized();
 
-    const network = await provider.getNetwork();
-    const chainId = network.chainId;
-    console.log(`[Test Setup] Using RPC: ${rpcUrl}, ChainID: ${chainId}`);
+    const testNetworkName = 'sepolia';
+
+    if (!INFURA_API_KEY) {
+      throw new Error("INFURA_API_KEY is not set in config.js. Cannot run integration tests that require a specific RPC.");
+    }
+    const preferredRpcUrl = `https://sepolia.infura.io/v3/${INFURA_API_KEY}`;
+
+    const networkConfig = await networkHelper.getNetworkConfig(testNetworkName, [preferredRpcUrl]);
+
+    if (!networkConfig || !networkConfig.rpcUrls || networkConfig.rpcUrls.length === 0) {
+      throw new Error(`Failed to get a valid network configuration for ${testNetworkName} using preferred RPC from NetworkHelper.`);
+    }
+
+    if (!TEST_PRIVATE_KEY) {
+      throw new Error("TEST_PRIVATE_KEY is not set in config.js. Cannot run integration tests requiring a funded account.");
+    }
+    const privateKeyToUse = TEST_PRIVATE_KEY;
 
     walletAdapter = await createWallet<IEVMWallet>({
       adapterName: 'ethers',
       options: {
-        privateKey: TEST_PRIVATE_KEY
+        privateKey: privateKeyToUse
       }
     });
 
-    console.log(`[Test Setup] After createWallet: isInitialized=${await walletAdapter.isInitialized()}, isConnected=${await walletAdapter.isConnected()}`);
-
-    // <<< Ensure wallet adapter is initialized >>>
-    if (!(await walletAdapter.isInitialized())) {
-      console.log("[Test Setup] Wallet not initialized by create, calling initialize...");
-      await walletAdapter.initialize();
-    } else {
-      console.log("[Test Setup] Wallet already initialized by create.");
-    }
-
-    console.log(`[Test Setup] After initialize check: isInitialized=${await walletAdapter.isInitialized()}, isConnected=${await walletAdapter.isConnected()}`);
-
-
     try {
-      // Use the explicitly defined rpcUrl
-      await walletAdapter.setProvider({ rpcUrl, chainId: String(chainId) });
-      console.log(`[Test Setup] After setProvider SUCCESS: isInitialized=${await walletAdapter.isInitialized()}, isConnected=${await walletAdapter.isConnected()}`);
+      await walletAdapter.setProvider(networkConfig);
+    
     } catch (error) {
       console.error(`[Test Setup] setProvider FAILED:`, error);
-      // Re-throw to ensure the test fails clearly if setProvider has an issue
       throw error;
     }
 
     contractHandler = await createContractHandler({
       adapterName: 'openZeppelin',
       options: {
-        workDir: path.join(process.cwd(), 'test-contracts-output', 'erc721'),
+        // workDir: path.join(process.cwd(), 'test-contracts-output', 'erc721'),
         preserveOutput: true,
-        providerConfig: {
-          rpcUrl: rpcUrl,
-          chainId: chainId
-        }
+        providerConfig: networkConfig
       }
     });
-    console.log(`[Test Setup] After createContractHandler. beforeEach complete.`);
   });
 
   const waitForReceipt = async (txHash: string, maxAttempts = 20, waitTime = 6000): Promise<ethers.TransactionReceipt | null> => {
     for (let i = 0; i < maxAttempts; i++) {
       const receipt = await walletAdapter.getTransactionReceipt(txHash);
       if (receipt) {
-        console.log(`Receipt found for ${txHash} (attempt ${i + 1}). Status: ${receipt.status}`);
+        console.warn(`Receipt found for ${txHash} (attempt ${i + 1}). Status: ${receipt.status}`);
         return receipt;
       }
-      console.log(`Receipt not found for ${txHash} (attempt ${i + 1}). Waiting ${waitTime / 1000}s...`);
+      console.warn(`Receipt not found for ${txHash} (attempt ${i + 1}). Waiting ${waitTime / 1000}s...`);
       await new Promise(resolve => setTimeout(resolve, waitTime));
     }
     console.error(`Receipt not found for ${txHash} after ${maxAttempts} attempts.`);
     return null;
   };
-  // <<< End waitForReceipt helper >>>
 
   it('should deploy ERC721 with multiple features and verify functionality', async () => {
-    console.log('🚀 Starting comprehensive ERC721 test');
 
     // 1. Generate contract
-    console.log('1️⃣ Generating feature-rich ERC721 contract...');
     const contractSource = await contractHandler.generateContract({
       language: 'solidity',
       template: 'openzeppelin_erc721',
@@ -360,7 +353,6 @@ describe('ERC721 Options Tests', () => {
     });
 
     // 2. Compile
-    console.log('2️⃣ Compiling the contract...');
     const compiled: CompiledOutput = await contractHandler.compile({
       sourceCode: contractSource,
       language: 'solidity',
@@ -369,21 +361,13 @@ describe('ERC721 Options Tests', () => {
     expect(compiled.artifacts?.abi).toBeDefined();
     expect(compiled.artifacts?.bytecode).toBeDefined();
 
-    // 3. Deploy
-    console.log('3️⃣ Deploying to testnet...');
-
-    console.log(`[Test Run] Before getAccounts call: isInitialized=${await walletAdapter.isInitialized()}, isConnected=${await walletAdapter.isConnected()}`);
     const accounts = await walletAdapter.getAccounts();
-    // <<< Log the raw result from getAccounts >>>
-    console.log(`[Test Run] After getAccounts call: received accounts =`, accounts);
     const deployerAddress = accounts[0];
-    console.log(`Deployer address from walletAdapter: ${deployerAddress}`);
 
     if (!deployerAddress || !ethers.isAddress(deployerAddress)) {
       throw new Error(`Failed to get a valid deployer address from wallet adapter. Received: ${deployerAddress}`);
     }
 
-    // <<< Correct constructor args for Ownable ERC721 >>>
     const constructorArgs: any[] = [deployerAddress]; // Only initialOwner is needed
 
     const deployed: DeployedOutput = await contractHandler.deploy({
@@ -391,7 +375,7 @@ describe('ERC721 Options Tests', () => {
       constructorArgs: constructorArgs,
       wallet: walletAdapter // <<< Pass walletAdapter
     });
-    console.log(`Contract deployed: ${deployed.contractId}, Tx: ${deployed.deploymentInfo?.transactionId}`); // <<< Use deploymentInfo
+
     expect(deployed.contractId).toMatch(/^0x[a-fA-F0-9]{40}$/);
     expect(deployed.deploymentInfo?.transactionId).toBeDefined(); // <<< Check deploymentInfo
 
@@ -401,21 +385,19 @@ describe('ERC721 Options Tests', () => {
     const tokenId = 0; // First token ID (due to incremental)
 
     // 1. Mint a token (write)
-    console.log(`Testing mint functionality (minting token ${tokenId})...`);
-    // <<< Update safeMint args for incremental + URI storage >>>
+
     const mintResult = await contractHandler.callMethod({
       contractId: contractId,
-      contractInterface: contractAbi, // <<< Pass ABI
+      contractInterface: contractAbi,
       functionName: 'safeMint',
-      args: [deployerAddress, `metadata/${tokenId}.json`], // Mint to deployer, provide URI part
-      wallet: walletAdapter // <<< Pass walletAdapter
+      args: [deployerAddress, `metadata/${tokenId}.json`],
+      wallet: walletAdapter 
     });
-    // <<< Use waitForReceipt >>>
+
     const mintReceipt = await waitForReceipt(mintResult.transactionHash);
     expect(mintReceipt).toBeDefined();
     expect(mintReceipt).not.toBeNull();
     expect(mintReceipt!.status).toBe(1);
-    console.log(`✅ Token ${tokenId} minted successfully`);
 
     // Verify ownership (read)
     const owner = await contractHandler.callMethod({
@@ -425,11 +407,10 @@ describe('ERC721 Options Tests', () => {
       args: [tokenId]
       // wallet: walletAdapter // Optional for reads
     });
+
     expect(owner.toLowerCase()).toBe(deployerAddress.toLowerCase());
-    console.log(`✅ Ownership verified`);
 
     // 2. Test URI Storage & Base URI (read)
-    console.log('Testing token URI...');
     const retrievedURI = await contractHandler.callMethod({
       contractId: contractId,
       contractInterface: contractAbi, // <<< Pass ABI
@@ -438,17 +419,13 @@ describe('ERC721 Options Tests', () => {
       // wallet: walletAdapter // Optional for reads
     });
 
-    // <<< CORRECTED EXPECTATION: OZ concatenates base URI + specific URI when both exist >>>
     const baseUri = 'ipfs://QmNFTCollection/'; // The base URI used in generation
     const uriSuffix = `metadata/${tokenId}.json`; // The URI provided during mint
     const expectedTokenURI = baseUri + uriSuffix; // Concatenated result
-    // <<< END CORRECTION >>>
-    console.log(`Retrieved token URI: ${retrievedURI}`);
+    
     expect(retrievedURI).toBe(expectedTokenURI);
-    console.log(`✅ Token URI verified`);
 
     // 3. Test enumerable feature (read)
-    console.log('Testing enumerable feature...');
     const balance = await contractHandler.callMethod({
       contractId: contractId,
       contractInterface: contractAbi, // <<< Pass ABI
@@ -466,10 +443,8 @@ describe('ERC721 Options Tests', () => {
       // wallet: walletAdapter // Optional for reads
     });
     expect(Number(tokenByIndex)).toBe(tokenId); // Should be the token we minted
-    console.log('✅ Enumerable feature verified');
 
     // 4. Test pause functionality (write)
-    console.log('Testing pause functionality...');
     const pauseResult = await contractHandler.callMethod({
       contractId: contractId,
       contractInterface: contractAbi, // <<< Pass ABI
@@ -491,10 +466,8 @@ describe('ERC721 Options Tests', () => {
       // wallet: walletAdapter // Optional for reads
     });
     expect(pausedState).toBe(true);
-    console.log('✅ Contract successfully paused');
 
     // 5. Test unpause (write)
-    console.log('Testing unpause functionality...');
     const unpauseResult = await contractHandler.callMethod({
       contractId: contractId,
       contractInterface: contractAbi, // <<< Pass ABI
@@ -510,24 +483,21 @@ describe('ERC721 Options Tests', () => {
 
     const unpausedState = await contractHandler.callMethod({
       contractId: contractId,
-      contractInterface: contractAbi, // <<< Pass ABI
+      contractInterface: contractAbi,
       functionName: 'paused',
       args: []
-      // wallet: walletAdapter // Optional for reads
     });
-    expect(unpausedState).toBe(false);
-    console.log('✅ Contract successfully unpaused');
 
-    // 6. Test burning (write)
-    console.log('Testing burn functionality...');
+    expect(unpausedState).toBe(false);
+
     const burnResult = await contractHandler.callMethod({
       contractId: contractId,
-      contractInterface: contractAbi, // <<< Pass ABI
+      contractInterface: contractAbi,
       functionName: 'burn',
       args: [tokenId],
-      wallet: walletAdapter // <<< Pass walletAdapter
+      wallet: walletAdapter
     });
-    // <<< Use waitForReceipt >>>
+
     const burnReceipt = await waitForReceipt(burnResult.transactionHash);
     expect(burnReceipt).toBeDefined();
     expect(burnReceipt).not.toBeNull();
@@ -550,9 +520,8 @@ describe('ERC721 Options Tests', () => {
       expect(error.message).toMatch(
         /ERC721NonexistentToken|execution reverted.*(NonexistentToken|0x04f8074e)/i
       );
-      console.log('✅ Token successfully burned (ownerOf reverted as expected)');
+
     }
 
-    console.log('✨ All testable ERC721 features verified successfully!');
   }, 300000); // Longer timeout for blockchain interaction
 });

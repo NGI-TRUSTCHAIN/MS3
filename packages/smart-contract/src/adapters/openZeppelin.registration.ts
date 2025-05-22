@@ -1,11 +1,13 @@
 import { ContractHandlerType } from '../types/index.js';
-import { OpenZeppelinAdapter } from './openZeppelin/index.js'; // Updated path
-import { registry } from '@m3s/common';
+import { OpenZeppelinAdapter } from './openZeppelin/index.js';
+import { registry, Requirement } from '@m3s/common';
+
+const openZeppelinRequirements: Requirement[] = [];
 
 registry.registerAdapter('contractHandler', {
   name: 'openZeppelin',
   module: 'contractHandler',
-  adapterType: ContractHandlerType['openZeppelin'],
+  adapterType: ContractHandlerType.openZeppelin,
   adapterClass: OpenZeppelinAdapter,
-  requirements: []
+  requirements: openZeppelinRequirements,
 });

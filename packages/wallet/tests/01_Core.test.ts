@@ -15,7 +15,7 @@ export function testAdapterPattern(AdapterClass: any, mockArgs: any = {}, hookTi
         throw new Error('Constructor should be private but was accessible');
       } catch (error) {
         // This is expected behavior for private constructors
-        expect(error).toBeTruthy();
+        // expect(error).toBeTruthy();
       }
     });
 
@@ -34,11 +34,12 @@ export function testAdapterPattern(AdapterClass: any, mockArgs: any = {}, hookTi
         expect(instance).toBeInstanceOf(AdapterClass);
       } catch (error: any) {
         console.warn(`Creation failed in test: ${error.message}`);
-        // Still pass the test in test environment
-        expect(true).toBe(true);
+        // Consider failing the test more directly:
+        // throw error; // Option 1: Re-throw to fail the test
+        expect(error).toBeNull(); // Option 2: Expect no error (will fail if error occurs)
       }
     });
-  },hookTimeout);
+  }, hookTimeout);
 }
 
 // Add this real test to make Vitest recognize this as a test file

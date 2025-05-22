@@ -1,61 +1,69 @@
 import { AdapterError } from "./AdapterError.js";
-// Import specific error codes if you intend to map common errors later
-// import { WalletErrorCode, CrossChainErrorCode, SmartContractErrorCode } from "../types/error.js";
+import { WalletErrorCode } // Assuming WalletErrorCode is a general type for error codes, adjust if needed
+// Or import a more generic ErrorCode type if you have one for all modules
+from "../types/error.js"; // Or the correct path to your error code definitions
 
 /**
  * Creates a Proxy around an adapter instance to standardize error handling.
  * It intercepts method calls, executes them, and wraps any thrown errors
  * within a standardized `AdapterError`, preserving the original error as `cause`
- * and capturing the method name.
- *
- * This version wraps all functions in an async wrapper for consistent await/catch behavior.
+ * and capturing the method name. It can also map specific underlying errors
+ * to predefined error codes.
  *
  * @template T - The type of the adapter object (must be an object).
  * @param {T} adapterInstance - The original adapter instance.
- * @param {string} [adapterType='Unknown'] - A string identifying the adapter type (e.g., 'wallet', 'crosschain') for logging.
+ * @param {Record<string, WalletErrorCode | string>} [errorMap={}] - A map where keys are parts of original error messages
+ *                                                                  and values are specific error codes to assign.
+ * @param {WalletErrorCode | string} [defaultErrorCode] - A default error code to use if no specific mapping is found.
+ * @param {string} [contextName='UnknownAdapter'] - A name for the adapter context, used in error messages.
  * @returns {T} - A proxied version of the adapter instance with enhanced error handling.
  */
-export function createErrorHandlingProxy<T extends object>(adapterInstance: T, adapterType: string = 'Unknown'): T {
+export function createErrorHandlingProxy<T extends object>(
+    adapterInstance: T,
+    errorMap: Record<string, WalletErrorCode | string> = {},
+    defaultErrorCode?: WalletErrorCode | string, // Can be undefined
+    contextName: string = 'UnknownAdapter' // Renamed from adapterType for clarity
+): T {
   return new Proxy(adapterInstance, {
     get(target, prop, receiver) {
       const originalValue = Reflect.get(target, prop, receiver);
-      const methodName = String(prop); // Get the name of the property being accessed
+      const methodName = String(prop);
 
-      // Only wrap properties that are functions (methods)
       if (typeof originalValue === 'function') {
-        // Return an async function wrapper for consistent await/catch behavior
         return async function (...args: any[]) {
           try {
-            // Await the result. Works correctly for both sync and async original methods.
             return await originalValue.apply(target, args);
           } catch (error: unknown) {
-            // Log the error for debugging purposes
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error(`[${adapterType} Adapter Error] Method '${methodName}' failed: ${errorMessage}`);
+            const originalErrorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`[${contextName} Error] Method '${methodName}' failed: ${originalErrorMessage}`, error);
 
-            // Check if the caught error is already an AdapterError. If so, re-throw it directly.
             if (error instanceof AdapterError) {
+              // If it's already an AdapterError, re-throw it,
+              // potentially enriching it if more context is available here (optional)
               throw error;
-            } else {
-              // Wrap the original error in a new AdapterError for standardization.
-              // Pass the original error as 'cause' and include the method name.
-              // Initially, we won't assign a specific code here, relying on message/cause.
-              // TODO: Implement mapping of common underlying errors (e.g., network errors, user rejection)
-              // to specific M3SAdapterErrorCodes within this proxy or in adapter-specific logic.
-              throw new AdapterError(
-                `${adapterType} adapter method '${methodName}' failed: ${errorMessage}`,
-                {
-                  cause: error, // Link the original error
-                  methodName: methodName, // Include the method where it happened
-                  // code: DetermineErrorCode(error) // Placeholder for future mapping logic
-                }
-              );
             }
+
+            let mappedErrorCode: WalletErrorCode | string | undefined = defaultErrorCode;
+
+            // Attempt to map the error using the errorMap
+            for (const key in errorMap) {
+              if (originalErrorMessage.includes(key)) {
+                mappedErrorCode = errorMap[key];
+                break;
+              }
+            }
+
+            throw new AdapterError(
+              `${contextName} method '${methodName}' failed: ${originalErrorMessage}`,
+              {
+                cause: error,
+                methodName: methodName,
+                code: mappedErrorCode as string | undefined // Cast as string if WalletErrorCode is an enum
+              }
+            );
           }
         };
       }
-
-      // If the accessed property is not a function, return it directly
       return originalValue;
     }
   });

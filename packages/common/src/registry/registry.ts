@@ -1,5 +1,14 @@
 import { AdapterMetadata, ModuleMetadata } from "../types/index.js";
 
+// Helper function to get a value from a nested path
+export function getPropertyByPath(obj: any, path: string): any {
+  return path.split('.').reduce((currentObject, key) => {
+    return (currentObject && typeof currentObject === 'object' && Object.prototype.hasOwnProperty.call(currentObject, key))
+      ? currentObject[key]
+      : undefined;
+  }, obj);
+}
+
 class UniversalRegistry {
     private modules: Map<string, ModuleMetadata> = new Map();
     private adapters: Map<string, Map<string, AdapterMetadata>> = new Map();
@@ -99,3 +108,5 @@ class UniversalRegistry {
   
 // Export the singleton instance
 export const registry = new UniversalRegistry();
+
+export type { UniversalRegistry };

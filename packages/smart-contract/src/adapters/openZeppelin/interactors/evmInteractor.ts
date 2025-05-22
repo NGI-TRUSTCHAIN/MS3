@@ -1,218 +1,262 @@
-import { ethers, Provider, TransactionRequest, TransactionReceipt, Interface } from "ethers";
-import { DeployInput, DeployedOutput, CallInput } from '../../../types/index.js'; // Adjust path
-import { GenericTransactionData } from "@m3s/common";
+import { ethers, Provider, Interface, Contract } from "ethers"; // Signer is not directly used here from wallet
+import { DeployInput, DeployedOutput, CallInput } from '../../../types/index.js';
+import { AdapterError, GenericTransactionData, NetworkConfig } from "@m3s/wallet";
 
 export default class EvmInteractor {
-    private defaultProvider?: Provider; // Store the default provider instance
-    constructor(defaultProvider?: Provider) {
-        this.defaultProvider = defaultProvider;
-        if (this.defaultProvider) {
-            console.log(`[EvmInteractor] Initialized with a default provider.`);
+    private defaultProvider?: Provider; // This is an ethers.Provider
+
+    constructor(providerConfig?: NetworkConfig) {
+        console.log('[EvmInteractor Constructor] Received providerConfig:', JSON.stringify(providerConfig, null, 2));
+
+        let rpcUrlToUse: string | undefined = undefined;
+
+        if (providerConfig && providerConfig.rpcUrls && Array.isArray(providerConfig.rpcUrls) && providerConfig.rpcUrls.length > 0) {
+            rpcUrlToUse = providerConfig.rpcUrls[0];
+            console.log(`[EvmInteractor] Using rpcUrls[0] as the RPC endpoint: ${rpcUrlToUse}`);
+        }
+
+        if (!rpcUrlToUse) {
+            if (providerConfig) {
+                console.log('[EvmInteractor] providerConfig present, but no suitable rpcUrls[0] or rpcUrl found.');
+            } else {
+                console.log('[EvmInteractor] providerConfig is undefined.');
+            }
+        }
+
+        if (rpcUrlToUse) {
+            try {
+                const chainIdToUse = providerConfig?.chainId ? Number(providerConfig.chainId) : undefined;
+                this.defaultProvider = new ethers.JsonRpcProvider(rpcUrlToUse, chainIdToUse);
+                console.log(`[EvmInteractor] Default provider configured for reads from: ${rpcUrlToUse} with chainId: ${chainIdToUse}`);
+            } catch (error: any) {
+                console.error(`[EvmInteractor] Failed to initialize default provider from config: ${rpcUrlToUse}`, error.message);
+                this.defaultProvider = undefined;
+            }
         } else {
-            console.log(`[EvmInteractor] Initialized without a default provider (reads without wallet will fail).`);
+            console.log('[EvmInteractor] Initialized without a default provider (no suitable RPC URL found in providerConfig).');
         }
     }
 
     async deployContract(input: DeployInput): Promise<DeployedOutput> {
         const { compiledContract, constructorArgs = [], wallet, deployOptions = {} } = input;
 
-        const contractName = compiledContract.metadata?.contractName || compiledContract.artifacts?.contractName || 'UnknownContract';
-        console.log(`[EvmInteractor] Deploying ${contractName}...`);
-
-        // Wallet Validation (Crucial for EVM operations)
-        if (!wallet || typeof wallet.sendTransaction !== 'function' || typeof wallet.getAccounts !== 'function' || typeof wallet.getTransactionReceipt !== 'function') {
-            throw new Error("Invalid or incomplete IEVMWallet provided for deployment. Requires sendTransaction, getAccounts, getTransactionReceipt.");
+        if (!wallet) {
+            throw new AdapterError("Wallet is required for deployment.");
         }
 
-        const abi = compiledContract.artifacts?.abi;
-        const bytecode = compiledContract.artifacts?.bytecode;
-        if (!abi || !bytecode) throw new Error(`Compiled artifacts for ${contractName} missing 'abi' or 'bytecode'.`);
+        if (!compiledContract.artifacts.bytecode || !compiledContract.artifacts.abi) {
+            throw new AdapterError("Bytecode and ABI are required for deployment.");
+        }
 
-        let txHash: string | undefined;
-        try {
-            // 1. Prepare Tx Data using ethers
-            const factory = new ethers.ContractFactory(abi, bytecode);
-            const overrides: ethers.Overrides = {};
-            if (deployOptions.gasLimit) overrides.gasLimit = deployOptions.gasLimit;
-            if (deployOptions.gasPrice) overrides.gasPrice = deployOptions.gasPrice;
-            if (deployOptions.maxFeePerGas) overrides.maxFeePerGas = deployOptions.maxFeePerGas;
-            if (deployOptions.maxPriorityFeePerGas) overrides.maxPriorityFeePerGas = deployOptions.maxPriorityFeePerGas;
-            if (deployOptions.nonce) overrides.nonce = deployOptions.nonce;
-            if (deployOptions.value) overrides.value = deployOptions.value;
-            const deployTxRequest: TransactionRequest = await factory.getDeployTransaction(...constructorArgs, overrides);
+        const factory = new ethers.ContractFactory(compiledContract.artifacts.abi, compiledContract.artifacts.bytecode);
+        const deployTxUnsigned = await factory.getDeployTransaction(...constructorArgs); // Ethers v6
 
-            // 2. Map to GenericTransactionData
-            const genericDeployTx: GenericTransactionData = {
-                to: undefined, // Contract creation
-                value: deployTxRequest.value?.toString(),
-                data: deployTxRequest.data ?? undefined,
-                options: { /* Map relevant options */ }
+        let finalGasLimit: string | undefined;
+
+        if (deployOptions.gasLimit !== undefined) {
+            if (typeof deployOptions?.gasLimit === 'string' || typeof deployOptions?.gasLimit === 'bigint') {
+                finalGasLimit = deployOptions.gasLimit.toString();
+            } else if (typeof deployOptions.gasLimit === 'string') {
+                finalGasLimit = deployOptions.gasLimit;
+            } else {
+                console.warn(`[EvmInteractor] Unexpected type for deployOptions.gasLimit: ${typeof deployOptions.gasLimit}. Passing as is.`);
+                finalGasLimit = deployOptions.gasLimit as any;
+            }
+        } else if (typeof wallet.estimateGas === 'function') {
+            const estimateTx: GenericTransactionData = {
+                data: deployTxUnsigned.data,
+                value: deployOptions.value !== undefined ? ethers.toBeHex(ethers.toBigInt(deployOptions.value)) : undefined,
             };
-            // Clean up undefined options (important for some wallets)
-            Object.assign(genericDeployTx.options!, {
-                gasLimit: deployTxRequest.gasLimit,
-                gasPrice: deployTxRequest.gasPrice,
-                maxFeePerGas: deployTxRequest.maxFeePerGas,
-                maxPriorityFeePerGas: deployTxRequest.maxPriorityFeePerGas,
-                nonce: deployTxRequest.nonce
-            });
-            Object.keys(genericDeployTx.options!).forEach(key =>
-                genericDeployTx.options![key as keyof typeof genericDeployTx.options] === undefined &&
-                delete genericDeployTx.options![key as keyof typeof genericDeployTx.options]
-            );
-            if (Object.keys(genericDeployTx.options!).length === 0) delete genericDeployTx.options;
+            try {
+                console.log(`[EvmInteractor] gasLimit not provided for deployment, attempting to estimate... EstimateTx:`, JSON.stringify(estimateTx).slice(0,17));
+                const estimatedFee = await wallet.estimateGas(estimateTx);
+                if (estimatedFee && estimatedFee.gasLimit !== undefined && estimatedFee.gasLimit !== null) {
+                    finalGasLimit = estimatedFee.gasLimit.toString();
+                    console.log(`[EvmInteractor] Estimated gasLimit for deployment: ${finalGasLimit}`);
+                } else {
+                    console.warn(`[EvmInteractor] Gas estimation for deployment returned no gasLimit. estimatedFee: ${JSON.stringify(estimatedFee)}, estimatedFee.gasLimit: ${estimatedFee?.gasLimit}. Proceeding without explicit gasLimit.`);
+                }
+            } catch (estimationError: any) {
+                console.warn(`[EvmInteractor] Gas estimation for deployment FAILED.`);
+                console.warn(`[EvmInteractor] Error Message: ${estimationError.message}`);
+                console.warn(`[EvmInteractor] Error Code: ${estimationError.code}`);
+                // Use the helper for logging the error object if it might contain BigInts
+                console.warn(`[EvmInteractor] Full Error Object (raw):`, estimationError); // Keep this for full object inspection if needed
+                console.warn(`[EvmInteractor] Stringified Error Object: ${estimationError}`);
+                console.warn(`[EvmInteractor] Proceeding without explicit gasLimit.`);
+            }
+        }
+        
+        const genericTx: GenericTransactionData = {
+            data: deployTxUnsigned.data, // This is the init code + constructor args
+            // 'to' is undefined for contract creation
+            value: deployOptions.value,
+            options: { // Pass through relevant options
+                gasLimit: finalGasLimit,
+                gasPrice: deployOptions.gasPrice,
+                maxFeePerGas: deployOptions.maxFeePerGas,
+                maxPriorityFeePerGas: deployOptions.maxPriorityFeePerGas,
+                nonce: deployOptions.nonce,
+                // chainId: deployOptions.chainId, // Wallet should manage its chainId
+            }
+        };
 
-
-            // 3. Send via Wallet Adapter
-            console.log(`[EvmInteractor] Sending deployment tx for ${contractName} via wallet...`);
-            txHash = await wallet.sendTransaction(genericDeployTx as any);
+        try {
+            console.log(`[EvmInteractor] Sending deployment tx for ${compiledContract.metadata?.contractName || 'contract'} via wallet...`);
+            const txHash = await wallet.sendTransaction(genericTx);
             console.log(`[EvmInteractor] Deployment tx sent: ${txHash}`);
 
-            // 4. Wait for Receipt via Wallet Adapter
             console.log(`[EvmInteractor] Waiting for receipt for ${txHash}...`);
-            let receipt: TransactionReceipt | null = null;
-            const maxAttempts = 20; // ~2 minutes total wait time
-            const waitTime = 6000; // 6 seconds
-            for (let i = 0; i < maxAttempts; i++) {
-                receipt = await wallet.getTransactionReceipt(txHash); // IEVMWallet guarantees this method
+            let receipt = null;
+            let attempts = 0;
+            const maxAttempts = deployOptions.maxAttempts || 120;
+            const pollInterval = deployOptions.pollInterval || 5000;
+
+            while (attempts < maxAttempts) {
+                receipt = await wallet.getTransactionReceipt(txHash);
                 if (receipt) {
-                    console.log(`[EvmInteractor] Receipt found (attempt ${i + 1}). Status: ${receipt.status}`);
+                    console.log(`[EvmInteractor] Receipt found (attempt ${attempts + 1}). Status: ${receipt.status}`);
                     break;
                 }
-                if (i < maxAttempts - 1) await new Promise(resolve => setTimeout(resolve, waitTime));
+                attempts++;
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+                if (attempts % 6 === 0) { // Log every 30s
+                    console.log(`[EvmInteractor] Still waiting for receipt for ${txHash} (attempt ${attempts})...`);
+                }
             }
 
-            // 5. Process Receipt
-            if (!receipt) throw new Error(`Deployment transaction ${txHash} did not confirm after ${maxAttempts} attempts.`);
-            if (receipt.status === 0) throw new Error(`Deployment transaction ${txHash} failed (receipt status 0).`);
-            if (!receipt.contractAddress) throw new Error(`Deployment transaction ${txHash} succeeded but receipt missing contractAddress.`);
+            if (!receipt) {
+                throw new AdapterError(`Timeout waiting for deployment transaction receipt: ${txHash}`);
+            }
+            if (receipt.status === 0 || receipt.status === null) { // Check for null status as well
+                throw new AdapterError(`Contract deployment failed (tx status ${receipt.status}): ${txHash}. Receipt: ${JSON.stringify(receipt)}`);
+            }
+            if (!receipt.contractAddress) {
+                throw new AdapterError(`Contract address not found in receipt for tx: ${txHash}. Receipt: ${JSON.stringify(receipt)}`);
+            }
+            console.log(`[EvmInteractor] ${compiledContract.metadata?.contractName || 'Contract'} deployed successfully at ${receipt.contractAddress}`);
 
-            console.log(`[EvmInteractor] ${contractName} deployed successfully at ${receipt.contractAddress}`);
-
-            // 6. Format Output
-            const deployerAddress = receipt.from || (await wallet.getAccounts())[0]; // Get deployer address
-            const deployedOutput: DeployedOutput = {
+            return {
                 contractId: receipt.contractAddress,
                 deploymentInfo: {
-                    transactionId: receipt.hash,
+                    transactionId: txHash,
                     blockHeight: receipt.blockNumber,
-                    gasUsed: receipt.gasUsed?.toString(),
-                    effectiveGasPrice: receipt.gasPrice?.toString(), // Ethers v6 uses gasPrice in receipt
-                    deployerAddress: deployerAddress,
+                    deployerAddress: receipt.from,
                 },
-                contractInterface: abi // Include ABI in output
+                contractInterface: compiledContract.artifacts.abi,
             };
-            return deployedOutput;
-
         } catch (error: any) {
-            console.error(`[EvmInteractor] Deployment of ${contractName} failed: ${error.message}`, error.stack);
-            if (txHash) console.error("Failed Tx Hash:", txHash);
-            // Re-throw a cleaner error
-            throw new Error(`Deployment failed: ${error.message}`);
+            console.error(`[EvmInteractor] Deployment error:`, error);
+            const cause = error instanceof Error ? error : undefined;
+            throw new AdapterError(`Deployment failed: ${error.message || 'Unknown deployment error'}`, { cause });
         }
     }
 
     async callContractMethod(input: CallInput): Promise<any> {
         const { contractId, functionName, args = [], wallet, contractInterface, callOptions = {} } = input;
-        console.log(`[EvmInteractor] Calling ${functionName} on ${contractId}`);
 
-        const abi = contractInterface; // ABI is now required in CallInput
-        if (!abi) throw new Error(`ABI (contractInterface) is required in CallInput for contract ${contractId}`);
-
-        let functionAbiFragment: ethers.FunctionFragment | null = null;
-        try {
-            const iface = new Interface(abi);
-            functionAbiFragment = iface.getFunction(functionName);
-            if (!functionAbiFragment) throw new Error('Function fragment not found'); // Should not happen if getFunction doesn't throw
-        } catch (abiError: any) {
-            throw new Error(`Error processing ABI for function '${functionName}': ${abiError.message}`);
+        if (!contractId || !ethers.isAddress(contractId)) {
+            throw new AdapterError(`Invalid contract address: ${contractId}`);
+        }
+        if (!contractInterface) {
+            throw new AdapterError('Contract ABI (contractInterface) is required for calling a method.');
+        }
+        if (!functionName) {
+            throw new AdapterError('Function name is required.');
         }
 
-        const isWriteCall = !(functionAbiFragment.constant || functionAbiFragment.stateMutability === 'view' || functionAbiFragment.stateMutability === 'pure');
+        const iface = new Interface(contractInterface);
+        const fragment = iface.getFunction(functionName);
+        if (!fragment) {
+            throw new AdapterError(`Function '${functionName}' not found in ABI.`);
+        }
+        const isWriteOperation = !(fragment.stateMutability === 'view' || fragment.stateMutability === 'pure');
 
-        if (isWriteCall) {
-            // --- WRITE CALL ---
-            console.log(`[EvmInteractor] Preparing WRITE call for ${functionName}...`);
-            if (!wallet || typeof wallet.sendTransaction !== 'function') { // Check wallet is present and capable
-                throw new Error("IEVMWallet with sendTransaction capability is required for write operations.");
+        if (isWriteOperation) {
+            if (!wallet) {
+                throw new AdapterError(`Wallet is required for write operation: ${functionName}`);
             }
+            const callData = iface.encodeFunctionData(fragment, args);
 
-            try {
-                // 1. Encode Function Data
-                const iface = new Interface(abi); // Recreate or reuse iface
-                const txData = iface.encodeFunctionData(functionName, args);
+            let finalGasLimit: string | undefined;
 
-                // 2. Map to GenericTransactionData
-                const genericWriteTx: GenericTransactionData = {
-                    to: contractId,
-                    data: txData,
-                    value: callOptions.value?.toString(),
-                    options: { /* Map relevant options */ }
-                };
-                // Clean up undefined options
-                Object.assign(genericWriteTx.options!, {
-                    gasLimit: callOptions.gasLimit,
-                    gasPrice: callOptions.gasPrice,
-                    maxFeePerGas: callOptions.maxFeePerGas,
-                    maxPriorityFeePerGas: callOptions.maxPriorityFeePerGas,
-                    nonce: callOptions.nonce
-                });
-                Object.keys(genericWriteTx.options!).forEach(key =>
-                    genericWriteTx.options![key as keyof typeof genericWriteTx.options] === undefined &&
-                    delete genericWriteTx.options![key as keyof typeof genericWriteTx.options]
-                );
-                if (Object.keys(genericWriteTx.options!).length === 0) delete genericWriteTx.options;
-
-
-                // 3. Send via Wallet Adapter
-                console.log(`[EvmInteractor] Sending write tx for ${functionName} via wallet...`);
-                const txHash = await wallet.sendTransaction(genericWriteTx as any);
-                console.log(`[EvmInteractor] Write tx sent: ${txHash}`);
-
-                // Return hash (user can wait separately if needed)
-                // Consider adding an option in callOptions to wait for receipt here?
-                return { transactionHash: txHash };
-
-            } catch (error: any) {
-                console.error(`[EvmInteractor] Write call to ${functionName} failed: ${error.message}`, error.stack);
-                throw new Error(`Write call to method '${functionName}' failed: ${error.message}`);
-            }
-        } else {
-            // --- READ CALL ---
-            console.log(`[EvmInteractor] Preparing READ call for ${functionName}...`);
-            let readProvider: Provider | undefined = this.defaultProvider; // Use the interactor's default provider
-
-            // If a wallet IS provided, try to get its provider (might be connected to a different network!)
-            // This logic needs refinement based on IEVMWallet interface - does it guarantee getProvider?
-            // For now, we prioritize the default provider for consistency in read-only scenarios without a wallet.
-            // If a wallet is present, it's primarily for WRITES in this model. Reads *could* use it, but let's keep it simple first.
-
-            if (!readProvider) {
-                throw new Error("Provider is required for read operations. Configure the adapter with 'providerConfig' or ensure the wallet provides one.");
-            }
-
-            try {
-                // 1. Create Contract Instance with Provider
-                const contract = new ethers.Contract(contractId, abi, readProvider);
-
-                // 2. Execute Read Call
-                console.log(`[EvmInteractor] Executing read call: ${functionName}(${args.join(', ')})`);
-                // Ethers v6 uses contract.functionName(...args, overrides?)
-                // Read calls usually don't need overrides, but pass if provided in callOptions
-                const readOverrides: ethers.Overrides = {};
-                if (callOptions.blockTag) readOverrides.blockTag = callOptions.blockTag;
-                // Add other relevant read overrides if needed
-
-                const result = await (contract[functionName] as Function)(...args, readOverrides);
-                console.log(`[EvmInteractor] Read call result for ${functionName}:`, result);
-                return result;
-
-            } catch (error: any) {
-                console.error(`[EvmInteractor] Read call to ${functionName} failed: ${error.message}`, error.stack);
-                if (error.message.includes('call revert exception')) {
-                    console.error("Read call reverted. Check contract state, arguments, and ensure the contract exists at the address on the connected network.");
+            if (callOptions?.gasLimit) {
+                if (typeof callOptions.gasLimit === 'bigint' || typeof callOptions.gasLimit === 'number') {
+                    finalGasLimit = callOptions.gasLimit.toString();
+                } else if (typeof callOptions.gasLimit === 'string') {
+                    finalGasLimit = callOptions.gasLimit;
+                } else {
+                    console.warn(`[EvmInteractor] Unexpected type for callOptions.gasLimit: ${typeof callOptions.gasLimit}. Passing as is.`);
+                    finalGasLimit = callOptions.gasLimit as any;
                 }
-                throw new Error(`Read call to method '${functionName}' failed: ${error.message}`);
+            } else if (typeof wallet.estimateGas === 'function') {
+                const estimateTx: GenericTransactionData = {
+                    to: contractId,
+                    data: callData,
+                    value: callOptions?.value !== undefined ? ethers.toBeHex(ethers.toBigInt(callOptions.value)) : undefined,
+                };
+                try {
+                    console.log(`[EvmInteractor] gasLimit not provided for '${functionName}', attempting to estimate... EstimateTx:`, JSON.stringify(estimateTx));
+                    const estimatedFee = await wallet.estimateGas(estimateTx);
+                    if (estimatedFee && estimatedFee.gasLimit !== undefined && estimatedFee.gasLimit !== null) {
+                        finalGasLimit = estimatedFee.gasLimit.toString();
+                        console.log(`[EvmInteractor] Estimated gasLimit for '${functionName}': ${finalGasLimit}`);
+                    } else {
+                        console.warn(`[EvmInteractor] Gas estimation for '${functionName}' returned no gasLimit. estimatedFee: ${JSON.stringify(estimatedFee)}, estimatedFee.gasLimit: ${estimatedFee?.gasLimit}. Proceeding without explicit gasLimit.`);
+                    }
+                } catch (estimationError: any) {
+                    console.warn(`[EvmInteractor] Gas estimation for '${functionName}' FAILED.`);
+                    console.warn(`[EvmInteractor] Error Message: ${estimationError.message}`);
+                    console.warn(`[EvmInteractor] Error Code: ${estimationError.code}`);
+                    // console.warn(`[EvmInteractor] Error Stack: ${estimationError.stack}`); // Can be very verbose
+                    console.warn(`[EvmInteractor] Full Error Object (raw) for ${functionName}:`, estimationError); // Log the raw error object
+                    console.warn(`[EvmInteractor] Stringified Error Object for ${functionName}: ${JSON.stringify(estimationError, Object.getOwnPropertyNames(estimationError))}`); // Try to get more details
+                    console.warn(`[EvmInteractor] Proceeding without explicit gasLimit.`);
+                }
+            }
+
+            const genericTx: GenericTransactionData = {
+                to: contractId,
+                data: callData,
+                value: callOptions?.value,
+                options: {
+                    gasLimit: finalGasLimit,
+                    gasPrice: callOptions?.gasPrice,
+                    maxFeePerGas: callOptions?.maxFeePerGas,
+                    maxPriorityFeePerGas: callOptions?.maxPriorityFeePerGas,
+                    nonce: callOptions?.nonce,
+                }
+            };
+            try {
+                console.log(`[EvmInteractor] Sending WRITE tx '${functionName}' to ${contractId} via wallet with args:`, args);
+                const txHash = await wallet.sendTransaction(genericTx);
+                console.log(`[EvmInteractor] Write tx sent: ${txHash} for ${functionName}`);
+                return { transactionHash: txHash }; // Or wait for receipt if desired
+            } catch (error: any) {
+                console.error(`[EvmInteractor] Error sending write tx '${functionName}' on ${contractId}:`, error);
+                throw new AdapterError(`Failed to send tx for method '${functionName}': ${error.message}`, {
+                    cause: error, details: { contractId, functionName, args }
+                });
+            }
+        } else { // READ OPERATION
+            if (!this.defaultProvider) {
+                throw new AdapterError("Default provider not configured in EvmInteractor for read operations.");
+            }
+            try {
+                const contract = new Contract(contractId, contractInterface, this.defaultProvider);
+                console.log(`[EvmInteractor] Calling READ operation '${functionName}' on ${contractId} with args:`, args);
+                const result = await contract[functionName](...args);
+                console.log(`[EvmInteractor] Read operation '${functionName}' result:`, result);
+                return result;
+            } catch (error: any) {
+                console.error(`[EvmInteractor] Error calling read method '${functionName}' on ${contractId}:`, error);
+                let errMsg = error.message;
+                if (error.reason) errMsg = `Execution reverted: ${error.reason}`;
+                else if (error.data?.message) errMsg = `Execution reverted: ${error.data.message}`;
+                else if (error.error?.message) errMsg = error.error.message;
+                throw new AdapterError(`Failed to call read method '${functionName}': ${errMsg}`, {
+                    cause: error, details: { contractId, functionName, args }
+                });
             }
         }
     }

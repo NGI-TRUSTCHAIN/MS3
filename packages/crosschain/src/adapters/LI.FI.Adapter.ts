@@ -1,11 +1,12 @@
+import { AdapterArguments, AdapterError, CrossChainErrorCode } from '@m3s/common';
+import { M3SLiFiViemProvider } from '../helpers/ProviderHelper.js';
 import {
   ICrossChain,
   OperationIntent,
   OperationQuote,
   OperationResult,
-  ChainAsset,
-  TransactionConfirmationHandler // Keep for basic provider config if needed
-} from '../types/interfaces/index.js';
+  ChainAsset
+} from '../types/index.js';
 import {
   getChains,
   getQuote,
@@ -28,166 +29,183 @@ import {
   resumeRoute
 } from '@lifi/sdk';
 
-/**
- * Interface for LI.FI execution provider
- * Abstraction over any wallet implementation that can execute transactions
- */
-export interface LiFiExecutionProvider {
-  address: any;
-  walletClient: any;
-  signTransaction: (tx: any) => Promise<string>;
-  switchChain: (chainId: number) => Promise<any>;
-}
-
-/**
- * Base configuration for the LI.FI adapter (read-only operations)
- */
-export interface LiFiConfig {
+export interface ILiFiAdapterOptionsV1 {
+  provider?: M3SLiFiViemProvider;
   apiKey?: string;
-  apiUrl?: string;
-  provider?: LiFiExecutionProvider;
-  confirmationHandler?: TransactionConfirmationHandler;
-  confirmationTimeout?: number; // Timeout in milliseconds for confirmation
-  pendingOperationTimeout?: number; // Auto-cancel pending operations after this time (ms)
 }
 
-/**
- * LI.FI adapter configuration arguments
- */
-export interface LiFiAdapterArgs {
-  adapterName: string;
-  config?: LiFiConfig;
-  options?: any;
-}
+interface args extends AdapterArguments<ILiFiAdapterOptionsV1> { }
+
 /**
  * Minimal Adapter for LI.FI cross-chain operations.
  * Focuses on core functionality: quote, execute, status check.
  * Removes internal tracking, advanced confirmation, timeouts, caching.
  */
 export class MinimalLiFiAdapter implements ICrossChain {
-  private apiKey?: string;
   private initialized: boolean = false;
-  private executionProvider?: LiFiExecutionProvider;
-  private adapterName = "lifi"
+  private m3sViemProvider?: M3SLiFiViemProvider;
+  private readonly adapterName: string = "lifi"
+  private args: args;
 
   /**
    * Private constructor - use static create method
    */
-  private constructor(args: LiFiAdapterArgs) {
-    this.apiKey = args.config?.apiKey;
+  private constructor(initialArgs: args) {
+    this.adapterName = initialArgs.adapterName || "lifi";
+    // Store a deep copy of initialArgs.
+    this.args = JSON.parse(JSON.stringify(initialArgs));
+    // Ensure options is an object, even if initialArgs didn't have it or it was null/undefined.
+    // This makes subsequent accesses like this.args.options.provider safer.
+    this.args.options = this.args.options || {};
+    // DO NOT set this.m3sViemProvider here. Defer to initialize.
   }
 
-  /**
-   * Factory method to create an instance of MinimalLiFiAdapter
-   */
-  static async create(args: { adapterName: string, config?: LiFiConfig }): Promise<MinimalLiFiAdapter> {
-    const adapter = new MinimalLiFiAdapter(args);
-    if (args.config) {
-      await adapter.initialize(args.config);
+  private _updateLifiSdkConfig(): void {
+    const sdkConfig: any = {
+      integrator: 'm3s-minimal',
+      apiKey: this.args.options?.apiKey,
+    };
+
+    if (this.m3sViemProvider) {
+      sdkConfig.providers = [
+        EVM({
+          getWalletClient: async () => {
+            if (!this.m3sViemProvider) throw new AdapterError("M3S Viem Provider not set for getWalletClient.");
+            return this.m3sViemProvider.getWalletClient();
+          },
+          switchChain: async (chainId: number) => {
+            if (!this.m3sViemProvider) throw new AdapterError("M3S Viem Provider not set for switchChain.");
+            return this.m3sViemProvider.switchChain(chainId);
+          }
+        }),
+      ];
+      console.log(`[MinimalLiFiAdapter._updateLifiSdkConfig] Li.Fi SDK to be configured with provider. API Key: ${this.args.options?.apiKey ? 'Set' : 'Not Set'}`);
+    } else {
+      console.log(`[MinimalLiFiAdapter._updateLifiSdkConfig] Li.Fi SDK to be configured with API key only (No provider). API Key: ${this.args.options?.apiKey ? 'Set' : 'Not Set'}`);
+    }
+    createConfig(sdkConfig);
+    console.log("[MinimalLiFiAdapter._updateLifiSdkConfig] LiFi createConfig called.");
+  }
+
+  static async create(initialCreationArgs: args): Promise<MinimalLiFiAdapter> {
+    const adapter = new MinimalLiFiAdapter(initialCreationArgs);
+    // Call initialize with the full initial arguments to process them and configure the SDK.
+    await adapter.initialize(initialCreationArgs);
+    if (!initialCreationArgs.options?.provider && !initialCreationArgs.options?.apiKey) {
+      console.log('[MinimalLiFiAdapter.create] Adapter instance created and initialized with no initial API key or execution provider. SDK may use defaults.');
     }
     return adapter;
   }
 
-  /**
-   * Initializes the adapter (minimal setup)
-   */
-  async initialize(config: LiFiConfig): Promise<void> {
-    if (this.initialized) return;
-    console.log("[MinimalLiFiAdapter] Initializing...");
+  async initialize(configToApply: Partial<args>): Promise<void> {
+    try {
+      const oldApiKey = this.args.options?.apiKey;
+      const oldProviderInstance = this.m3sViemProvider;
 
-    this.apiKey = config.apiKey || this.apiKey;
+      // Merge configToApply into this.args to reflect the new desired state
+      if (configToApply.adapterName && configToApply.adapterName !== this.args.adapterName) {
+        // this.adapterName is readonly, so we only update this.args.adapterName
+        this.args.adapterName = configToApply.adapterName;
+      }
+      if (configToApply.options !== undefined) { // Check if 'options' key itself is present
+        // Ensure this.args.options is an object before spreading
+        this.args.options = { ...(this.args.options || {}), ...configToApply.options };
+      }
+      // ... merge other top-level properties from 'args' if they exist and are mutable ...
 
-    // Basic SDK config (API key only initially)
-    createConfig({
-      integrator: 'm3s-minimal', // Use a distinct integrator name
-      apiKey: this.apiKey,
-      // Providers added later in setExecutionProvider
-    });
+      // Now, this.args reflects the complete desired configuration.
+      // Set the internal provider state based on the (potentially updated) this.args.options
+      this.m3sViemProvider = this.args.options?.provider;
 
-    this.initialized = true;
-    console.log("[MinimalLiFiAdapter] Initialized.");
+      let needsSdkUpdate = false;
 
-    // Set provider if provided during init
-    if (config.provider) {
-      await this.setExecutionProvider(config.provider);
+      // Check for API key changes
+      if (this.args.options?.apiKey !== oldApiKey) {
+        console.log(`[MinimalLiFiAdapter.initialize] API key ${this.args.options?.apiKey ? 'set/updated' : 'removed/unchanged'}.`);
+        needsSdkUpdate = true;
+      }
+
+      // Check for provider changes
+      if (this.m3sViemProvider !== oldProviderInstance) {
+        console.log(`[MinimalLiFiAdapter.initialize] M3SLiFiViemProvider instance ${this.m3sViemProvider ? 'set/updated' : 'removed/unchanged'}.`);
+        needsSdkUpdate = true;
+      }
+
+      // Reconfigure SDK if it's the first initialization or if critical settings changed
+      if (!this.initialized || needsSdkUpdate) {
+        console.log(`[MinimalLiFiAdapter.initialize] Triggering Li.Fi SDK config update. Initialized previously: ${this.initialized}, Needs SDK Update: ${needsSdkUpdate}`);
+        this._updateLifiSdkConfig(); // This method already throws AdapterError
+      } else {
+        console.log("[MinimalLiFiAdapter.initialize] No changes requiring SDK config update.");
+      }
+
+      this.initialized = true; // This is where the adapter is marked as initialized
+      console.log(`[MinimalLiFiAdapter.initialize] Process complete. Initialized: ${this.initialized}, HasProvider: ${!!this.m3sViemProvider}, APIKeySet: ${!!this.args.options?.apiKey}`);
+    } catch (error: any) {
+      if (error instanceof AdapterError) throw error; // Re-throw if already an AdapterError
+      throw new AdapterError(`Initialization failed for MinimalLiFiAdapter`, {
+        cause: error,
+        code: CrossChainErrorCode.AdapterNotInitialized, // Or a more specific crosschain error code
+        methodName: 'initialize',
+        details: { message: error.message }
+      });
     }
   }
 
-  /**
-   * Checks if the adapter has been initialized
-   */
+  public getAdapterName(): string {
+    return this.adapterName;
+  }
+
   isInitialized(): boolean {
     return this.initialized;
   }
 
-  /**
-   * Sets the execution provider and configures the LI.FI SDK
-   */
-  async setExecutionProvider(provider: LiFiExecutionProvider): Promise<void> {
-    if (!this.initialized) {
-      throw new Error("MinimalLiFiAdapter not initialized");
-    }
-    console.log(`[MinimalLiFiAdapter] Setting execution provider: ${provider.address}`);
-    this.executionProvider = provider;
-
-    // Re-configure SDK with the EVM provider
-    createConfig({
-      integrator: 'm3s-minimal',
-      apiKey: this.apiKey,
-      providers: [
-        EVM({
-          getWalletClient: async () => {
-            // Directly return the wallet client from the provider
-            if (!this.executionProvider?.walletClient) {
-              throw new Error("Execution provider's walletClient is not set.");
-            }
-            return this.executionProvider.walletClient;
-          },
-          switchChain: async (chainId: number): Promise<any> => {
-            console.log(`[MinimalLiFiAdapter] Requesting chain switch to ${chainId}`);
-            if (!this.executionProvider?.switchChain) {
-              throw new Error("Execution provider does not support switchChain.");
-            }
-            try {
-              // Delegate entirely to the provided switchChain function
-              // <<< REMOVE unused switchedProvider assignment >>>
-              // const switchedProvider = await this.executionProvider.switchChain(chainId);
-              await this.executionProvider.switchChain(chainId); // Await the switch
-              console.log(`[MinimalLiFiAdapter] Chain switch successful for ${chainId}.`);
-
-              // LI.FI SDK expects the *new* wallet client after switching.
-              // We assume the provider's switchChain updates its internal state
-              // and we can retrieve the potentially updated client here.
-              // This relies on the LiFiExecutionProvider implementation.
-              if (!this.executionProvider?.walletClient) {
-                throw new Error("Wallet client not available after chain switch.");
-              }
-              // Return the (potentially updated) walletClient from the provider
-              return this.executionProvider.walletClient;
-
-            } catch (error: any) {
-              console.error(`[MinimalLiFiAdapter] Failed to switch chain to ${chainId}: ${error.message}`);
-              throw error; // Re-throw the error for the SDK
-            }
-          }
-        }),
-      ],
-    });
-    console.log("[MinimalLiFiAdapter] Execution provider configured with LI.FI SDK.");
-  }
-
-  /**
-   * Checks if an execution provider is set
-   */
   hasExecutionProvider(): boolean {
-    return !!this.executionProvider;
+    return !!this.m3sViemProvider;
   }
 
-  /**
-   * Gets quotes for an operation.
-   */
+  async setExecutionProvider(provider: M3SLiFiViemProvider): Promise<void> {
+    console.log(`[MinimalLiFiAdapter.setExecutionProvider] Attempting to set execution provider.`);
+    if (this.m3sViemProvider === provider) {
+      console.log(`[MinimalLiFiAdapter.setExecutionProvider] Provider is already set to the given instance.`);
+      return;
+    }
+
+    this.m3sViemProvider = provider;
+    this.args.options = { ...this.args.options, provider }; // Update internal args
+
+    if (this.initialized) {
+      // If already initialized, an SDK update might be needed
+      console.log(`[MinimalLiFiAdapter.setExecutionProvider] Execution provider updated. Triggering SDK config update.`);
+      try {
+        this._updateLifiSdkConfig();
+      } catch (error: any) {
+        if (error instanceof AdapterError) throw error;
+        throw new AdapterError('Failed to update LiFi SDK config after setting execution provider.', {
+          cause: error,
+          code: CrossChainErrorCode.ProviderSetFailed,
+          methodName: 'setExecutionProvider',
+        });
+      }
+    } else {
+      console.log(`[MinimalLiFiAdapter.setExecutionProvider] Execution provider set. SDK will be configured on initialize.`);
+    }
+  }
+
   async getOperationQuote(intent: OperationIntent): Promise<OperationQuote[]> {
-    if (!this.initialized) throw new Error("MinimalLiFiAdapter not initialized");
+    if (!this.initialized) {
+      throw new AdapterError(`Initialization failed for MinimalLiFiAdapter`, {
+        code: CrossChainErrorCode.AdapterNotInitialized,
+        methodName: 'getOperationQuote',
+      });
+    }
+    if (!intent) {
+      throw new AdapterError("OperationIntent cannot be null or undefined.", {
+        code: CrossChainErrorCode.InvalidInput,
+        methodName: 'getOperationQuote',
+        details: { intent }
+      });
+    }
 
     try {
       const quoteRequest: QuoteRequest = {
@@ -200,22 +218,22 @@ export class MinimalLiFiAdapter implements ICrossChain {
         toAddress: intent.recipientAddress || intent.userAddress,
         slippage: intent.slippageBps ? intent.slippageBps / 10000 : undefined,
         integrator: 'm3s-minimal',
-        // Add other relevant options from intent if needed (order, allow/deny lists etc.)
       };
 
       const quoteStep: LiFiStep = await getQuote(quoteRequest);
 
-      // Minimal mapping to OperationQuote
-      const feeUSD = quoteStep.estimate.feeCosts?.reduce((sum, fee: FeeCost) => sum + parseFloat(fee.amountUSD || '0'), 0).toString() || '0';
+      if (!quoteStep) {
+        console.warn(`[getOperationQuote] LiFi SDK's getQuote returned a falsy value. Interpreting as no quotes found.`);
+        return [];
+      }
 
-      // <<< START CHANGE: Re-add gas cost mapping >>>
-      const firstGasCost = quoteStep.estimate.gasCosts?.[0]; // Take the first gas cost estimate
+      const feeUSD = quoteStep.estimate.feeCosts?.reduce((sum, fee: FeeCost) => sum + parseFloat(fee.amountUSD || '0'), 0).toString() || '0';
+      const firstGasCost = quoteStep.estimate.gasCosts?.[0];
       const gasCostsEstimate = firstGasCost ? {
         limit: firstGasCost.limit || '',
-        amount: firstGasCost.amount || '', // Amount in native token (e.g., wei)
+        amount: firstGasCost.amount || '',
         amountUSD: firstGasCost.amountUSD || '0'
       } : undefined;
-      // <<< END CHANGE >>>
 
       const operationQuote: OperationQuote = {
         id: quoteStep.id,
@@ -230,46 +248,66 @@ export class MinimalLiFiAdapter implements ICrossChain {
           gasCosts: gasCostsEstimate,
         },
         adapterName: this.adapterName,
-        adapterQuote: quoteStep, // Store raw quote
+        adapterQuote: quoteStep,
       };
 
-      console.log(`[MinimalLiFiAdapter] Quote received: ${operationQuote.id}`, JSON.stringify(operationQuote, null, 2));
       return [operationQuote];
 
     } catch (error: any) {
-      console.error("[MinimalLiFiAdapter] Error getting quote:", error);
-      throw new Error(`Failed to get quote: ${error.message}`);
+      if (error instanceof AdapterError) throw error; // Re-throw if already an AdapterError
+
+      const originalErrorMessage = error instanceof Error ? error.message : String(error);
+
+      // Check if the error from LiFi SDK indicates "No available quotes" or a 404
+      // The LiFi SDK might throw an SDKError with a cause that includes response details
+      const isNoQuotesError = originalErrorMessage.includes('No available quotes for the requested transfer') ||
+        (error.status === 404 && originalErrorMessage.includes('Not Found')) || // Direct check on error if it's an HTTPError-like object
+        (error.cause as any)?.response?.status === 404 && (error.cause as any)?.responseBody?.message?.includes('No available quotes');
+
+      if (isNoQuotesError) {
+        console.warn(`[getOperationQuote] LiFi SDK found no available quotes for the request. Returning empty array. Details: ${originalErrorMessage}`);
+        return []; // Treat "no quotes found" as a valid scenario returning no quotes
+      }
+
+      // For other unexpected SDK errors, throw an AdapterError
+      throw new AdapterError(`Failed to get operation quote from LiFi SDK: ${originalErrorMessage}`, {
+        cause: error,
+        code: CrossChainErrorCode.QuoteFailed, // General quote failure for other errors
+        methodName: 'getOperationQuote',
+        details: { intent, originalError: originalErrorMessage }
+      });
     }
   }
 
-  /**
-   * Executes an operation based on a quote.
-   */
   async executeOperation(
     quote: OperationQuote,
     onStatusUpdate?: (route: RouteExtended) => void
   ): Promise<OperationResult> {
-    if (!this.initialized) throw new Error("MinimalLiFiAdapter not initialized");
-    if (!this.executionProvider) throw new Error("Execution provider required");
+    if (!this.initialized) {
+      throw new AdapterError(`Initialization failed for MinimalLiFiAdapter`, {
+        code: CrossChainErrorCode.AdapterNotInitialized,
+        methodName: 'executeOperation',
+      });
+    }
+    if (!this.hasExecutionProvider()) {
+      throw new AdapterError("Execution provider not set. Cannot execute operation.", {
+        code: CrossChainErrorCode.ProviderSetFailed, // Or a specific CrossChainErrorCode.EXECUTION_PROVIDER_MISSING
+        methodName: 'executeOperation',
+      });
+    }
 
     const step = quote.adapterQuote as LiFiStep | undefined;
     if (!step?.id || !step.action || !step.estimate) {
-      throw new Error("Invalid adapterQuote in OperationQuote");
+      throw new AdapterError("Invalid or incomplete quote provided for execution.", {
+        code: CrossChainErrorCode.InvalidInput,
+        methodName: 'executeOperation',
+        details: { quoteId: quote?.id, hasRoute: !!quote?.intent }
+      });
     }
 
     try {
-      console.log(`[MinimalLiFiAdapter] Converting quote ${step.id} to route...`);
       const route = await convertQuoteToRoute(step);
-      
-      console.log(`[MinimalLiFiAdapter] Executing route ${route.id}...`);
-
-      executeRoute(route, {
-        updateRouteHook: onStatusUpdate // Pass the provided hook directly
-      });
-
-      console.log(`[MinimalLiFiAdapter] Route execution initiated: ${route.id}`);
-
-      // Return minimal initial PENDING status
+      executeRoute(route, { updateRouteHook: onStatusUpdate });
       return {
         operationId: route.id,
         status: 'PENDING',
@@ -278,12 +316,10 @@ export class MinimalLiFiAdapter implements ICrossChain {
         statusMessage: 'Execution initiated via LI.FI SDK.',
         adapterName: this.adapterName,
       };
-
     } catch (error: any) {
       console.error("[MinimalLiFiAdapter] Error executing operation:", error);
-      // Return minimal FAILED status
       return {
-        operationId: step.id || `failed-op-${Date.now()}`, // Use step ID if available
+        operationId: step.id || `failed-op-${Date.now()}`,
         status: 'FAILED',
         sourceTx: { chainId: quote.intent.sourceAsset.chainId },
         destinationTx: { chainId: quote.intent.destinationAsset.chainId },
@@ -294,20 +330,24 @@ export class MinimalLiFiAdapter implements ICrossChain {
     }
   }
 
-  /**
-   * Gets the status of an operation by querying the SDK.
-   */
   async getOperationStatus(operationId: string): Promise<OperationResult> {
-    if (!this.initialized) throw new Error("MinimalLiFiAdapter not initialized");
+    if (!this.initialized) {
+      throw new AdapterError(`Initialization failed for MinimalLiFiAdapter`, {
+        code: CrossChainErrorCode.AdapterNotInitialized,
+        methodName: 'executeOperation',
+      });
+    }
+
+    if (!operationId) { // Assuming route.id is the LiFi route ID
+      throw new AdapterError("Valid route object with ID must be provided to get status.", {
+        code: CrossChainErrorCode.InvalidInput,
+        methodName: 'executeOperation',
+      });
+    }
 
     try {
       const activeRoute = getActiveRoute(operationId);
-      console.warn('activeRoute', activeRoute)
-
       if (!activeRoute) {
-        console.warn(`[MinimalLiFiAdapter] No active route found for ID: ${operationId}`);
-        // We don't have internal tracking, so we can only assume UNKNOWN if the SDK doesn't know.
-        // A more robust version might query an external API if available, but for minimal, this is it.
         return {
           operationId,
           status: 'UNKNOWN',
@@ -316,10 +356,7 @@ export class MinimalLiFiAdapter implements ICrossChain {
           adapterName: this.adapterName,
         };
       }
-
-      // Translate the current route state to our status format
       return this.translateRouteToStatus(activeRoute);
-
     } catch (error: any) {
       console.error(`[MinimalLiFiAdapter] Error getting status for ${operationId}:`, error);
       return {
@@ -333,19 +370,12 @@ export class MinimalLiFiAdapter implements ICrossChain {
     }
   }
 
-  /**
-   * Cancels an operation using the SDK.
-   */
   async cancelOperation(operationId: string, reason?: string): Promise<OperationResult> {
     if (!this.initialized) throw new Error("MinimalLiFiAdapter not initialized");
-
     try {
       const activeRoute = getActiveRoute(operationId);
       if (activeRoute) {
-        console.log(`[MinimalLiFiAdapter] Stopping route execution for ${operationId}`);
         stopRouteExecution(activeRoute);
-
-        // Return a FAILED status immediately after stopping
         return {
           operationId,
           status: 'FAILED',
@@ -356,10 +386,9 @@ export class MinimalLiFiAdapter implements ICrossChain {
           adapterName: this.adapterName,
         };
       } else {
-        console.warn(`[MinimalLiFiAdapter] Cannot cancel ${operationId}: No active route found.`);
         return {
           operationId,
-          status: 'UNKNOWN', // Or FAILED? UNKNOWN seems safer if we never found it.
+          status: 'UNKNOWN',
           sourceTx: {},
           error: 'Cannot cancel: Operation not found in active routes',
           statusMessage: 'Cannot cancel: Operation not found in active routes',
@@ -379,29 +408,21 @@ export class MinimalLiFiAdapter implements ICrossChain {
     }
   }
 
-  // --- Minimal Helper Methods ---
-
-  /**
-   * Simple translation from LI.FI RouteExtended to OperationResult
-   */
   private translateRouteToStatus(route: RouteExtended): OperationResult {
     const overallStatus = this.deriveOverallStatus(route);
     let error: string | undefined;
     let statusMessage: string = `Status: ${overallStatus}`;
     let receivedAmount: string | undefined;
-
     const sourceProcess = route.steps[0]?.execution?.process?.find((p: Process) => !!p.txHash);
     let destTxHash: string | undefined;
     let destTxExplorerUrl: string | undefined;
     const lastStep = route.steps[route.steps.length - 1];
     if (lastStep?.execution) {
-      receivedAmount = (lastStep.execution as Execution)?.toAmount || route.toAmount; // Basic amount
-      // Simple search for last tx hash on destination chain
+      receivedAmount = (lastStep.execution as Execution)?.toAmount || route.toAmount;
       const destProcess = lastStep.execution.process?.slice().reverse().find(p => !!p.txHash && p.chainId === route.toChainId);
       destTxHash = destProcess?.txHash;
       destTxExplorerUrl = destProcess?.txLink;
     }
-
     if (overallStatus === 'FAILED') {
       const failedStep = route.steps.find(step => this.mapLifiStatus(step.execution?.status) === 'FAILED');
       error = failedStep?.execution?.process?.find(p => p.status === 'FAILED')?.error?.message || 'Unknown error in failed step';
@@ -413,110 +434,85 @@ export class MinimalLiFiAdapter implements ICrossChain {
     } else if (overallStatus === 'PENDING') {
       statusMessage = 'Operation in progress...';
     }
-
     return {
       operationId: route.id,
       status: overallStatus,
-      sourceTx: {
-        hash: sourceProcess?.txHash,
-        chainId: route.fromChainId,
-        explorerUrl: sourceProcess?.txLink,
-      },
-      destinationTx: {
-        hash: destTxHash,
-        chainId: route.toChainId,
-        explorerUrl: destTxExplorerUrl,
-      },
-      receivedAmount: receivedAmount,
-      error: error,
-      statusMessage: statusMessage,
-      adapterName: this.adapterName,
+      sourceTx: { hash: sourceProcess?.txHash, chainId: route.fromChainId, explorerUrl: sourceProcess?.txLink },
+      destinationTx: { hash: destTxHash, chainId: route.toChainId, explorerUrl: destTxExplorerUrl },
+      receivedAmount: receivedAmount, error: error, statusMessage: statusMessage, adapterName: this.adapterName,
     };
   }
 
-  /**
-   * Simple status derivation logic.
-   */
   private deriveOverallStatus(route: RouteExtended): OperationResult['status'] {
     if (!route.steps || route.steps.length === 0) return 'PENDING';
-
-    let hasFailed = false;
-    let needsAction = false;
-    let allDone = true;
-    let hasPending = false;
-
+    let hasFailed = false, needsAction = false, allDone = true, hasPending = false;
     for (const step of route.steps) {
-      const stepStatus = this.mapLifiStatus(step.execution?.status);
-      if (stepStatus === 'FAILED') { hasFailed = true; break; }
-      if (stepStatus === 'ACTION_REQUIRED') needsAction = true;
-      if (stepStatus !== 'COMPLETED') allDone = false;
-      if (stepStatus === 'PENDING') hasPending = true;
+      const mappedStepStatus = this.mapLifiStatus(step.execution?.status);
+      if (mappedStepStatus === 'FAILED') { hasFailed = true; break; }
+      if (mappedStepStatus === 'ACTION_REQUIRED') needsAction = true;
+      if (mappedStepStatus !== 'COMPLETED') allDone = false;
+      if (mappedStepStatus === 'PENDING') hasPending = true;
     }
-
     if (hasFailed) return 'FAILED';
     if (needsAction) return 'ACTION_REQUIRED';
-    // Ensure all steps actually have execution data before declaring completed
     const allExecuted = route.steps.every(step => step.execution);
     if (allExecuted && allDone) return 'COMPLETED';
     if (hasPending) return 'PENDING';
-
-    // Fallback if state is unclear (e.g., steps exist but none executed)
-    return 'PENDING'; // Default to PENDING if not clearly terminal or actionable
+    return 'PENDING';
   }
 
-  /**
-   * Maps LI.FI execution status strings to our standard OperationResult status.
-   */
   private mapLifiStatus(lifiStatus?: string): OperationResult['status'] {
     switch (lifiStatus) {
-      case 'PENDING':
-      case 'STARTED':
-        return 'PENDING';
-      case 'ACTION_REQUIRED':
-        return 'ACTION_REQUIRED';
-      case 'DONE':
-        return 'COMPLETED';
-      case 'FAILED':
-      case 'CANCELLED':
-      case 'NOT_FOUND':
-        return 'FAILED';
-      case undefined: // Step exists but execution hasn't started
-        return 'PENDING';
-      default:
-        console.warn(`[MinimalLiFiAdapter] Unknown LI.FI status: ${lifiStatus}`);
-        return 'UNKNOWN';
+      case 'PENDING': case 'STARTED': return 'PENDING';
+      case 'ACTION_REQUIRED': return 'ACTION_REQUIRED';
+      case 'DONE': return 'COMPLETED';
+      case 'FAILED': case 'CANCELLED': case 'NOT_FOUND': return 'FAILED';
+      case undefined: return 'PENDING';
+      default: console.warn(`[MinimalLiFiAdapter] Unknown LI.FI status: ${lifiStatus}`); return 'UNKNOWN';
     }
   }
 
-  // --- Minimal Read-Only Methods (No Caching) ---
-
   async getSupportedChains(): Promise<{ chainId: number; name: string }[]> {
-    if (!this.initialized) throw new Error("MinimalLiFiAdapter not initialized");
+    if (!this.initialized) {
+      throw new AdapterError(`Initialization failed for MinimalLiFiAdapter`, {
+        code: CrossChainErrorCode.AdapterNotInitialized,
+        methodName: 'getSupportedChains',
+      });
+    }
     try {
       const chains = await getChains({ chainTypes: [ChainType.EVM] });
       return chains.map(chain => ({ chainId: chain.id, name: chain.name }));
     } catch (error: any) {
-      console.error("[MinimalLiFiAdapter] Error fetching chains:", error);
-      throw new Error(`Failed to get chains: ${error.message}`);
+      throw new AdapterError('Failed to get supported chains from LiFi SDK.', {
+        cause: error,
+        code: CrossChainErrorCode.UnsupportedChain,
+        methodName: 'getSupportedChains',
+        details: { originalError: error.message }
+      });
     }
   }
 
   async getSupportedTokens(chainId: string): Promise<ChainAsset[]> {
-    if (!this.initialized) throw new Error("MinimalLiFiAdapter not initialized");
-    try {
+    if (!this.initialized) {
+      throw new AdapterError(`Initialization failed for MinimalLiFiAdapter`, {
+        code: CrossChainErrorCode.AdapterNotInitialized,
+        methodName: 'getSupportedTokens',
+      });
+    } try {
       const response = await getTokens({ chains: [Number(chainId) as ChainId] });
       const tokens = response.tokens[Number(chainId)] || [];
       return tokens.map(token => ({
-        chainId: token.chainId.toString(), // Ensure string format
-        address: token.address,
-        symbol: token.symbol,
-        decimals: token.decimals,
-        name: token.name,
-        logoURI: token.logoURI // Include logo if available
+        chainId: token.chainId.toString(), address: token.address, symbol: token.symbol,
+        decimals: token.decimals, name: token.name, logoURI: token.logoURI
       }));
     } catch (error: any) {
       console.error(`[MinimalLiFiAdapter] Error fetching tokens for chain ${chainId}:`, error);
-      throw new Error(`Failed to get tokens for chain ${chainId}: ${error.message}`);
+      throw new AdapterError(`Failed to get tokens for chain ${chainId} from LiFi SDK.`, {
+        cause: error,
+        code: CrossChainErrorCode.UnsupportedToken,
+        methodName: 'getSupportedTokens',
+        details: { chainId, originalError: error.message }
+      });
     }
   }
 
@@ -534,65 +530,46 @@ export class MinimalLiFiAdapter implements ICrossChain {
       };
     } catch (error: any) {
       console.error("[MinimalLiFiAdapter] Error getting gas recommendation:", error);
-      // Return zero values on error
       return { amount: '0', usdValue: '0' };
     }
   }
 
-  // --- Methods not implemented in minimal version ---
-
-  /**
-     * Resumes a previously initiated operation (e.g., after user interaction).
-     * Relies on the configured provider to handle signing (auto or manual).
-     */
   async resumeOperation(operationId: string): Promise<OperationResult> {
-    if (!this.initialized) throw new Error("MinimalLiFiAdapter not initialized");
-    if (!this.executionProvider) throw new Error("Execution provider required for resume");
+    if (!this.initialized) {
+      throw new AdapterError(`Initialization failed for MinimalLiFiAdapter`, {
+        code: CrossChainErrorCode.AdapterNotInitialized,
+        methodName: 'resumeOperation',
+      });
+    }
+    if (!this.m3sViemProvider) {
+      throw new AdapterError(`Execution provider required for resume`, {
+        code: CrossChainErrorCode.ProviderSetFailed,
+        methodName: 'resumeOperation',
+      });
+    }
 
     try {
       const activeRoute = getActiveRoute(operationId);
       if (!activeRoute) {
-        // If no active route, check status to return something meaningful
-        console.warn(`[MinimalLiFiAdapter] Cannot resume ${operationId}: No active route found. Checking last known status.`);
-        // Attempt to get status - might return UNKNOWN or a previous state
-        return this.getOperationStatus(operationId);
+        return this.getOperationStatus(operationId); // Check last known status
       }
-
-      console.log(`[MinimalLiFiAdapter] Resuming route ${operationId}.`);
-
-      // Resume the route - SDK handles provider interaction based on config
       resumeRoute(activeRoute);
-
-      console.log(`[MinimalLiFiAdapter] Route resumption initiated: ${operationId}`);
-
-      // Return PENDING status immediately after resuming
-      // A subsequent getOperationStatus call will reflect the actual state
       return {
-        operationId: activeRoute.id,
-        status: 'PENDING', // Assume pending until next status check
-        sourceTx: { chainId: activeRoute.fromChainId },
-        destinationTx: { chainId: activeRoute.toChainId },
-        statusMessage: 'Resumption initiated via LI.FI SDK.',
-        adapterName: this.adapterName,
+        operationId: activeRoute.id, status: 'PENDING',
+        sourceTx: { chainId: activeRoute.fromChainId }, destinationTx: { chainId: activeRoute.toChainId },
+        statusMessage: 'Resumption initiated via LI.FI SDK.', adapterName: this.adapterName,
       };
-
     } catch (error: any) {
       console.error(`[MinimalLiFiAdapter] Error resuming operation ${operationId}:`, error);
-      // Return minimal FAILED status on error
       return {
-        operationId,
-        status: 'FAILED',
-        sourceTx: {}, // Chain IDs might not be known if route wasn't found
-        destinationTx: {},
-        error: `Resume failed: ${error.message}`,
-        statusMessage: `Resume failed: ${error.message}`,
+        operationId, status: 'FAILED', sourceTx: {}, destinationTx: {},
+        error: `Resume failed: ${error.message}`, statusMessage: `Resume failed: ${error.message}`,
         adapterName: this.adapterName,
       };
     }
   }
 
   async checkForTimedOutOperations(): Promise<void> {
-    // No-op in minimal version as there's no internal timeout tracking
     console.log("[MinimalLiFiAdapter] checkForTimedOutOperations called (No-op)");
   }
 }

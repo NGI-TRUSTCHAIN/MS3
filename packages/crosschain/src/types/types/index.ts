@@ -1,16 +1,8 @@
-export * from '../interfaces/index.js';
+import { ILiFiAdapterOptionsV1 } from "../../adapters/index.js";
 
-// Define adapter types for cross-chain operations
-export enum CrossChainAdapterType {
-  'aggregator' = 'aggregator',
-  'bridge' = 'bridge',
-  'core' = 'core'
-}
+// ---- TYPES ---- //
 
-// Define options for cross-chain module
-export interface ICrossChainOptions {
-  adapterName: string;
-  config?: any;
-  options?: any;
-  neededFeature?: string;
-}
+export type CrossChainAdapterOptionsV1 = ILiFiAdapterOptionsV1
+
+// ---- TYPES ---- //
+

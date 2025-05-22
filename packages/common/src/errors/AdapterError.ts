@@ -1,5 +1,12 @@
 import { WalletErrorCode } from "../types/error.js";
 
+export interface AdapterErrorOptions {
+    code?: string;
+    cause?: unknown;
+    methodName?: string;
+    details?: Record<string, any>; // Add this line
+}
+
 /**
  * Base error class for wallet adapter related issues.
  * Provides standardized error reporting, including optional codes and the original error cause.
@@ -7,37 +14,25 @@ import { WalletErrorCode } from "../types/error.js";
  * @property {WalletErrorCode | string} [code] - A specific error code (e.g., WalletErrorCode.UserRejected).
  * @property {Error} [cause] - The original error object that triggered this AdapterError. Standard `Error` property.
  * @property {string} [methodName] - The name of the adapter method where the error originated, if identifiable.
- */
+ * @property {string} [cause] - The cause of the error.
+ * @property {Record<string, any>} [details] - The details if any.
+*/
 export class AdapterError extends Error {
     public readonly code?: WalletErrorCode | string;
+    public readonly cause?: unknown;
     public readonly methodName?: string;
-    // 'cause' is implicitly defined by the super constructor in modern JS/TS
+    public readonly details?: Record<string, any>; // Add this line
 
-    /**
-     * Creates an instance of AdapterError.
-     * @param message - The primary error message.
-     * @param options - Optional details including code, cause (original error), and method name.
-     */
-    constructor(
-        message: string,
-        options?: {
-            /** A specific error code (e.g., WalletErrorCode.UserRejected). */
-            code?: WalletErrorCode | string;
-            /** The original error object that caused this issue. */
-            cause?: Error | unknown; // Allow unknown for broader catch compatibility
-            /** The name of the adapter method where the error occurred (e.g., 'sendTransaction'). */
-            methodName?: string;
-        }
-    ) {
-        // Pass 'cause' to the base Error constructor for standard error chaining
-        super(message, { cause: options?.cause });
-        this.name = 'AdapterError'; // Standard practice for custom errors
+    constructor(message: string, options?: AdapterErrorOptions) {
+        super(message);
+        this.name = this.constructor.name;
         this.code = options?.code;
+        this.cause = options?.cause;
         this.methodName = options?.methodName;
+        this.details = options?.details; // Add this line
 
-        // Ensure the stack trace originates from the AdapterError constructor
-        if (Error.captureStackTrace) {
-            Error.captureStackTrace(this, AdapterError);
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, this.constructor);
         }
     }
 }

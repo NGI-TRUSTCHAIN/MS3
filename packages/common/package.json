@@ -1,31 +1,30 @@
 {
   "name": "@m3s/common",
   "version": "0.1.1",
+  "private": true,
   "description": "Common utilities, types, and registry for M3S packages",
-  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "m3s",
+    "common",
+    "utilities",
+    "types"
+  ],
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": {
+   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./package.json": "./package.json"
   },
   "scripts": {
     "build": "tsc -b",
-    "clean": "rm -rf dist tsconfig.tsbuildinfo"
+    "prepublishOnly": "echo \"Error: @m3s/common is a private package and should not be published.\" && exit 1"
   },
-  "keywords": [
-    "m3s",
-    "common",
-    "utils",
-    "types",
-    "registry"
-  ],
   "author": "Your Name/Org",
-  "license": "MIT",
   "homepage": "https://github.com/your-repo/m3s-package/tree/main/packages/common#readme",
   "repository": {
     "type": "git",
@@ -35,15 +34,13 @@
   "bugs": {
     "url": "https://github.com/your-repo/m3s-package/issues"
   },
+    "dependencies": {
+  },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.8.2"
   },
   "files": [
     "dist",
-    "README.md",
-    "LICENSE"
-  ],
-  "publishConfig": {
-    "access": "public"
-  }
+    "README.md"
+  ]
 }

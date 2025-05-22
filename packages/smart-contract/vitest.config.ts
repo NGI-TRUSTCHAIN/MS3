@@ -1,9 +1,19 @@
 import { defineConfig } from 'vitest/config';
+import { BaseSequencer } from 'vitest/node'; // Import BaseSequencer
 
 export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],
-    globals: true
+    globals: true,
+    // Add this line to restrict Vitest to a single thread
+    maxWorkers: 1,
+    minWorkers: 1,
+    sequence: {
+      sequencer: BaseSequencer,
+      shuffle: false,
+      concurrent: false, // For test.concurrent() within a file
+      hooks: 'stack',
+    },
   }
 });

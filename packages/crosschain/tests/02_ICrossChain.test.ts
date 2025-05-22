@@ -64,7 +64,7 @@ export function testCrossChainInterface(crosschain: ICrossChain, skipConnectivit
           } catch (error) {
             console.warn('Could not fetch chains:', error);
             // Still pass the test in test environment
-            expect(true).toBe(true);
+            // expect(true).toBe(true);
           }
         });
       });

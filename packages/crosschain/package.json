@@ -33,13 +33,15 @@
   "scripts": {
     "build": "tsc -b",
     "prepublishOnly": "npm run build",
-    "test": "vitest run"
+    "test": "vitest run --sequence.sequential"
   },
   "dependencies": {
-    "@m3s/common": "workspace:^",
-    "@m3s/wallet": "^1.2.4",
+    "@m3s/wallet": "^1.2.5",
     "ethers": "^6.13.5",
     "@lifi/sdk": "^3.6.6"
+  },
+  "devDependencies": {
+    "@m3s/common": "*"
   },
   "publishConfig": {
     "access": "public",

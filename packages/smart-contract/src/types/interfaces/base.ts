@@ -1,7 +1,7 @@
 import { ERC1155Options } from "@openzeppelin/wizard/dist/erc1155.js";
 import { ERC20Options } from "@openzeppelin/wizard/dist/erc20.js";
 import { ERC721Options } from "@openzeppelin/wizard/dist/erc721.js";
-import { IEVMWallet } from "@m3s/common"; // Adjust path if necessary
+import { IEVMWallet } from "@m3s/wallet"; // Adjust path if necessary
 
 // Type alias for contract options
 export type ContractOptions = ERC20Options | ERC721Options | ERC1155Options;
@@ -67,25 +67,6 @@ export interface CallInput {
   callOptions?: Record<string, any>;
 }
 
-// --- OLD Interfaces ---
-// export interface CompiledContract {
-//   abi: any[];
-//   bytecode: string;
-//   contractName: string;
-// }
-
-// // Deployed contract result
-// export interface DeployedContract {
-//   address: string;
-//   transactionHash: string;
-//   abi: any[];
-// }
-
-// export interface IGenerateContractParams {
-//     standard: string;
-//     options: ContractOptions;
-// }
-
 export interface IBaseContractHandler {
   /** General Initialization specific to the adapter */
   initialize(args?: any): Promise<void>; // Keep flexible args
@@ -125,11 +106,4 @@ export interface IBaseContractHandler {
   // Optional: Could add specific read/write methods later if needed
   // queryMethod(input: CallInput): Promise<any>;
   // executeMethod(input: CallInput): Promise<DeployedOutput['deploymentInfo']>; // e.g., return tx info
-}
-
-export interface IContractOptions {
-  adapterName: string;
-  neededFeature?: string; // Keep for feature checking
-  provider?: any; // Keep for potential direct provider injection? Maybe remove later.
-  options?: any; // Adapter-specific configuration options
 }

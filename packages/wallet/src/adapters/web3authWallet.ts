@@ -1,16 +1,16 @@
 import { Web3AuthNoModal } from "@web3auth/no-modal";
 import { ChainNamespaceType, WALLET_ADAPTERS } from "@web3auth/base";
-import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
 import { ethers, TransactionReceipt } from "ethers";
 import { AuthAdapter } from "@web3auth/auth-adapter";
-import { AssetBalance, EIP712TypedData, GenericTransactionData, IEVMWallet, WalletEvent } from "@m3s/common";
+import { WalletEvent, IEVMWallet, AssetBalance, GenericTransactionData, EIP712TypedData, EstimatedFeeData } from "../types/index.js";
+import { AdapterArguments, AdapterError, NetworkConfig, WalletErrorCode } from "@m3s/common";
 
 /**
  * Configuration specific to the Web3AuthWalletAdapter.
  * This structure is expected within the `options` field of `IWalletOptions`
  * when creating the adapter via `createWallet`.
  */
-export interface Web3AuthAdapterOptions {
+export interface IWeb3AuthWalletOptionsV1  {
   web3authConfig: {
     /** Your Web3Auth Plug and Play Client ID */
     clientId: string;
@@ -37,12 +37,10 @@ export interface Web3AuthAdapterOptions {
 }
 
 /**
- * Web3AuthWalletAdapter configuration arguments.
+ * The specific argument type that Web3AuthWalletAdapter's constructor and static create method
+ * will work with internally. It uses the common AdapterArguments base.
  */
-interface args {
-  adapterName: string;
-  options: Web3AuthAdapterOptions// Use the specific type
-};
+interface args extends AdapterArguments<IWeb3AuthWalletOptionsV1> { }
 
 /**
  * Web3AuthWalletAdapter is an implementation of the IEVMWallet interface using Web3AuthNoModal.
@@ -54,6 +52,7 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
   private initialized = false;
   private config: args;
   private eventListeners: Map<string, Set<(payload: any) => void>> = new Map();
+
 
   /***************************/
   /** General Initialization */
@@ -77,9 +76,8 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
    * @returns {Promise<Web3AuthWalletAdapter>} A promise that resolves to the created adapter instance.
    */
   static async create(args: args): Promise<Web3AuthWalletAdapter> {
-    // console.debug("Creating Web3AuthWalletAdapter...", args);
     const adapter = new Web3AuthWalletAdapter(args);
-    // Initialization happens separately now via initialize() method
+    await adapter.initialize();
     return adapter;
   }
 
@@ -87,30 +85,38 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
    * Initialize the Web3AuthNoModal instance with the provided configuration.
    * @throws Error if initialization fails or chainConfig is missing.
    */
-  async initialize(config?: any): Promise<void> {
+  async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    const { clientId, web3AuthNetwork, chainConfig } = this.config.options.web3authConfig;
-    if (!chainConfig) {
-      throw new Error("Invalid provider Config, Please provide chainConfig");
+    const opts = this.config.options as IWeb3AuthWalletOptionsV1;
+    if (!opts || !opts.web3authConfig) {
+      throw new AdapterError("Web3Auth configuration (options.web3authConfig) is missing for initialization.", {
+        code: WalletErrorCode.MissingConfig,
+        methodName: 'initialize',
+        details: { path: 'options.web3authConfig' }
+      });
     }
 
     try {
-      const privateKeyProvider = new EthereumPrivateKeyProvider({
-        config: { chainConfig: chainConfig as any }
-      });
 
       this.web3auth = new Web3AuthNoModal({
-        clientId: clientId,
-        web3AuthNetwork: web3AuthNetwork as any,
-        chainConfig: chainConfig as any,
-        privateKeyProvider,
-        ...config // Allow extending with additional config
+        clientId: opts.web3authConfig.clientId,
+        web3AuthNetwork: opts.web3authConfig.web3AuthNetwork as any,
+        chainConfig: { // This is Web3Auth's internal chainConfig
+          chainNamespace: opts.web3authConfig.chainConfig.chainNamespace as ChainNamespaceType,
+          chainId: opts.web3authConfig.chainConfig.chainId,
+          rpcTarget: opts.web3authConfig.chainConfig.rpcTarget,
+          displayName: opts.web3authConfig.chainConfig.displayName,
+          // Renamed as for web3auth requirement to blockExplorerUrl
+          blockExplorerUrl: opts.web3authConfig.chainConfig.blockExplorer,
+          ticker: opts.web3authConfig.chainConfig.ticker,
+          tickerName: opts.web3authConfig.chainConfig.tickerName,
+        },
       });
 
       const authAdapter = new AuthAdapter({
         adapterSettings: {
-          clientId: clientId,
+          clientId: opts.web3authConfig.clientId,
           loginConfig: this.config.options.web3authConfig.loginConfig as any
         }
       });
@@ -119,8 +125,14 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
       await this.web3auth.init();
       this.initialized = true;
     } catch (error: unknown) {
-      console.error("Error initializing Web3Auth:", error);
-      throw error;
+      const errorCode = WalletErrorCode.InitializationFailed;
+      console.error(`[Web3AuthWalletAdapter:${'initialize'}] ${errorCode}: Initialization failed:`, error);
+      this.initialized = false;
+      throw new AdapterError("Web3Auth initialization failed.", {
+        cause: error,
+        code: errorCode,
+        methodName: 'initialize'
+      });
     }
   }
 
@@ -187,7 +199,10 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
      */
   async requestAccounts(): Promise<string[]> {
     if (!this.initialized || !this.web3auth) {
-      throw new Error("Web3Auth not initialized");
+      throw new AdapterError("Wallet not initialized. Call initialize() first.", {
+        code: WalletErrorCode.AdapterNotInitialized,
+        methodName: 'requestAccounts'
+      });
     }
 
     try {
@@ -205,7 +220,10 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
       await this.web3auth.connectTo(WALLET_ADAPTERS.AUTH, { loginProvider }); // Use AUTH adapter
 
       if (!this.web3auth.connected || !this.web3auth.provider) {
-        throw new Error("Failed to connect to Web3Auth or provider unavailable after login.");
+        throw new AdapterError("Failed to connect to Web3Auth or provider unavailable after login.", {
+          code: WalletErrorCode.ConnectionFailed,
+          methodName: 'requestAccounts'
+        });
       }
       // console.debug("[Web3AuthWalletAdapter] Connection successful.");
 
@@ -253,18 +271,23 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
    * */
   async getBalance(account?: string): Promise<AssetBalance> {
     if (!this.isConnected() || !this.web3auth?.provider) {
-      throw new Error("Not connected to Web3Auth or provider unavailable.");
+      throw new AdapterError("Not connected to Web3Auth or provider unavailable.", {
+        code: WalletErrorCode.WalletNotConnected,
+        methodName: 'getBalance'
+      });
     }
 
     try {
       const provider = this.getProvider(); // Use helper
       const address = account || (await this.getAccounts())[0];
       if (!address) {
-        throw new Error("No account available to fetch balance.");
+        throw new AdapterError("No account available to fetch balance.", {
+          code: WalletErrorCode.AccountUnavailable,
+          methodName: 'getBalance'
+        });
       }
 
       const balanceWei = await provider.getBalance(address);
-
       const decimals = 18
       const symbol = this.config.options.web3authConfig.chainConfig.ticker || "ETH";
 
@@ -275,8 +298,16 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
         formattedAmount: ethers.formatUnits(balanceWei, decimals)
       };
     } catch (error: unknown) {
-      console.error("[Web3AuthWalletAdapter] Error getting balance:", error);
-      throw new Error(`Failed to get balance: ${(error as Error).message || error}`);
+      console.error(`[Web3AuthWalletAdapter: getBalance] Error getting balance:`, error);
+      if (error instanceof AdapterError) {
+        throw error;
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      throw new AdapterError(`Failed to get balance: ${message}`, {
+        cause: error,
+        code: WalletErrorCode.NetworkError,
+        methodName: 'getBalance'
+      });
     }
   }
 
@@ -365,7 +396,10 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
   async getNetwork(): Promise<{ chainId: string; name?: string }> {
     // console.debug("[Web3AuthWalletAdapter] Getting network");
     if (!this.isConnected() || !this.web3auth?.provider) {
-      throw new Error("Not connected to Web3Auth or provider unavailable.");
+      throw new AdapterError("Not connected to Web3Auth or provider unavailable.", {
+        code: WalletErrorCode.WalletNotConnected,
+        methodName: 'getNetwork'
+      });
     }
     try {
       const provider = this.getProvider();
@@ -376,9 +410,19 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
         chainId: network.chainId.toString(), // Or keep as bigint/number if interface allows
         name: network.name
       };
-    } catch (error:unknown) {
-      console.error("[Web3AuthWalletAdapter] Error getting network:", error);
-      throw new Error(`Failed to get network: ${(error as Error).message || error}`);
+    } catch (error: unknown) {
+      console.error(`[Web3AuthWalletAdapter: getNetwork] Error getting network:`, error);
+      if (error instanceof AdapterError) {
+        throw error;
+      }
+
+      const message = error instanceof Error ? error.message : String(error);
+
+      throw new AdapterError(`Failed to get network: ${message}`, {
+        cause: error,
+        code: WalletErrorCode.NetworkError,
+        methodName: 'getNetwork'
+      });
     }
   }
 
@@ -401,69 +445,73 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
    * 
    * @param config - Network configuration with required chain details
    */
-  async setProvider(config: any): Promise<void> {
-    // console.debug("[Web3AuthWalletAdapter] Setting provider with:", config);
+  async setProvider(config: NetworkConfig): Promise<void> {
     if (!this.initialized || !this.web3auth) {
-      throw new Error("Web3Auth not initialized. Call initialize() first.");
+      throw new Error("Web3Auth not initialized");
     }
-
 
     // Validate required property
     if (!config.chainId) {
-      throw new Error("chainId is required in ProviderConfig for Web3Auth");
+      throw new AdapterError("chainId is required in setProvider config (NetworkConfig).", { code: 'MISSING_PARAMETER' });
     }
+    if (!config.rpcUrls || config.rpcUrls.length === 0 || !config.rpcUrls[0]) {
+      throw new AdapterError("At least one rpcUrl is required in setProvider config (NetworkConfig).", { code: 'MISSING_PARAMETER' });
+    }
+
+    const newChainIdHex = config.chainId.startsWith('0x') ? config.chainId : `0x${parseInt(config.chainId, 10).toString(16)}`;
+
     try {
-      console.log(`[Web3AuthWalletAdapter] Switching to chain ${config.chainId}`);
+      const currentChainId = this.web3auth.provider ? await this.web3auth.provider.request({ method: "eth_chainId" }) : null;
 
-      // Try to switch to the chain directly
-      // Try switching first
-      try {
-        await this.web3auth.switchChain({ chainId: config.chainId });
-        // console.debug(`[Web3AuthWalletAdapter] Switched chain successfully.`);
-      } catch (switchError: any) {
-        console.warn(`[Web3AuthWalletAdapter] Failed to switch chain directly (${switchError.message}), attempting to add chain...`);
-        // If switch fails (chain not added), try adding it.
-        // We need the full chain config details from the input ProviderConfig.
-        if (!config.rpcUrl || !config.displayName || !config.blockExplorer || !config.ticker || !config.tickerName) {
-          throw new Error("Full chain details (rpcUrl, displayName, etc.) required in ProviderConfig to add chain.");
+      if (currentChainId !== newChainIdHex) {
+        // console.debug(`[Web3AuthWalletAdapter] Attempting to switch chain to ${newChainIdHex}. Current: ${currentChainId}`);
+        await this.web3auth.switchChain({ chainId: newChainIdHex });
+        // console.debug(`[Web3AuthWalletAdapter] Switched chain to ${newChainIdHex} successfully.`);
+      } else {
+        // console.debug(`[Web3AuthWalletAdapter] Already on chain ${newChainIdHex}, no switch needed.`);
+        // Even if on the same chain, ensure provider state is refreshed and event is emitted if it's a fresh setProvider call
+      }
+    } catch (switchError: any) {
+      if (switchError.code === -32000 || switchError.code === 4902 || (typeof switchError.message === 'string' && switchError.message.includes("Unrecognized chain ID"))) { // Common codes for "chain not added"
+        try {
+          const chainToAdd = {
+            chainId: newChainIdHex,
+            chainNamespace: this.config.options.web3authConfig.chainConfig.chainNamespace || "eip155" as ChainNamespaceType,
+            displayName: config.displayName || config.name || 'Custom Network',
+            rpcTarget: config.rpcUrls[0], // Use the first RPC URL from NetworkConfig
+            blockExplorerUrl: config.blockExplorer, // Web3Auth expects singular blockExplorerUrl
+            ticker: config.ticker || 'ETH',
+            tickerName: config.tickerName || config.ticker || 'Ethereum',
+          };
+          // console.debug("[Web3AuthWalletAdapter] Attempting to add chain:", chainToAdd);
+          await this.web3auth.addChain(chainToAdd as any); // Cast needed if Web3Auth types are not perfectly aligned
+          // console.debug(`[Web3AuthWalletAdapter] Added chain ${newChainIdHex}. Now attempting to switch again.`);
+          await this.web3auth.switchChain({ chainId: newChainIdHex });
+          // console.debug(`[Web3AuthWalletAdapter] Switched to added chain ${newChainIdHex} successfully.`);
+        } catch (addError: any) {
+          // console.error(`[Web3AuthWalletAdapter] Error adding or switching to chain ${newChainIdHex} after attempt to add:`, addError);
+          throw new AdapterError(`Failed to set provider: Could not add or switch to chain ${newChainIdHex}. Add error: ${addError.message}`, { code: 'PROVIDER_SWITCH_FAILED', cause: addError });
         }
-        const chainToAdd = {
-          chainId: config.chainId,
-          chainNamespace: this.config.options.web3authConfig.chainConfig.chainNamespace || "eip155", // Use existing or default
-          rpcTarget: config.rpcUrl,
-          displayName: config.displayName,
-          blockExplorer: config.blockExplorer,
-          ticker: config.ticker,
-          tickerName: config.tickerName,
-        };
-        // console.debug("[Web3AuthWalletAdapter] Adding chain:", chainToAdd);
-        await this.web3auth.addChain(chainToAdd as any); // Cast needed
-        // Now try switching again after adding
-        await this.web3auth.switchChain({ chainId: config.chainId });
-        // console.debug(`[Web3AuthWalletAdapter] Added and switched chain successfully.`);
+      } else {
+        // console.error(`[Web3AuthWalletAdapter] Error switching chain to ${newChainIdHex} (not an 'unrecognized chain' error):`, switchError);
+        throw new AdapterError(`Failed to set provider: Could not switch to chain ${newChainIdHex}. Error: ${switchError.message}`, { code: 'PROVIDER_SWITCH_FAILED', cause: switchError });
       }
-
-      // Force Web3Auth to refresh its provider state
-      if (this.web3auth.provider) {
-        await this.web3auth.provider.request({ method: "eth_chainId" });
-        await this.web3auth.provider.request({ method: "eth_accounts" });
-      }
-
-       // Emit chainChanged event
-       const network = await this.getNetwork(); // Get updated network info
-       this.emitEvent(WalletEvent.chainChanged, network.chainId); // Emit the actual chainId
- 
-       // Optional: Verify connection and balance on new chain
-       const accounts = await this.getAccounts();
-       if (accounts.length > 0) {
-         // const balance = await this.getBalance(accounts[0]); // Use AssetBalance return type
-         // console.debug(`[Web3AuthWalletAdapter] Account ${accounts[0]} balance on new chain ${network.chainId}: ${balance.formattedAmount} ${balance.symbol}`);
-       }
-
-    } catch (error: unknown) {
-      console.error("[Web3AuthWalletAdapter] Error switching chain:", error);
-      throw error;
     }
+
+    // Force Web3Auth to refresh its internal provider state after switch/add
+    // This can help ensure the subsequent getNetwork() calls reflect the new chain.
+    if (this.web3auth.provider) {
+      try {
+        await this.web3auth.provider.request({ method: "eth_chainId" });
+        await this.web3auth.provider.request({ method: "eth_accounts" }); // Also refresh accounts
+      } catch (refreshError) {
+        // console.warn("[Web3AuthWalletAdapter] Error refreshing provider state after chain switch/add:", refreshError);
+        // Not throwing here, as the switch/add might have succeeded.
+      }
+    }
+
+    const networkInfo = await this.getNetwork(); // Get updated network info
+    this.emitEvent(WalletEvent.chainChanged, networkInfo.chainId); // Emit the actual chainId
   }
 
   /***************************/
@@ -472,16 +520,19 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
 
   private async prepareTransactionRequest(tx: GenericTransactionData): Promise<ethers.TransactionRequest> {
     const signer = await this.getSigner();
-    const address = await signer.getAddress();
 
     // Basic structure from GenericTransactionData
     const txRequest: ethers.TransactionRequest = {
       to: tx.to,
-      from: address, // Set 'from' for clarity and some provider requirements
-      data: String(tx.data) || undefined,
-      value: (typeof tx.value === 'string' && tx.value.length > 0) ? ethers.parseUnits(tx.value, 'ether') : tx.value, // Assume 'ether' if string, needs refinement for other decimals
-      // Merge adapter-specific options if they match ethers.TransactionRequest fields
-      ...(tx.options || {})
+      value: tx.value,
+      data: tx.data ? (typeof tx.data === 'string' ? tx.data : ethers.hexlify(tx.data)) : undefined,
+      nonce: tx.options?.nonce,
+      gasLimit: tx.options?.gasLimit ? BigInt(tx.options.gasLimit) : undefined,
+      gasPrice: tx.options?.gasPrice ? BigInt(tx.options.gasPrice) : undefined,
+      maxFeePerGas: tx.options?.maxFeePerGas ? BigInt(tx.options.maxFeePerGas) : undefined,
+      maxPriorityFeePerGas: tx.options?.maxPriorityFeePerGas ? BigInt(tx.options.maxPriorityFeePerGas) : undefined,
+      chainId: tx.options?.chainId ? BigInt(tx.options.chainId) : undefined,
+      ...(tx.options?.type !== undefined && { type: tx.options.type }),
     };
 
     // Populate missing fields if not provided in options (e.g., nonce, gas)
@@ -490,18 +541,18 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
     }
     // Gas handling: Prioritize options, then estimate
     if (txRequest.gasLimit === undefined && tx.options?.gasLimit === undefined) {
-        // Use estimateGas internally - requires TransactionData or adaptation
-        // For now, let's skip auto-estimation in sendTransaction and require it in options or estimateGas call
-        // txRequest.gasLimit = await this.estimateGas(tx as TransactionData); // Requires casting or changing estimateGas input
+      // Use estimateGas internally - requires TransactionData or adaptation
+      // For now, let's skip auto-estimation in sendTransaction and require it in options or estimateGas call
+      // txRequest.gasLimit = await this.(tx as TransactionData); // Requires casting or changing estimateGas input
     }
     if (txRequest.gasPrice === undefined && txRequest.maxFeePerGas === undefined && tx.options?.gasPrice === undefined && tx.options?.maxFeePerGas === undefined) {
-        const feeData = await signer.provider?.getFeeData();
-        if (feeData?.maxFeePerGas && feeData?.maxPriorityFeePerGas) {
-            txRequest.maxFeePerGas = feeData.maxFeePerGas;
-            txRequest.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
-        } else {
-            txRequest.gasPrice = feeData?.gasPrice;
-        }
+      const feeData = await signer.provider?.getFeeData();
+      if (feeData?.maxFeePerGas && feeData?.maxPriorityFeePerGas) {
+        txRequest.maxFeePerGas = feeData.maxFeePerGas;
+        txRequest.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
+      } else {
+        txRequest.gasPrice = feeData?.gasPrice;
+      }
     }
 
     // Remove undefined fields
@@ -509,7 +560,7 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
 
     return txRequest;
   }
-  
+
   /**
    * Sends a transaction
    * @param tx The transaction to send
@@ -518,26 +569,42 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
    */
   async sendTransaction(tx: GenericTransactionData): Promise<string> {
     if (!this.isConnected()) {
-      throw new Error("Not connected to Web3Auth.");
+      throw new AdapterError("Wallet not connected. Cannot send transaction.", {
+        code: WalletErrorCode.WalletNotConnected,
+        methodName: 'sendTransaction'
+      });
     }
 
     try {
+      console.log('sendTransaction: Getting signer...');
       const signer = await this.getSigner();
-      const txRequest = await this.prepareTransactionRequest(tx); // Use helper
+      console.log('Signer is: ', signer)
 
-      // console.debug(`[Web3AuthWalletAdapter] Sending transaction:`, txRequest);
+      console.log('sendTransaction: Preparing transaction request...');
+      const txRequest = await this.prepareTransactionRequest(tx);
+      console.log('Transaction request is: ', txRequest)
+
+      console.log('sendTransaction: Calling signer.sendTransaction...');
       const response = await signer.sendTransaction(txRequest);
-      // console.debug(`[Web3AuthWalletAdapter] Transaction sent with hash: ${response.hash}`);
+      console.log('Signer.sendTransaction result: ', response)
+
       return response.hash;
 
     } catch (error: unknown) {
-      console.error("[Web3AuthWalletAdapter] Transaction error:", error);
-      // Add more detailed error logging if possible
-      if ((error as any).info?.error) {
-        console.error("[Web3AuthWalletAdapter] Provider error details:", (error as any).info.error);
+      console.error(`[Web3AuthWalletAdapter: sendTransaction] Error sending transaction:`, error);
+      if (error instanceof AdapterError) {
+        throw error;
       }
-      // Consider mapping to WalletErrorCode
-      throw error;
+      const message = error instanceof Error ? error.message : String(error);
+      let errorCode: WalletErrorCode | string = WalletErrorCode.TransactionFailed;
+      if (message.toLowerCase().includes('user denied') || message.toLowerCase().includes('rejected by user')) {
+        errorCode = WalletErrorCode.UserRejected;
+      }
+      throw new AdapterError(`Failed to send transaction: ${message}`, {
+        cause: error,
+        code: errorCode,
+        methodName: 'sendTransaction'
+      });
     }
   }
 
@@ -549,26 +616,33 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
    */
   async signTransaction(tx: GenericTransactionData): Promise<string> {
     if (!this.isConnected()) {
-      throw new Error("Not connected to Web3Auth.");
+      throw new AdapterError("Wallet not connected. Cannot sign transaction.", {
+        code: WalletErrorCode.WalletNotConnected,
+        methodName: 'signTransaction'
+      });
     }
     try {
       const signer = await this.getSigner();
-      // Note: ethers v6 signTransaction expects a fully populated tx.
-      // prepareTransactionRequest helps populate nonce, gas etc.
-      const txRequest = await this.prepareTransactionRequest(tx);
-
-      // console.debug(`[Web3AuthWalletAdapter] Signing transaction:`, txRequest);
-      // signTransaction is often not available/reliable via browser providers/Web3Auth
-      // Check if signer actually supports it.
-      if (typeof (signer as any).signTransaction !== 'function') {
-          throw new Error("signTransaction method not supported by the current signer/provider.");
-      }
-      const signedTx = await (signer as any).signTransaction(txRequest);
-      // console.debug(`[Web3AuthWalletAdapter] Transaction signed.`);
+      const preparedTx = await this.prepareTransactionRequest(tx);
+      // console.debug("[Web3AuthWalletAdapter] Signing transaction:", preparedTx);
+      const signedTx = await signer.signTransaction(preparedTx);
+      // console.debug("[Web3AuthWalletAdapter] Transaction signed.");
       return signedTx;
     } catch (error: unknown) {
-        console.error("[Web3AuthWalletAdapter] Sign transaction error:", error);
+      console.error(`[Web3AuthWalletAdapter: signTransaction] Error signing transaction:`, error);
+      if (error instanceof AdapterError) {
         throw error;
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      let errorCode: WalletErrorCode | string = WalletErrorCode.SigningFailed;
+      if (message.toLowerCase().includes('user denied') || message.toLowerCase().includes('rejected by user')) {
+        errorCode = WalletErrorCode.UserRejected;
+      }
+      throw new AdapterError(`Failed to sign transaction: ${message}`, {
+        cause: error,
+        code: errorCode,
+        methodName: 'signTransaction'
+      });
     }
   }
 
@@ -594,17 +668,32 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
    */
   async signMessage(message: string | Uint8Array): Promise<string> {
     if (!this.isConnected()) {
-      throw new Error("Not connected to Web3Auth.");
+      throw new AdapterError("Wallet not connected. Cannot sign message.", {
+        code: WalletErrorCode.WalletNotConnected,
+        methodName: 'signMessage'
+      });
     }
     try {
       const signer = await this.getSigner();
-      // console.debug(`[Web3AuthWalletAdapter] Signing message...`);
+      // console.debug("[Web3AuthWalletAdapter] Signing message:", message);
       const signature = await signer.signMessage(message);
-      // console.debug(`[Web3AuthWalletAdapter] Message signed.`);
+      // console.debug("[Web3AuthWalletAdapter] Message signed.");
       return signature;
     } catch (error: unknown) {
-        console.error("[Web3AuthWalletAdapter] Sign message error:", error);
+      console.error(`[Web3AuthWalletAdapter: signMessage] Error signing message:`, error);
+      if (error instanceof AdapterError) {
         throw error;
+      }
+      const messageText = error instanceof Error ? error.message : String(error);
+      let errorCode: WalletErrorCode | string = WalletErrorCode.SigningFailed;
+      if (messageText.toLowerCase().includes('user denied') || messageText.toLowerCase().includes('rejected by user')) {
+        errorCode = WalletErrorCode.UserRejected;
+      }
+      throw new AdapterError(`Failed to sign message: ${messageText}`, {
+        cause: error,
+        code: errorCode,
+        methodName: 'signMessage'
+      });
     }
   }
 
@@ -620,18 +709,83 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
      */
   async signTypedData(data: EIP712TypedData): Promise<string> {
     if (!this.isConnected()) {
-      throw new Error("Not connected to Web3Auth.");
+      throw new AdapterError("Wallet not connected. Cannot sign typed data.", {
+        code: WalletErrorCode.WalletNotConnected,
+        methodName: 'signTypedData'
+      });
     }
     try {
       const signer = await this.getSigner();
-      // console.debug(`[Web3AuthWalletAdapter] Signing typed data...`, data);
-      // Ensure the primary data field is named 'message' as per our EIP712TypedData interface
+      // console.debug("[Web3AuthWalletAdapter] Signing typed data:", data);
       const signature = await signer.signTypedData(data.domain, data.types, data.value);
-      // console.debug(`[Web3AuthWalletAdapter] Typed data signed.`);
+      // console.debug("[Web3AuthWalletAdapter] Typed data signed.");
       return signature;
     } catch (error: unknown) {
-        console.error("[Web3AuthWalletAdapter] Sign typed data error:", error);
+      console.error(`[Web3AuthWalletAdapter: signTypedData] Error signing typed data:`, error);
+      if (error instanceof AdapterError) {
         throw error;
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      let errorCode: WalletErrorCode | string = WalletErrorCode.SigningFailed;
+      if (message.toLowerCase().includes('user denied') || message.toLowerCase().includes('rejected by user')) {
+        errorCode = WalletErrorCode.UserRejected;
+      }
+      throw new AdapterError(`Failed to sign typed data: ${message}`, {
+        cause: error,
+        code: errorCode,
+        methodName: 'signTypedData'
+      });
+    }
+  }
+
+
+  /**
+   * Estimates gas for a transaction
+   * @param tx The transaction to estimate gas for
+   * @returns Promise resolving to the estimated gas as a string
+   * @throws Error if wallet is not connected
+   */
+  async estimateGas(tx: GenericTransactionData): Promise<EstimatedFeeData> {
+
+    if (!this.isConnected()) {
+      throw new AdapterError("Wallet not connected. Cannot estimate gas.", {
+        code: WalletErrorCode.WalletNotConnected,
+        methodName: 'estimateGas'
+      });
+    }
+
+    try {
+      const provider = this.getProvider();
+      const preparedTx = await this.prepareTransactionRequest(tx);
+      // console.debug("[Web3AuthWalletAdapter] Estimating gas for:", preparedTx);
+
+      const gasLimit = await provider.estimateGas(preparedTx);
+      // console.debug("[Web3AuthWalletAdapter] Gas estimated:", gasLimit.toString());
+
+      let feeData: ethers.FeeData | null = null;
+      try {
+        feeData = await provider.getFeeData();
+      } catch (feeError) {
+        // console.warn("[Web3AuthWalletAdapter] Could not fetch EIP-1559 fee data, falling back to gasPrice if available.", feeError);
+      }
+
+      return {
+        gasLimit: gasLimit,
+        gasPrice: feeData?.gasPrice?.toString(),
+        maxFeePerGas: feeData?.maxFeePerGas?.toString(),
+        maxPriorityFeePerGas: feeData?.maxPriorityFeePerGas?.toString(),
+      };
+    } catch (error: any) {
+      console.error(`[Web3AuthWalletAdapter: estimateGas] Error estimating gas:`, error);
+      if (error instanceof AdapterError) {
+        throw error;
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      throw new AdapterError(`Failed to estimate gas: ${message}`, {
+        cause: error,
+        code: WalletErrorCode.GasEstimationFailed,
+        methodName: 'estimateGas'
+      });
     }
   }
 
@@ -640,59 +794,37 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
   * @returns Promise resolving to the gas price as a string
   * @throws Error if wallet is not connected or gas price is unavailable
   */
-  async getGasPrice(): Promise<bigint> { // Return bigint as per ethers v6
+  async getGasPrice(): Promise<bigint> {
     if (!this.isConnected()) {
-      throw new Error("Not connected to Web3Auth.");
+      throw new AdapterError("Wallet not connected. Cannot get gas price.", {
+        code: WalletErrorCode.WalletNotConnected,
+        methodName: 'getGasPrice'
+      });
     }
     try {
       const provider = this.getProvider();
       const feeData = await provider.getFeeData();
-      if (!feeData.gasPrice) {
-        throw new Error("gasPrice not available from provider.");
+      if (feeData.gasPrice) {
+        return feeData.gasPrice;
       }
-      return feeData.gasPrice;
-    } catch (error: unknown) {
-        console.error("[Web3AuthWalletAdapter] Get gas price error:", error);
+      throw new AdapterError("Gas price not available (network might be EIP-1559 only or provider did not return it). Consider using estimateGas.", {
+        code: WalletErrorCode.GasEstimationFailed, // More specific
+        methodName: 'getGasPrice'
+      });
+    } catch (error: any) {
+      console.error(`[Web3AuthWalletAdapter: getGasPrice] Error getting gas price:`, error);
+      if (error instanceof AdapterError) {
         throw error;
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      throw new AdapterError(`Failed to get gas price: ${message}`, {
+        cause: error,
+        code: WalletErrorCode.NetworkError, // Or a more specific code
+        methodName: 'getGasPrice'
+      });
     }
   }
 
-  /**
-   * Estimates gas for a transaction
-   * @param tx The transaction to estimate gas for
-   * @returns Promise resolving to the estimated gas as a string
-   * @throws Error if wallet is not connected
-   */
-  async estimateGas(tx: GenericTransactionData): Promise<bigint> { // Return bigint
-    if (!this.isConnected()) {
-      throw new Error("Not connected to Web3Auth.");
-    }
-
-    try {
-      const provider = this.getProvider();
-      // Convert TransactionData to ethers.TransactionRequest if needed
-      const txParams: ethers.TransactionRequest = {
-        to: tx.to,
-        value: (typeof tx.value === 'string' && tx.value.length > 0) ? ethers.parseUnits(tx.value, 'ether') : tx.value, // Assume ether
-        data: tx.data ? (typeof tx.data === 'string' ? tx.data : ethers.hexlify(tx.data)) : undefined, // Handle Uint8Array
-        ...(tx.options || {})
-      };
-      // Remove fields estimateGas might not want
-      delete txParams.nonce;
-      delete txParams.gasPrice;
-      delete txParams.maxFeePerGas;
-      delete txParams.maxPriorityFeePerGas;
-      delete txParams.gasLimit;
-
-      // console.debug(`[Web3AuthWalletAdapter] Estimating gas for:`, txParams);
-      const gasEstimate = await provider.estimateGas(txParams);
-      // console.debug(`[Web3AuthWalletAdapter] Gas estimate: ${gasEstimate.toString()}`);
-      return gasEstimate;
-    } catch (error: unknown) {
-        console.error("[Web3AuthWalletAdapter] Estimate gas error:", error);
-        throw error;
-    }
-  }
 
   /**
   * Gets the transaction receipt for a transaction hash
@@ -702,17 +834,28 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
   */
   async getTransactionReceipt(txHash: string): Promise<TransactionReceipt | null> { // Use ethers type
     if (!this.isConnected()) {
-      throw new Error("Not connected to Web3Auth.");
+      throw new AdapterError("Wallet not connected. Cannot get transaction receipt.", {
+        code: WalletErrorCode.WalletNotConnected,
+        methodName: 'getTransactionReceipt'
+      });
     }
     try {
       const provider = this.getProvider();
-      // console.debug(`[Web3AuthWalletAdapter] Getting receipt for tx: ${txHash}`);
+      // console.debug(`[Web3AuthWalletAdapter] Getting transaction receipt for hash: ${txHash}`);
       const receipt = await provider.getTransactionReceipt(txHash);
-      // console.debug(`[Web3AuthWalletAdapter] Receipt result:`, receipt);
-      return receipt; // Can be null if not mined
+      // console.debug("[Web3AuthWalletAdapter] Transaction receipt:", receipt);
+      return receipt;
     } catch (error: unknown) {
-        console.error("[Web3AuthWalletAdapter] Get transaction receipt error:", error);
+      console.error(`[Web3AuthWalletAdapter: getTransactionReceipt] Error getting transaction receipt for ${txHash}:`, error);
+      if (error instanceof AdapterError) {
         throw error;
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      throw new AdapterError(`Failed to get transaction receipt for ${txHash}: ${message}`, {
+        cause: error,
+        code: WalletErrorCode.NetworkError, // Or a more specific code
+        methodName: 'getTransactionReceipt'
+      });
     }
   }
 
@@ -725,25 +868,40 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
    */
   async getTokenBalance(tokenAddress: string, account?: string, abi?: string[]): Promise<string> {
     if (!this.isConnected()) {
-      throw new Error("Not connected to Web3Auth.");
+      throw new AdapterError("Wallet not connected. Cannot get token balance.", {
+        code: WalletErrorCode.WalletNotConnected,
+        methodName: 'getTokenBalance'
+      });
     }
     try {
       const provider = this.getProvider();
       const targetAccount = account || (await this.getAccounts())[0];
       if (!targetAccount) {
-        throw new Error("No account available to fetch token balance.");
+        throw new AdapterError("No account available to fetch token balance.", {
+          code: WalletErrorCode.AccountUnavailable,
+          methodName: 'getTokenBalance'
+        });
       }
 
-      const erc20Abi = abi || ["function balanceOf(address) view returns (uint256)"];
-      const contract = new ethers.Contract(tokenAddress, erc20Abi, provider);
-
+      const contractAbi = abi || [
+        "function balanceOf(address owner) view returns (uint256)",
+      ];
+      const contract = new ethers.Contract(tokenAddress, contractAbi, provider);
       // console.debug(`[Web3AuthWalletAdapter] Getting token balance for ${tokenAddress} on account ${targetAccount}`);
       const balance = await contract.balanceOf(targetAccount);
-      // console.debug(`[Web3AuthWalletAdapter] Token balance result: ${balance.toString()}`);
+      // console.debug("[Web3AuthWalletAdapter] Token balance obtained:", balance.toString());
       return balance.toString(); // Return raw balance string
     } catch (error: unknown) {
-        console.error(`[Web3AuthWalletAdapter] Get token balance error for ${tokenAddress}:`, error);
+      console.error(`[Web3AuthWalletAdapter: getTokenBalance] Error getting token balance for ${tokenAddress}:`, error);
+      if (error instanceof AdapterError) {
         throw error;
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      throw new AdapterError(`Failed to get token balance for ${tokenAddress}: ${message}`, {
+        cause: error,
+        code: WalletErrorCode.TokenBalanceFailed,
+        methodName: 'getTokenBalance'
+      });
     }
   }
 }

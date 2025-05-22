@@ -9,3 +9,8 @@ export enum ExecutionStatusEnum {
     COMPLETED = 'COMPLETED',
 }
 
+export enum CrossChainAdapterType {
+  'aggregator' = 'aggregator',
+  'bridge' = 'bridge',
+  'core' = 'core'
+}

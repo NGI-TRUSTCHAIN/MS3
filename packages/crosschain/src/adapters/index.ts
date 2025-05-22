@@ -1,6 +1,4 @@
-// Export all adapters
-export * from './LI.FI.Adapter.js';
-
 // Load all registrations
 import './LI.FI.registration.js';
 
+export type { ILiFiAdapterOptionsV1  } from './LI.FI.Adapter.js';

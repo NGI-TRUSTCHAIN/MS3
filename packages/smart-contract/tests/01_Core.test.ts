@@ -15,7 +15,7 @@ export function testAdapterPattern(AdapterClass: any, mockArgs: any = {}) {
         throw new Error('Constructor should be private but was accessible');
       } catch (error) {
         // This is expected behavior for private constructors
-        expect(error).toBeTruthy();
+        throw error;
       }
     });
 
@@ -35,7 +35,7 @@ export function testAdapterPattern(AdapterClass: any, mockArgs: any = {}) {
       } catch (error: any) {
         console.warn(`Creation failed in test: ${error.message}`);
         // Still pass the test in test environment
-        expect(true).toBe(true);
+        // expect(true).toBe(true);
       }
     });
   });

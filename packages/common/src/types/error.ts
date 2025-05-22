@@ -13,7 +13,15 @@ export enum WalletErrorCode {
     MethodNotSupported = 'METHOD_NOT_SUPPORTED',
     FeatureNotSupported = 'FEATURE_NOT_SUPPORTED', // Added based on createWallet
     AdapterNotFound = 'ADAPTER_NOT_FOUND',     // Added based on createWallet
-    // Add more specific codes as needed
+    MissingConfig = 'MISSING_CONFIG', // For missing essential configuration
+    InitializationFailed = 'INITIALIZATION_FAILED', // For failures during adapter.initialize()
+    ConnectionFailed = 'CONNECTION_FAILED', // For failures in setProvider or connecting to RPC
+    AccountUnavailable = 'ACCOUNT_UNAVAILABLE', // When an account is needed but not found/derived
+    GasEstimationFailed = 'GAS_ESTIMATION_FAILED',
+    InsufficientFunds = 'INSUFFICIENT_FUNDS',
+    TransactionReceiptFailed = 'TRANSACTION_RECEIPT_FAILED',
+    TokenBalanceFailed = 'TOKEN_BALANCE_FAILED',
+    SigningFailed = 'INVALID_SIGNATURE'
 }
 
 // Define CrossChain Error Codes
@@ -24,6 +32,7 @@ export enum CrossChainErrorCode {
     InvalidInput = 'CC_INVALID_INPUT',
     QuoteFailed = 'CC_QUOTE_FAILED',
     ExecutionFailed = 'CC_EXECUTION_FAILED',
+    ProviderSetFailed = 'CC_PROVIDER_SETUP_FAILED',
     StatusCheckFailed = 'CC_STATUS_CHECK_FAILED',
     UnsupportedChain = 'CC_UNSUPPORTED_CHAIN',
     UnsupportedToken = 'CC_UNSUPPORTED_TOKEN',

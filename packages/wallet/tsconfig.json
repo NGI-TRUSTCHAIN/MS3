@@ -1,16 +1,20 @@
 {
-  "extends": "../../tsconfig.json", // Or your base config
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "./src", // Keeps your dist output as dist/index.js from src/index.ts
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "composite": true 
+    "composite": true // If this package is part of a composite project build
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"],
+  "include": ["src/**/*"], // Only include src for the tsc build
+  "exclude": [
+    "node_modules",
+    "dist",
+    "tests" // Explicitly exclude tests from this build config
+  ],
   "references": [
-    { "path": "../common" }
+    { "path": "../common" } // If common is a build dependency
   ]
 }
