@@ -1,155 +1,226 @@
-import { resolve, join, dirname } from "path";
-import { execSync } from "child_process";
-import { readdirSync, existsSync, readFileSync, writeFileSync } from "fs";
-import { fileURLToPath } from "url";
+console.log("Publish.ts: Script execution started - Top Level Log");
 
-// Fix path resolution
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const rootDir = resolve(__dirname, '..');
+async function runPublishProcess() {
+  console.log("Publish.ts: runPublishProcess() started.");
 
-/**
- * Update the dependencies of other packages to use the new version
- * @param {string} packageName The package name that was updated
- * @param {string} version The new version number
- */
-function updateDependentPackages(packageName:string, version:string) {
-  const packagesDir = join(rootDir, 'packages');
-  const packages = readdirSync(packagesDir);
-  
-  packages.forEach(pkg => {
-    const pkgJsonPath = join(packagesDir, pkg, 'package.json');
-    if (existsSync(pkgJsonPath)) {
-      const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf8'));
-      if (pkgJson.dependencies?.[`@m3s/${packageName}`]) {
-        pkgJson.dependencies[`@m3s/${packageName}`] = `^${version}`;
-        writeFileSync(pkgJsonPath, JSON.stringify(pkgJson, null, 2));
-        console.log(`Updated ${pkg}'s dependency on ${packageName} to ^${version}`);
+  // Dynamically import modules
+  const fsModule = await import("fs");
+  const fs = fsModule.default;
+  console.log("Publish.ts: 'fs' module imported.");
+
+  const pathModule = await import("path");
+  const { resolve, join, dirname } = pathModule;
+  console.log("Publish.ts: 'path' module imported.");
+
+  const urlModule = await import("url");
+  const { fileURLToPath } = urlModule;
+  console.log("Publish.ts: 'url' module imported.");
+
+  const childProcessModule = await import("child_process");
+  const { execSync } = childProcessModule;
+  console.log("Publish.ts: 'child_process' module imported.");
+
+  const scriptPath = fileURLToPath(import.meta.url);
+  const currentDir = dirname(scriptPath);
+  const rootDir = resolve(currentDir, '..');
+  console.log("Publish.ts: Paths initialized. rootDir:", rootDir);
+
+  function updateDependentPackages(packageName: string, version: string) {
+    console.log(`Publish.ts: updateDependentPackages for published package ${packageName}@${version} started.`);
+    const packagesDir = join(rootDir, 'packages');
+    // The full name of the package that was just published (e.g., @m3s/wallet)
+    const publishedScopedPackageName = `@m3s/${packageName}`;
+
+    try {
+      const allPackageDirs = fs.readdirSync(packagesDir)
+        .filter(dir => dir !== 'common' && dir !== packageName); // Exclude common and the package itself
+
+      allPackageDirs.forEach(pkgDir => {
+        const dependentPkgJsonPath = join(packagesDir, pkgDir, 'package.json');
+        if (fs.existsSync(dependentPkgJsonPath)) {
+          const dependentPkgJson = JSON.parse(fs.readFileSync(dependentPkgJsonPath, 'utf8'));
+
+          let updated = false;
+          // Check if this package (dependentPkgJson) depends on the publishedScopedPackageName
+          if (dependentPkgJson.dependencies && dependentPkgJson.dependencies[publishedScopedPackageName]) {
+            dependentPkgJson.dependencies[publishedScopedPackageName] = `^${version}`;
+            updated = true;
+          }
+          if (dependentPkgJson.devDependencies && dependentPkgJson.devDependencies[publishedScopedPackageName]) {
+            dependentPkgJson.devDependencies[publishedScopedPackageName] = `^${version}`;
+            updated = true;
+          }
+
+          if (updated) {
+            fs.writeFileSync(dependentPkgJsonPath, JSON.stringify(dependentPkgJson, null, 2) + '\n');
+            console.log(`[Publish.ts] Updated ${dependentPkgJson.name}'s dependency on ${publishedScopedPackageName} to ^${version}`);
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Publish.ts: Error in updateDependentPackages:", error);
+    }
+  }
+
+  async function publishPackage(packageName: string, options: { otp?: string } = {}) {
+    console.log(`Publish.ts: publishPackage('${packageName}') started.`);
+    const packagePath = join(rootDir, 'packages', packageName);
+    const packageJsonPath = join(packagePath, 'package.json');
+
+    if (!fs.existsSync(packageJsonPath)) {
+      console.error(`[${packageName}] package.json not found at ${packageJsonPath}. Cannot publish.`);
+      process.exit(1);
+    }
+
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+    const currentVersion = packageJson.version;
+    const fullPackageName = packageJson.name; // This will be @m3s/wallet, @m3s/common etc.
+    console.log(`[${packageName}] Current version of ${fullPackageName}: ${currentVersion}`);
+
+    // 1. Build the package
+    console.log(`[${packageName}] Building package ${packageName} before publishing...`);
+    try {
+      // Execute the build.ts script for the specific package
+      execSync(`node --loader ts-node/esm "${join(rootDir, 'scripts', 'build.ts')}" ${packageName}`, { stdio: 'inherit', cwd: rootDir });
+      console.log(`[${packageName}] Build completed successfully.`);
+    } catch (buildError) {
+      console.error(`[${packageName}] Failed to build package ${packageName}. Error: ${buildError}`);
+      process.exit(1);
+    }
+
+    // 2. Bump version
+    const versionParts = currentVersion.split('.').map(Number);
+    versionParts[2]++; // Increment patch
+    // Your existing version bump logic:
+    if (versionParts[2] > 9 && versionParts.length > 1) { // Ensure minor part exists
+      versionParts[2] = 0;
+      versionParts[1]++;
+      if (versionParts[1] > 9 && versionParts.length > 0) { // Ensure major part exists
+        versionParts[1] = 0;
+        versionParts[0]++;
       }
     }
-  });
-}
+    const newVersion = versionParts.join('.');
+    packageJson.version = newVersion;
+    fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
+    console.log(`[${packageName}] Version bumped to ${newVersion} for ${fullPackageName}`);
 
-/**
- * Publish a package to NPM
- * @param {string} packageName The package to publish
- * @returns {string|undefined} The new version if successful
- */
-export async function publishPackage(packageName:string) {
-  try {
-    const pkgPath = join(rootDir, `packages/${packageName}`);
-    const pkgJsonPath = join(pkgPath, "package.json");
-    
-    if (!existsSync(pkgJsonPath)) {
-      throw new Error(`Package ${packageName} not found at ${pkgPath}`);
-    }
-    
-    // Read package.json before accessing private property
-    const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf8'));
-    
-    // Check if it's private
-    if (pkgJson.private) {
-      console.log(`Skipping ${packageName} (marked as private)`);
-      return;
-    }
-    
-    console.log(`Publishing ${packageName} from ${pkgPath}...`);
-
-    // Build first
-    console.log("Building package...");
-    execSync("npm run build", { stdio: "inherit", cwd: pkgPath });
-
-    // Get current version
-    const currentVersion = pkgJson.version;
-
-    // Manually update version
-    console.log("Bumping version...");
-    const versionParts = currentVersion.split('.');
-    const major = parseInt(versionParts[0]);
-    const minor = parseInt(versionParts[1]);
-    const patch = parseInt(versionParts[2]);
-    
-    // Increment patch, roll over to minor if needed
-    let newMajor = major;
-    let newMinor = minor;
-    let newPatch = patch;
-    
-    if (patch >= 99) {
-      newPatch = 0;
-      newMinor = minor + 1;
-    } else {
-      newPatch = patch + 1;
+    // 3. Publish to NPM
+    const publishCmd = `npm publish --access public${options.otp ? ` --otp=${options.otp}` : ''}`;
+    console.log(`[${packageName}] Publishing ${fullPackageName}@${newVersion} with command: ${publishCmd}`);
+    try {
+      execSync(publishCmd, { cwd: packagePath, stdio: 'inherit' });
+      console.log(`[${packageName}] Successfully published ${fullPackageName}@${newVersion}`);
+    } catch (error: any) {
+      console.error(`[${packageName}] Failed to publish ${fullPackageName}@${newVersion}. Error: ${error.message}`);
+      // Revert version bump on failure
+      packageJson.version = currentVersion;
+      fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
+      console.log(`[${packageName}] Reverted package.json to version ${currentVersion} for ${fullPackageName} due to publish error.`);
+      if (error.stdout) console.error("Stdout:", error.stdout.toString());
+      if (error.stderr) console.error("Stderr:", error.stderr.toString());
+      process.exit(1);
     }
 
-    const newVersion = `${newMajor}.${newMinor}.${newPatch}`;
-    
-    // Update package.json with new version
-    pkgJson.version = newVersion;
-    writeFileSync(pkgJsonPath, JSON.stringify(pkgJson, null, 2) + '\n');
-    console.log(`Version bumped from ${currentVersion} to ${newVersion}`);
-
-    // Update dependencies in other packages
-    console.log("Updating dependent packages...");
+    // 4. Update dependent packages in the monorepo
+    // Pass the simple name (e.g., "wallet") not "@m3s/wallet" to updateDependentPackages
     updateDependentPackages(packageName, newVersion);
 
-    // Git commit all changes
-    execSync("git add .", { stdio: "inherit", cwd: rootDir });
-    execSync(`git commit -m "chore: prepare ${packageName} ${newVersion} for publish"`, {
-      stdio: "inherit",
-      cwd: rootDir
-    });
 
-    // Publish with --no-fund to avoid funding messages
-    console.log(`Publishing version ${newVersion}...`);
-    execSync("npm publish --access public --no-fund", { stdio: "inherit", cwd: pkgPath });
-
-    console.log(`Successfully published ${packageName}@${newVersion}`);
-    return newVersion;
-  } catch (error:any) {
-    console.error("Error publishing package:", error.message);
-    process.exit(1);
-  }
-}
-
-/**
- * Get all packages that can be published (not marked as private)
- * @returns {string[]} Array of package names
- */
-export function getPublishablePackages() {
-  const packagesDir = join(rootDir, 'packages');
-  return readdirSync(packagesDir)
-    .filter(dir => {
-      const pkgJsonPath = join(packagesDir, dir, 'package.json');
-      if (!existsSync(pkgJsonPath)) return false;
-      
-      const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf8'));
-      return !pkgJson.private;
-    });
-}
-
-/**
- * Publish all packages
- */
-export function publishAllPackages() {
-  const packagesToPublish = getPublishablePackages();
-  console.log(`Publishing packages: ${packagesToPublish.join(', ')}`);
-  
-  // Publish in order
-  for (const pkg of packagesToPublish) {
-    console.log(`\n=== Publishing ${pkg} ===`);
-    publishPackage(pkg);
+    // 5. Commit and tag
+    console.log(`[${packageName}] Committing and tagging version ${newVersion} for ${fullPackageName}...`);
+    try {
+      execSync(`git add "${packageJsonPath}"`, { cwd: rootDir, stdio: 'inherit' });
+      // Also add package-lock.json if dependencies were updated
+      execSync(`git add "${join(rootDir, 'package-lock.json')}"`, { cwd: rootDir, stdio: 'inherit' });
+      execSync(`git commit -m "Publish ${fullPackageName}@${newVersion}"`, { cwd: rootDir, stdio: 'inherit' });
+      execSync(`git tag ${fullPackageName}@${newVersion}`, { cwd: rootDir, stdio: 'inherit' });
+      console.log(`[${packageName}] Git commit and tag created for ${fullPackageName}@${newVersion}`);
+    } catch (error: any) {
+      console.warn(`[${packageName}] Failed to commit or tag version for ${fullPackageName}. This might be okay if not in a git repo or if there are no changes. Error: ${error.message}`);
+    }
+    return newVersion; // Return the new version
   }
 
-  console.log("\nAll packages published successfully!");
-}
+  function getPublishablePackages() {
+    console.log("Publish.ts: getPublishablePackages() started.");
+    const packagesDir = join(rootDir, 'packages');
+    return fs.readdirSync(packagesDir)
+      .filter(dir => {
+        const pkgJsonPath = join(packagesDir, dir, 'package.json');
+        if (!fs.existsSync(pkgJsonPath)) return false;
+        const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+        return !pkgJson.private;
+      });
+  }
 
-// CLI entry point
-if (import.meta.url === new URL(import.meta.url).href) {
-  const packageName = process.argv[2];
-  
-  if (packageName) {
-    publishPackage(packageName);
+  async function publishAllPackages(options: { otp?: string } = {}) {
+    console.log("Publish.ts: publishAllPackages() started.");
+    // Define a sensible publish order based on dependencies
+    const orderedPackagesToPublish = ['wallet', 'smart-contract', 'crosschain'];
+
+    // getPublishablePackages still respects "private": true in package.json
+    const allAllowedToPublish = getPublishablePackages();
+
+    // Filter our desired publish order by what's actually allowed to be published
+    const packagesToActuallyPublish = orderedPackagesToPublish.filter(pkgName => allAllowedToPublish.includes(pkgName));
+
+    if (packagesToActuallyPublish.length === 0) {
+      console.log("No packages found in the defined order that are eligible for publishing (excluding common).");
+      return;
+    }
+
+    console.log(`\n🚀 Starting publishing process for: ${packagesToActuallyPublish.join(', ')}`);
+    
+    for (const pkgName of packagesToActuallyPublish) {
+      await publishPackage(pkgName, options); // publishPackage calls buildPackage internally
+    }
+
+    console.log("\n✅ All selected packages processed for publishing.");
+  }
+
+  // Main module execution logic
+  console.log("Publish.ts: Checking main module condition.");
+  if (process.argv[1] === scriptPath) {
+    console.log("Publish.ts: Script is main module.");
+    const packageNameArg = process.argv[2];
+    const otpArg = process.env.NPM_OTP || process.argv[3]; // Allow OTP from env or arg
+    console.log("Publish.ts: Package name argument:", packageNameArg);
+    console.log("Publish.ts: OTP argument (from env or CLI):", otpArg ? "Provided" : "Not provided");
+
+
+    if (packageNameArg) {
+      console.log(`Publish.ts: Proceeding to publish single package: ${packageNameArg}`);
+      await publishPackage(packageNameArg, { otp: otpArg });
+    } else {
+      console.log("Publish.ts: No package name provided, publishing all eligible packages in order.");
+      await publishAllPackages({ otp: otpArg });
+    }
+    console.log("Publish.ts: Script operations finished successfully.");
+    // Optional: Consider git push --follow-tags here after all successful publishes
+    // try {
+    //     console.log("Pushing git changes and tags...");
+    //     execSync(`git push --follow-tags`, { cwd: rootDir, stdio: 'inherit' });
+    //     console.log("Git push successful.");
+    // } catch (error) {
+    //     console.warn("Failed to push git changes. Please do it manually.", error);
+    // }
   } else {
-    publishAllPackages();
+    console.log("Publish.ts: Script is NOT main module.");
   }
 }
+
+runPublishProcess().catch(error => {
+  console.error("Publish.ts: CRITICAL UNHANDLED ERROR in runPublishProcess()");
+  console.error("Publish.ts: Error message:", error?.message);
+  console.error("Publish.ts: Error stack:", error?.stack);
+  if (!(error instanceof Error) && error !== null) {
+    try {
+      console.error("Publish.ts: Full error object (raw):", error);
+      console.error("Publish.ts: Full error object (JSON.stringify):", JSON.stringify(error, null, 2));
+    } catch (stringifyError) {
+      console.error("Publish.ts: Could not stringify the error object:", stringifyError);
+    }
+  }
+  process.exit(1);
+});

@@ -12,10 +12,10 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "paths": {
-      "@m3s/common": ["packages/common/src"],
-      "@m3s/common/*": ["packages/common/src/*"],
-      "@m3s/wallet": ["packages/wallet/src"],
-      "@m3s/wallet/*": ["packages/wallet/src/*"]
+     "@m3s/common": ["packages/common/dist"],
+      "@m3s/common/*": ["packages/common/dist/*"],
+      "@m3s/wallet": ["packages/wallet/dist"],
+      "@m3s/wallet/*": ["packages/wallet/dist/*"]
     }
   },
   "exclude": ["node_modules", "**/dist"]
