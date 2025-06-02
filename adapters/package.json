@@ -1,0 +1,21 @@
+{
+  "name": "adapters",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@m3s/crosschain": "^1.4.4",
+    "@m3s/smart-contract": "^1.4.5",
+    "@m3s/wallet": "^1.5.6",
+    "@web3auth/auth-adapter": "^9.7.0",
+    "@web3auth/base": "^9.7.0",
+    "@web3auth/ethereum-provider": "^9.7.0",
+    "@web3auth/no-modal": "^9.7.0"
+  }
+}
