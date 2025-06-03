@@ -1,4 +1,4 @@
-import { CrossChainAdapterType, registry, Requirement } from '@m3s/crosschain';
+import { CrossChainAdapterType, EnvironmentRequirements, registry, Requirement, RuntimeEnvironment } from '@m3s/crosschain';
 import { MinimalLiFiAdapter } from './lifi.adapter';
 
 
@@ -19,11 +19,22 @@ const lifiRequirments: Requirement[] = [
   // The LiFiExecutionProvider, when created from an M3S wallet, will use the wallet's RPC configuration.
 ]
 
+const lifiEnvironment: EnvironmentRequirements = {
+  supportedEnvironments: [RuntimeEnvironment.BROWSER],
+  limitations: [
+    'Requires browser environment for wallet client interactions.',
+    'User interaction needed for transaction signing and chain switching.',
+    'Server-side execution limited to quote generation only.',
+    'Depends on browser-based wallet providers (MetaMask, WalletConnect, etc.).'
+  ]
+};
+
 registry.registerAdapter('crosschain', {
   name: 'lifi',
   version: '1.0.0',
   module: 'crosschain',
   adapterType: CrossChainAdapterType['aggregator'],
   adapterClass: MinimalLiFiAdapter,
+  environment: lifiEnvironment,
   requirements: lifiRequirments,
 });
