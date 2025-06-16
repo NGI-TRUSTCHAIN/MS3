@@ -1,6 +1,6 @@
 {
   "name": "@m3s/crosschain",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "type": "module",
   "description": "A simplified cross-chain transfer library built on top of LI.FI, enabling token transfers between different blockchain networks with minimal configuration",
   "license": "MIT",
@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "@lifi/sdk": "^3.6.6",
-    "@m3s/wallet": "^1.7.4",
+    "@m3s/wallet": "^1.7.5",
     "ethers": "^6.13.5",
     "joi": "^17.13.3",
     "viem": "^2.23.2"
