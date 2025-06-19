@@ -1,5 +1,3 @@
-// Export all adapters
-export * from './openZeppelin/index.js';
+import './openZeppelin/openZeppelin.registration.js';
 
-// Load all registrations
-import './openZeppelin.registration.js';
+export type { IOpenZeppelinAdapterOptionsV1  } from './openZeppelin/adapter.js';

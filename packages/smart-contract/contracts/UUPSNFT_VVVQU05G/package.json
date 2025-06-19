@@ -1,0 +1,7 @@
+{
+  "name": "implementation-compilation-VVVQU05G",
+  "version": "1.0.0",
+  "dependencies": {
+    "@openzeppelin/contracts-upgradeable": "^5.0.0"
+  }
+}

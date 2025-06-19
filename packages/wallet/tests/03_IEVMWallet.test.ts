@@ -31,8 +31,8 @@ export function testEVMWalletInterface(wallet: IEVMWallet, skipConnectivity: boo
         expect(typeof wallet.getTransactionReceipt).toBe('function');
       });
 
-      it('should implement getTokenBalance method', () => {
-        expect(typeof wallet.getTokenBalance).toBe('function');
+      it('should implement callContract method', () => {
+        expect(typeof wallet.callContract).toBe('function');
       });
     });
 
@@ -50,7 +50,7 @@ export function testEVMWalletInterface(wallet: IEVMWallet, skipConnectivity: boo
             accounts = await wallet.getAccounts();
             if (accounts.length === 0) {
               console.warn('No accounts available for EVM functional tests. Trying requestAccounts...');
-              accounts = await wallet.requestAccounts();
+              accounts = await wallet.getAccounts();
             }
             if (accounts.length === 0) {
               console.error('!!! CRITICAL: No accounts found for EVM functional tests. !!!');
@@ -135,7 +135,9 @@ export function testEVMWalletInterface(wallet: IEVMWallet, skipConnectivity: boo
           if (testTokenAddress) {
             console.log(`Attempting to get balance for configured TEST_TOKEN_ADDRESS: ${testTokenAddress}`);
             try {
-              const balance = await wallet.getTokenBalance(testTokenAddress, accounts[0]);
+              // const balance = await wallet.getTokenBalance(testTokenAddress, accounts[0]);
+              const balance = await wallet.callContract(testTokenAddress, accounts[0]);
+
               expect(typeof balance).toBe('string');
               expect(balance).toMatch(/^\d+$/); // Non-negative integer string
               console.log(`Token balance for ${testTokenAddress}: ${balance}`);
@@ -147,7 +149,9 @@ export function testEVMWalletInterface(wallet: IEVMWallet, skipConnectivity: boo
             console.warn('TEST_TOKEN_ADDRESS not set in env. Testing with a deliberately invalid token address.');
             const invalidTokenAddress = `0x${'1'.repeat(40)}`; // An address that's unlikely to be a token
             try {
-              const balance = await wallet.getTokenBalance(invalidTokenAddress, accounts[0]);
+              //const balance = await wallet.getTokenBalance(invalidTokenAddress, accounts[0]);
+              const balance = await wallet.callContract(invalidTokenAddress, accounts[0]);
+
               expect(typeof balance).toBe('string');
               // For an invalid token, the balance should be '0'
               expect(balance).toBe('0');

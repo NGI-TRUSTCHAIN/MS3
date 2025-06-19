@@ -1,11 +1,32 @@
+
+
 /**
- * Base interface for an adapter's own construction arguments, if it needs a specific type
- * distinct from the module factory's arguments.
- * @template SpecificOptionsType - The type of the adapter-specific 'options' object (e.g., IEthersWalletOptionsV1, ILiFiAdapterOptionsV1).
+ * Identity interface that all adapters implement
+ */
+export interface IAdapterIdentity {
+  name: string;
+  version: string;
+}
+
+/**
+ * Lifecycle interface for adapters that need initialization
+ */
+export interface IAdapterLifecycle {
+  initialize(): Promise<void>;
+  isInitialized(): boolean;
+}
+
+/**
+ * Base interface for an adapter's own construction arguments.
+ * @template SpecificOptionsType - The type of the adapter-specific 'options' object.
  */
 export interface AdapterArguments<SpecificOptionsType = Record<string, any>> {
-  adapterName: string;
-  options: SpecificOptionsType; // Can be optional here if some adapters truly have no options
+  /** The unique name of the adapter */
+  name: string;
+  /** The version of the adapter */
+  version: string;
+  /** Adapter-specific configuration options */
+  options: SpecificOptionsType;
 }
 
 /**
@@ -18,7 +39,9 @@ export interface ModuleArguments<
   ModuleOptionsUnion = Record<string, any>
 > {
   /** The unique name of the adapter to be created or configured. */
-  adapterName: string;
+  name: string;
+  
+  version: string;
   /**
    * Adapter-specific configuration options.
    * This field is required for factory functions, and its type is a union of all
@@ -29,14 +52,25 @@ export interface ModuleArguments<
   neededFeature?: FeatureType;
 }
 
+export interface NetworkInfo {
+  chainId: string | number;
+  name?: string;
+  rpcUrl: string; // ✅ Required - the actual RPC being used
+  displayName?: string;
+  blockExplorerUrl?: string;
+  ticker?: string;
+  tickerName?: string;
+}
+
 export interface NetworkConfig {
   chainId: string;
   name: string;
   displayName: string;
   rpcUrls: string[];
-  blockExplorer?: string;
+  blockExplorerUrl?: string;
   ticker?: string;
   tickerName?: string;
   shortName?: string;
   chainSlug?: string;
 }
+

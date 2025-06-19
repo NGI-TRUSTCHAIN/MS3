@@ -13,11 +13,11 @@ export class NetworkHelper {
     private constructor() {
         this.networkCache = {
             // Default entries ensure basic functionality even if API fails
-            ethereum: { chainId: '0x1', name: 'Ethereum Mainnet', rpcUrls: ['https://eth.llamarpc.com', 'https://ethereum-rpc.publicnode.com', 'https://1rpc.io/eth', 'https://cloudflare-eth.com'], blockExplorer: 'https://etherscan.io', ticker: 'ETH', tickerName: 'Ethereum', displayName: 'Ethereum Mainnet' },
-            sepolia: { chainId: '0xaa36a7', name: 'Sepolia Testnet', rpcUrls: ['https://rpc.sepolia.org', 'https://ethereum-sepolia-rpc.publicnode.com', 'https://endpoints.omniatech.io/v1/eth/sepolia/public', 'https://eth-sepolia.public.blastapi.io'], blockExplorer: 'https://sepolia.etherscan.io', ticker: 'ETH', tickerName: 'Ethereum', displayName: 'Sepolia Testnet' },
-            polygon: { chainId: '0x89', name: 'Polygon Mainnet', rpcUrls: ['https://polygon-rpc.com', 'https://polygon.llamarpc.com', 'https://polygon.drpc.org'], blockExplorer: 'https://polygonscan.com', ticker: 'MATIC', tickerName: 'Polygon', displayName: 'Polygon Mainnet' },
-            arbitrum: { chainId: '0xa4b1', name: 'Arbitrum One', rpcUrls: ['https://arb1.arbitrum.io/rpc', 'https://arbitrum.llamarpc.com', 'https://arbitrum-one.public.blastapi.io'], blockExplorer: 'https://arbiscan.io', ticker: 'ETH', tickerName: 'Ethereum', displayName: 'Arbitrum One' },
-            optimism: { chainId: '0xa', name: 'Optimism', rpcUrls: ['https://mainnet.optimism.io', 'https://optimism.llamarpc.com', 'https://optimism.publicnode.com'], blockExplorer: 'https://optimistic.etherscan.io', ticker: 'ETH', tickerName: 'Ethereum', displayName: 'Optimism' },
+            ethereum: { chainId: '0x1', name: 'Ethereum Mainnet', rpcUrls: ['https://eth.llamarpc.com', 'https://ethereum-rpc.publicnode.com', 'https://1rpc.io/eth', 'https://cloudflare-eth.com'], blockExplorerUrl: 'https://etherscan.io', ticker: 'ETH', tickerName: 'Ethereum', displayName: 'Ethereum Mainnet' },
+            sepolia: { chainId: '0xaa36a7', name: 'Sepolia Testnet', rpcUrls: ['https://rpc.sepolia.org', 'https://ethereum-sepolia-rpc.publicnode.com', 'https://endpoints.omniatech.io/v1/eth/sepolia/public', 'https://eth-sepolia.public.blastapi.io'], blockExplorerUrl: 'https://sepolia.etherscan.io', ticker: 'ETH', tickerName: 'Ethereum', displayName: 'Sepolia Testnet' },
+            polygon: { chainId: '0x89', name: 'Polygon Mainnet', rpcUrls: ['https://polygon-rpc.com', 'https://polygon.llamarpc.com', 'https://polygon.drpc.org'], blockExplorerUrl: 'https://polygonscan.com', ticker: 'MATIC', tickerName: 'Polygon', displayName: 'Polygon Mainnet' },
+            arbitrum: { chainId: '0xa4b1', name: 'Arbitrum One', rpcUrls: ['https://arb1.arbitrum.io/rpc', 'https://arbitrum.llamarpc.com', 'https://arbitrum-one.public.blastapi.io'], blockExplorerUrl: 'https://arbiscan.io', ticker: 'ETH', tickerName: 'Ethereum', displayName: 'Arbitrum One' },
+            optimism: { chainId: '0xa', name: 'Optimism', rpcUrls: ['https://mainnet.optimism.io', 'https://optimism.llamarpc.com', 'https://optimism.publicnode.com'], blockExplorerUrl: 'https://optimistic.etherscan.io', ticker: 'ETH', tickerName: 'Ethereum', displayName: 'Optimism' },
         };
         this.isLoadingNetworks = false;
         // Correctly type the initializationPromise
@@ -48,6 +48,7 @@ export class NetworkHelper {
             if (!response.ok) {
                 throw new Error(`Failed to fetch networks: ${response.status} ${response.statusText}`);
             }
+
             const networks = await response.json();
             for (const network of networks) {
                 if (!network.chainId) continue;
@@ -76,7 +77,7 @@ export class NetworkHelper {
                     rpcUrls: filteredRpcUrls, // rpcUrls[0] is the primary
                     ticker: network.nativeCurrency?.symbol || '',
                     tickerName: network.nativeCurrency?.name || '',
-                    blockExplorer: network.explorers?.[0]?.url || '',
+                    blockExplorerUrl: network.explorers?.[0]?.url || '',
                     shortName: network.shortName,
                     chainSlug: network.chainSlug,
                 };
@@ -105,7 +106,7 @@ export class NetworkHelper {
     public static filterValidConfigs(
         configs: Record<string, NetworkConfig | null> | Array<NetworkConfig | null>
     ): Record<string, NetworkConfig> | Array<NetworkConfig> {
-        const isValid = (config: NetworkConfig | null): config is NetworkConfig => 
+        const isValid = (config: NetworkConfig | null): config is NetworkConfig =>
             !!config && !!config.chainId && !!config.rpcUrls && config.rpcUrls.length > 0;
 
         if (Array.isArray(configs)) {
@@ -270,11 +271,31 @@ export class NetworkHelper {
             name: baseConfig.name,
             displayName: baseConfig.displayName || baseConfig.name,
             rpcUrls: orderedRpcUrls,
-            blockExplorer: baseConfig.blockExplorer,
+            blockExplorerUrl: baseConfig.blockExplorerUrl,
             ticker: baseConfig.ticker,
             tickerName: baseConfig.tickerName,
             shortName: baseConfig.shortName,
             chainSlug: baseConfig.chainSlug,
         };
+    }
+
+    /**
+ * Try each URL until one returns a matching chainId within timeout.
+ * @returns the first working RPC, or null if none worked.
+ */
+    public async findFirstWorkingRpc(
+        urls: string[],
+        expectedChainId: string | number,
+        timeoutMs: number = 3000
+    ): Promise<string | null> {
+        for (const url of urls) {
+            try {
+                const ok = await this.testRpcConnection(url, expectedChainId, timeoutMs);
+                if (ok) return url;
+            } catch {
+                // swallow and try next
+            }
+        }
+        return null;
     }
 }

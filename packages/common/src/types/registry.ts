@@ -1,8 +1,14 @@
 import { WalletErrorCode } from "./error.js"; // Assuming WalletErrorCode is in error.ts
 
 export interface ModuleMetadata {
-    name: string;
-    version: string;
+  name: string;
+  version: string;
+}
+
+export enum Ms3Modules {
+  'wallet' = 'wallet',
+  'smartcontract' = 'smart-contract',
+  'crosschain' = 'crosschain'
 }
 
 export interface Requirement {
@@ -19,12 +25,82 @@ export interface Requirement {
   allowUndefined?: boolean;
 }
 
+export enum RuntimeEnvironment {
+  BROWSER = 'browser',
+  SERVER = 'server',
+}
+
+export interface EnvironmentRequirements {
+  supportedEnvironments: RuntimeEnvironment[];
+  securityNotes?: string[];
+  limitations?: string[];
+}
+
+export interface Parameter {
+  name: string;
+  type: string;
+  optional: boolean;
+}
+// Helper types and functions
+export interface MethodSignature {
+  name: string;
+  parameters: Parameter[];
+  returnType: string;
+  isAsync: boolean;
+}
+
 export interface AdapterMetadata {
   name: string;
+  version: string;
   module: string;
   adapterType: string | number;
   adapterClass: any; // Constructor type for the adapter (typically with a static `create` method)
   requirements?: Requirement[];
   errorMap?: Record<string, WalletErrorCode | string>;
+  features?: MethodSignature[];
+  environment?: EnvironmentRequirements;
+}
+
+export interface CompatibilityReport {
+  compatible: boolean;
+  conflicts: CompatibilityConflict[];
+  recommendations: string[];
+  supportedVersions: string[];
+}
+
+export interface CompatibilityConflict {
+  type: 'version' | 'environment' | 'feature' | 'breaking-change';
+  severity: 'error' | 'warning' | 'info';
+  description: string;
+  affectedVersions: string[];
+  suggestedAction?: string;
+}
+
+export interface AdapterRequirements {
+  environment?: RuntimeEnvironment[];
   features?: string[];
+  compatibleWith?: {
+    moduleName: string;
+    adapterName: string;
+    version: string;
+  }[];
+}
+
+export interface CompatibilityMatrix {
+  adapterName: string;
+  version: string;
+  compatibleVersions: string[];
+  breakingChanges: {
+    fromVersion: string;
+    toVersion: string;
+    changes: string[];
+    migrationPath?: string;
+  }[];
+  crossModuleCompatibility: {
+    moduleName: string;
+    compatibleAdapters: {
+      name: string;
+      versions: string[];
+    }[];
+  }[];
 }

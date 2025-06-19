@@ -1,6 +1,9 @@
-// Load all registrations
-import './ethersWallet.registration.js';
-import './web3authWallet.registration.js';
+// Ether.JS registration and compatibility matrix.
+import './ethers/ethersWallet.registration.js';
 
-export type { IEthersWalletOptionsV1  } from './ethersWallet.js';
-export type { IWeb3AuthWalletOptionsV1 } from './web3authWallet.js';
+// Web3Auth registration and compatibility matrix.
+import './web3auth/web3authWallet.registration.js';
+
+// Export Adapter types.
+export type { IEthersWalletOptionsV1  } from './ethers/ethersWallet.js';
+export type { IWeb3AuthWalletOptionsV1 } from './web3auth/web3authWallet.js';

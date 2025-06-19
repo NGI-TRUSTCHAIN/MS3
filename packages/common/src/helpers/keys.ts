@@ -1,4 +1,4 @@
-import { Wallet as EthersWallet, HDNodeWallet, Mnemonic, isHexString } from 'ethers'; // Using ethers v6 style imports
+import { Wallet as EthersWallet, HDNodeWallet, Mnemonic, Wallet, isHexString } from 'ethers'; // Using ethers v6 style imports
 
 /**
  * Defines the contract for private key utility operations.
@@ -134,16 +134,28 @@ export class PrivateKeyHelper implements IPrivateKeyHelper {
     }
 
     /**
-     * Generates a new BIP-39 mnemonic phrase.
-     * @param wordlist - Optional ethers.js Wordlist object. Defaults to English.
-     * @returns A string representing the mnemonic phrase.
-     */
-    public generateMnemonic(wordlist?: any): string { // `any` for now, can be ethers.Wordlist
+    * Generates a new random BIP39 mnemonic phrase.
+    * Uses ethers.Wallet.createRandom() for robust generation.
+    * @returns A randomly generated mnemonic phrase (typically 12 words).
+    * @throws Error if mnemonic generation fails.
+    */
+    public generateMnemonic(): string {
         try {
-            const mnemonic = Mnemonic.fromEntropy(EthersWallet.createRandom().privateKey.slice(2), wordlist); // Use entropy from a random key
-            return mnemonic.phrase;
+            const randomWallet = Wallet.createRandom();
+            if (!randomWallet.mnemonic || !randomWallet.mnemonic.phrase) {
+                // This case should be rare with ethers.Wallet.createRandom()
+                throw new Error("Failed to generate mnemonic phrase from random wallet.");
+            }
+            return randomWallet.mnemonic.phrase;
         } catch (error: any) {
-            throw new Error(`[PrivateKeyHelper.generateMnemonic] Failed: ${error.message}`);
+            // Wrap the error with context for better debugging
+            const wrappedError = new Error(`[PrivateKeyHelper.generateMnemonic] Failed during mnemonic generation: ${error.message}`);
+            // It can be helpful to retain the original error's stack or cause
+            if (error.stack) {
+                (wrappedError as any).stack = error.stack;
+            }
+            (wrappedError as any).cause = error; // Preserve the original error as cause
+            throw wrappedError;
         }
     }
 

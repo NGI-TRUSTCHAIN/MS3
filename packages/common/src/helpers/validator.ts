@@ -7,7 +7,8 @@ import { getPropertyByPath, UniversalRegistry } from '../registry/registry.js';
 
 export interface ValidatorArguments {
   moduleName: string,
-  adapterName: string,
+  name: string,
+  version: string,
   params: ModuleArguments<any, any>, // Generic params object
   adapterInfo: AdapterMetadata,
   registry: UniversalRegistry,
@@ -16,14 +17,14 @@ export interface ValidatorArguments {
 
 export function validateAdapterParameters(args: ValidatorArguments
 ): void {
-  const { moduleName, adapterName, params, adapterInfo, registry, factoryMethodName } = args
+  const { moduleName, name, version, params, adapterInfo, registry, factoryMethodName } = args
   const { neededFeature } = params; // neededFeature here is a string
 
   // Check feature compatibility if specified (neededFeature is a string)
   if (neededFeature && typeof neededFeature === 'string') {
-    if (!registry.supportsFeature(moduleName, adapterName, neededFeature)) {
+    if (!registry.supportsFeature(moduleName, name, version, neededFeature)) {
       throw new AdapterError(
-        `Feature '${neededFeature}' is not supported by adapter '${adapterName}' for module '${moduleName}'.`,
+        `Feature '${neededFeature}' is not supported by adapter '${name}' for module '${moduleName}'.`,
         { 
           methodName: factoryMethodName,
           code: 'FEATURE_NOT_SUPPORTED',
@@ -32,7 +33,7 @@ export function validateAdapterParameters(args: ValidatorArguments
     }
   } else if (neededFeature && !Array.isArray(neededFeature) && typeof neededFeature !== 'string') {
     // Handle cases where neededFeature might be something else unexpected, like an object not an array
-    console.warn(`[validateAdapterParameters] 'neededFeature' for ${adapterName} is of an unexpected type: ${typeof neededFeature}. It should typically be a string.`);
+    console.warn(`[validateAdapterParameters] 'neededFeature' for ${name} is of an unexpected type: ${typeof neededFeature}. It should typically be a string.`);
   }
 
 
@@ -43,7 +44,7 @@ export function validateAdapterParameters(args: ValidatorArguments
 
       if (value === undefined && !req.allowUndefined) {
         const errorMessage =
-          req.message || `Required option '${req.path}' is missing for adapter '${adapterName}'.`;
+          req.message || `Required option '${req.path}' is missing for adapter '${name}'.`;
         throw new AdapterError(errorMessage, {
           methodName: factoryMethodName,
           code: 'MISSING_ADAPTER_REQUIREMENT',
@@ -56,7 +57,7 @@ export function validateAdapterParameters(args: ValidatorArguments
         if (valueType !== req.type) {
           const errorMessage =
             req.message ||
-            `Required option '${req.path}' for adapter '${adapterName}' must be of type '${req.type}', but received '${valueType}'.`;
+            `Required option '${req.path}' for adapter '${name}' must be of type '${req.type}', but received '${valueType}'.`;
           throw new AdapterError(errorMessage, {
             methodName: factoryMethodName,
             code: 'INVALID_ADAPTER_REQUIREMENT_TYPE',

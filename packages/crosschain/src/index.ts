@@ -1,18 +1,17 @@
 import { ICrossChain } from './types/interfaces/index.js';
 import pkgJson from '../package.json' with { type: "json" };
-import { registry, createErrorHandlingProxy, AdapterError, ModuleArguments, validateAdapterParameters, ValidatorArguments } from '@m3s/common';
+import { registry, createErrorHandlingProxy, ModuleArguments, validateAdapterParameters, ValidatorArguments, AdapterError, validateEnvironment, Ms3Modules } from '@m3s/common';
+import { ILiFiAdapterOptionsV1 } from './adapters/index.js';
 
 // Register this module in the registry
-registry.registerModule({ name: 'crosschain', version: pkgJson.version });
-
-// Export main components
-export * from './types/index.js';
+registry.registerModule({ name: Ms3Modules.crosschain, version: pkgJson.version });
 import './adapters/index.js';
-import { ILiFiAdapterOptionsV1 } from './adapters/index.js';
-export { AdapterError };
+
+export * from './types/index.js';
+export * from './helpers/index.js'
 export type { ILiFiAdapterOptionsV1 } from './adapters/index.js';
 
-interface ICrossChainOptions extends ModuleArguments<string, ILiFiAdapterOptionsV1> { }
+export interface ICrossChainOptions extends ModuleArguments<string, ILiFiAdapterOptionsV1> { }
 
 /**
  * Creates a CrossChain module instance with the specified adapter.
@@ -22,18 +21,31 @@ interface ICrossChainOptions extends ModuleArguments<string, ILiFiAdapterOptions
  * @throws Error if the adapter is not found or initialization fails
  */
 export async function createCrossChain<T extends ICrossChain = ICrossChain>(params: ICrossChainOptions): Promise<T> {
-  const { adapterName } = params;
+  const { name, version } = params;
 
   // Validate adapter exists using the registry
-  const adapterInfo = registry.getAdapter('crosschain', adapterName);
+  const adapterInfo = registry.getAdapter(Ms3Modules.crosschain, name, version);
 
   if (!adapterInfo) {
-    throw new Error(`Unknown adapter: ${adapterName}`);
+    // ✅ Improved error message with available versions
+    const availableVersions = registry.getAdapterVersions(Ms3Modules.crosschain, name);
+    const versionsText = availableVersions.length > 0
+      ? ` Available versions: ${availableVersions.join(', ')}`
+      : '';
+    throw new AdapterError(`Adapter '${name}' version '${version}' not found for crosschain module.${versionsText}`);
   }
 
+  // ✅ ADD: Validate environment before creation
+  if (adapterInfo.environment) {
+    console.log(`[CrossChain] Environment requirements for ${name}:`, adapterInfo.environment);
+    validateEnvironment(name, adapterInfo.environment);
+  }
+
+  // ✅ Updated ValidatorArguments
   const validatorArgs: ValidatorArguments = {
-    moduleName: 'crosschain',
-    adapterName,
+    moduleName: Ms3Modules.crosschain,
+    name,
+    version,
     params,
     adapterInfo,
     registry,
@@ -42,24 +54,22 @@ export async function createCrossChain<T extends ICrossChain = ICrossChain>(para
 
   validateAdapterParameters(validatorArgs);
 
-  // Get adapter class directly from registry
   const AdapterClass = adapterInfo.adapterClass;
   if (!AdapterClass || typeof AdapterClass.create !== 'function') {
-    throw new AdapterError(`Adapter class or its static 'create' method is invalid for '${adapterName}'.`);
+    throw new AdapterError(`Adapter class or its static 'create' method is invalid for '${name}'.`);
   }
 
-  // Create adapter instance
   const adapter = await AdapterClass.create(params);
 
   if (!adapter) {
-    throw new Error(`Adapter "${adapterName}" initialization error.`);
+    throw new AdapterError(`Adapter "${name}" initialization error.`);
   }
 
-  // Wrap in error handler and return
+  // ✅ Preserve all error handling and proxy functionality
   return createErrorHandlingProxy(
     adapter,
     adapterInfo.errorMap || {},
     undefined,
-    `CrossChainAdapter(${adapterName})`
+    `CrossChainAdapter(${name})`  // ✅ Updated display name
   ) as T;
 }

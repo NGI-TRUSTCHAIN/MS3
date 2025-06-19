@@ -2,6 +2,7 @@
   "name": "@m3s/common",
   "version": "0.1.1",
   "private": true,
+  "type": "module",
   "description": "Common utilities, types, and registry for M3S packages",
   "license": "MIT",
   "keywords": [
@@ -13,7 +14,7 @@
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-   "exports": {
+  "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
@@ -34,7 +35,8 @@
   "bugs": {
     "url": "https://github.com/your-repo/m3s-package/issues"
   },
-    "dependencies": {
+  "dependencies": {
+    "joi": "^17.13.3"
   },
   "devDependencies": {
     "typescript": "^5.8.2"

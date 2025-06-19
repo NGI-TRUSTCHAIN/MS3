@@ -1,3 +1,7 @@
+import { IEVMWallet } from "@m3s/wallet";
+import { ExecutionStatusEnum } from "../enums/index.js";
+import { IAdapterIdentity, IAdapterLifecycle } from "@m3s/common";
+
 /**
  * Represents an asset on a blockchain
  */
@@ -52,8 +56,11 @@ export interface OperationQuote {
   };
   /** Timestamp (seconds) until the quote expires */
   expiresAt?: number;
-  /** The adapter that generated this quote */
-  adapterName: string;
+   /** The adapter that generated this quote */
+  adapter: {
+    name: string,
+    version: string
+  }
   /** Raw quote data from the adapter, if needed for execution */
   adapterQuote: any; // Use specific type per adapter if possible, but 'any' for interface
   /** Warnings or important notices about this route */
@@ -65,7 +72,7 @@ export interface OperationQuote {
  */
 export interface OperationResult {
   operationId: string;      // Unique ID for this specific execution attempt
-  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'ACTION_REQUIRED' | 'UNKNOWN'; // <<< Added ACTION_REQUIRED, UNKNOWN
+  status: ExecutionStatusEnum,
   sourceTx: { // <<< Structured source tx info
       hash?: string;
       chainId?: string | number;
@@ -83,26 +90,113 @@ export interface OperationResult {
   /** Additional details or context about the current status */
   statusMessage?: string; // <<< Added statusMessage
    /** The adapter that handled this operation */
-  adapterName: string; // <<< Added adapterName
+  adapter: {
+    name: string,
+    version: string
+  }
+}
+
+
+/**
+ * Quote generation capabilities for cross-chain operations
+ */
+interface IQuoteProvider {
+  /**
+   * Get operation quotes for a cross-chain intent
+   */
+  getOperationQuote(intent: OperationIntent): Promise<OperationQuote[]>;
 }
 
 /**
- * Interface for cross-chain operations
+ * Operation execution capabilities for cross-chain transactions
  */
-export interface ICrossChain {
-  // Core methods
-  initialize(config: any): Promise<void>; // <<< Will update later
-  isInitialized(): boolean;
+interface IOperationExecutor {
+  /**
+   * Execute a cross-chain operation
+   */
+  executeOperation(
+    quote: OperationQuote,
+    options: {
+      wallet: IEVMWallet;
+    },
+  ): Promise<OperationResult>;
 
-  // Operation methods - UPDATED
-  getOperationQuote(intent: OperationIntent): Promise<OperationQuote[]>; // <<< Return ARRAY of new OperationQuote
-  executeOperation(quote: OperationQuote): Promise<OperationResult>; // <<< Accept ONE new OperationQuote
+}
+
+/**
+ * Operation monitoring and status tracking capabilities
+ */
+interface IOperationMonitor {
+  /**
+   * Get the current status of an operation
+   */
   getOperationStatus(operationId: string): Promise<OperationResult>;
+  
+  /**
+   * Cancel an ongoing operation
+   */
+  cancelOperation(
+    operationId: string,
+    options: { wallet?: IEVMWallet; reason?: string }
+  ): Promise<OperationResult>;
+  
+  /**
+   * Resume a paused or failed operation
+   */
+  resumeOperation(
+    operationId: string,
+    options: { wallet?: IEVMWallet }
+  ): Promise<OperationResult>;
 
-  // Chain & token methods
-  getSupportedChains(): Promise<{chainId: number|string, name: string}[]>;
-  getSupportedTokens(chainId:  number|string): Promise<ChainAsset[]>;
+  on(event: 'status', listener: (result: OperationResult) => void): this;
+  off(event: 'status', listener: (result: OperationResult) => void): this;
+}
 
-  // Tools & utilities
+/**
+ * Chain and token discovery capabilities
+ */
+interface IChainDiscovery {
+  /**
+   * Get supported blockchain networks
+   */
+  getSupportedChains(): Promise<{chainId: number|string, name: string, symbol: string}[]>;
+  
+  /**
+   * Get supported tokens for a specific chain
+   */
+  getSupportedTokens(chainId: number|string): Promise<ChainAsset[]>;
+}
+
+/**
+ * Gas estimation capabilities for cross-chain operations
+ */
+interface IGasEstimator {
+  /**
+   * Estimate gas costs on the destination chain
+   */
   getGasOnDestination(intent: OperationIntent): Promise<{amount: string, usdValue: string}>;
 }
+
+/**
+ * Maintenance and cleanup capabilities (optional for some adapters)
+ */
+interface IOperationMaintenance {
+  /**
+   * Check for and handle timed-out operations
+   */
+  checkForTimedOutOperations(): Promise<void>;
+}
+
+/**
+ * Complete cross-chain interface - composed of all cross-chain capabilities
+ */
+export interface ICrossChain extends 
+  IAdapterIdentity,
+  IAdapterLifecycle,
+  IQuoteProvider,
+  IOperationExecutor,
+  IOperationMonitor,
+  IChainDiscovery,
+  IGasEstimator,
+  IOperationMaintenance 
+  {}

@@ -15,5 +15,12 @@ export default defineConfig({
       concurrent: false, // For test.concurrent() within a file
       hooks: 'stack',
     },
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/contracts/**', // ✅ Ignore contract compilation directories
+      '**/tmp/**',       // ✅ Ignore temp directories
+      '**/temp/**'       // ✅ Ignore temp directories
+    ]
   }
 });

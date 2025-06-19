@@ -1,12 +1,14 @@
 export enum ExecutionStatusEnum {
     PENDING = 'PENDING',
+    COMPLETED = 'COMPLETED',
     FAILED = 'FAILED',
-    DONE = 'DONE',
     ACTION_REQUIRED = 'ACTION_REQUIRED',
+    UNKNOWN = 'UNKNOWN',
 
     // Not part of the LI.FI API
     IN_PROGRESS = 'IN_PROGRESS',
-    COMPLETED = 'COMPLETED',
+    DONE = 'DONE',
+
 }
 
 export enum CrossChainAdapterType {

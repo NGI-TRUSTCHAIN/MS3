@@ -1,45 +1,38 @@
-import { Provider, Interface, JsonRpcProvider } from "ethers"; // Ensure all needed types are imported
+import { Provider, JsonRpcProvider } from "ethers"; // Ensure all needed types are imported
 import * as fs from "fs/promises";
 import * as path from "path";
-import { IBaseContractHandler, GenerateContractInput, CompileInput, CompiledOutput, DeployInput, DeployedOutput, CallInput } from "../../types/index.js";
+import { IBaseContractHandler, GenerateContractInput, CompileInput, CompiledOutput } from "../../types/index.js";
 import SolidityCompiler from "./compilers/solidityCompiler.js";
 import CodeGenerator from "./generator.js";
-import EvmInteractor from "./interactors/evmInteractor.js";
 import { NetworkConfig } from "@m3s/wallet"
 import { AdapterArguments, AdapterError, SmartContractErrorCode } from "@m3s/common";
 
-export interface IOpenZeppelinAdapterOptionsV1 { // Renamed and using V1 convention
+export interface IOpenZeppelinAdapterOptionsV1 {
     workDir?: string;
     hardhatConfig?: {
         configFileName?: string;
         customSettings?: Record<string, any>;
     };
     preserveOutput?: boolean;
-    providerConfig?: NetworkConfig; // This is good for passing network info
+    providerConfig?: NetworkConfig;
     compilerSettings?: any;
     solcVersion?: string;
 }
 
-interface args extends AdapterArguments<IOpenZeppelinAdapterOptionsV1> { } // Updated to use V1
+interface args extends AdapterArguments<IOpenZeppelinAdapterOptionsV1> { }
 
 export class OpenZeppelinAdapter implements IBaseContractHandler {
+    public readonly name: string;
+    public readonly version: string;
+
     protected initialized: boolean = false;
     private workDir: string;
     private preserveOutput: boolean;
-    private providerConfig?: NetworkConfig; // Store config
-    private defaultProvider?: Provider; // EVM Provider
-    // TODO: Add Starknet Provider?
+    private providerConfig?: NetworkConfig;
+    private defaultProvider?: Provider;
     private generator: CodeGenerator;
-
-    // Compilers.
     private solidityCompiler: SolidityCompiler;
-    // private cairoCompiler: CairoCompiler;
 
-    // Interactors
-    private evmInteractor: EvmInteractor;
-    // private cairoInteractor: CairoInteractor; // Add Cairo interactor instance
-
-    // Configuration specific to helpers
     private solidityCompilerConfig: {
         workDir: string;
         solcVersion: string;
@@ -48,14 +41,16 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
         preserveOutput: boolean;
     };
 
-    private readonly adapterName: string = "openZeppelin"
-
     private constructor(args: args) {
-        const defaultWorkDir = path.join(process.cwd(), 'm3s_contracts');
+
+        const defaultWorkDir = path.join(process.cwd(), 'contracts');
         this.workDir = args.options?.workDir || defaultWorkDir;
         this.preserveOutput = args.options?.preserveOutput ?? false;
         this.providerConfig = args.options?.providerConfig;
-        if (args.adapterName) this.adapterName = args.adapterName
+
+        this.name = args.name;
+        this.version = args.version;
+
 
         // Configuration specific to helpers
         this.solidityCompilerConfig = {
@@ -69,8 +64,6 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
         // Create helper instances
         this.generator = new CodeGenerator();
         this.solidityCompiler = new SolidityCompiler(this.solidityCompilerConfig);
-        // Interactors are initialized in the initialize method after provider setup
-        this.evmInteractor = undefined as any; // Will be initialized in initialize()
 
     }
 
@@ -79,6 +72,7 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
         await adapter.initialize();
         return adapter;
     }
+
 
     async initialize(): Promise<void> {
         if (this.initialized) return;
@@ -112,14 +106,6 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
                 console.log(`[OpenZeppelinAdapter] No suitable RPC URL found in providerConfig for its own default provider.`);
             }
 
-            // TODO: Initialize Starknet Provider if needed for CairoInteractor
-
-            // 3. Initialize EvmInteractor with the providerConfig object
-            // This allows EvmInteractor to set up its own mandatory defaultProvider for reads.
-            this.evmInteractor = new EvmInteractor(this.providerConfig); // <<< Pass the config object
-
-            // this.cairoInteractor = new CairoInteractor(/* Pass Starknet provider/account info here */);
-
             this.initialized = true;
             console.log(`[OpenZeppelinAdapter] Initialized successfully.`);
         } catch (error: any) {
@@ -138,21 +124,26 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
         return this.initialized;
     }
 
-    disconnect(): void {
-        this.initialized = false;
-        this.defaultProvider = undefined; // Clear EVM provider instance
-        // TODO: Disconnect Starknet provider?
-        console.log(`[OpenZeppelinAdapter] Disconnected.`);
-    }
-
-    /**
-       * Public getter for the adapter name.
-       */
-    public getAdapterName(): string {
-        return this.adapterName;
-    }
-
-    // --- Delegate to Internal Helpers ---
+    // // --- Delegate to Internal Helpers ---
+    // async generateContract(input: GenerateContractInput): Promise<string> {
+    //     if (!this.initialized) {
+    //         throw new AdapterError("Adapter not initialized", {
+    //             code: SmartContractErrorCode.AdapterNotInitialized,
+    //             methodName: 'generateContract'
+    //         });
+    //     }
+    //     try {
+    //         return await this.generator.generate(input);
+    //     } catch (error: any) {
+    //         if (error instanceof AdapterError) throw error;
+    //         throw new AdapterError(`Contract generation failed: ${error.message}`, {
+    //             cause: error,
+    //             code: SmartContractErrorCode.MethodCallFailed, // Or a more specific SC_GENERATION_FAILED if added
+    //             methodName: 'generateContract',
+    //             details: { input }
+    //         });
+    //     }
+    // }
 
     async generateContract(input: GenerateContractInput): Promise<string> {
         if (!this.initialized) {
@@ -161,13 +152,39 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
                 methodName: 'generateContract'
             });
         }
+
+        // ✅ FIX: Template-specific validation
+        const { template, options } = input;
+
+        if (template?.includes('erc20') || template?.includes('erc721')) {
+            // ERC20 and ERC721 require both name and symbol
+            if (!options?.name || !options?.symbol) {
+                throw new AdapterError("Contract 'name' and 'symbol' are required for ERC20/ERC721 templates", {
+                    code: SmartContractErrorCode.InvalidInput,
+                    methodName: 'generateContract',
+                    details: { template, providedOptions: options }
+                });
+            }
+        } else if (template?.includes('erc1155')) {
+            // ERC1155 requires name and uri, but NOT symbol
+            if (!options?.name || !options?.uri) {
+                throw new AdapterError("Contract 'name' and 'uri' are required for ERC1155 templates", {
+                    code: SmartContractErrorCode.InvalidInput,
+                    methodName: 'generateContract',
+                    details: { template, providedOptions: options }
+                });
+            }
+        }
+
         try {
-            return await this.generator.generate(input);
+            const code = await this.generator.generate(input);
+            console.log('GENERATED CODE --- generateContract', code)
+            return code
         } catch (error: any) {
             if (error instanceof AdapterError) throw error;
             throw new AdapterError(`Contract generation failed: ${error.message}`, {
                 cause: error,
-                code: SmartContractErrorCode.MethodCallFailed, // Or a more specific SC_GENERATION_FAILED if added
+                code: SmartContractErrorCode.MethodCallFailed,
                 methodName: 'generateContract',
                 details: { input }
             });
@@ -191,36 +208,32 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
                     console.log(`[OpenZeppelinAdapter] Using SolidityCompiler (solc ${this.solidityCompilerConfig.solcVersion})...`);
                     return await this.solidityCompiler.compile(input);
                 case 'cairo':
-                    // throw new Error(`[OpenZeppelinAdapter] Compilation for 'cairo' (Soroban/Rust) is not yet implemented in this adapter.`);
                     throw new AdapterError(`Compilation for 'cairo' is not yet implemented.`, {
-                        code: SmartContractErrorCode.InvalidInput, // Or SC_UNSUPPORTED_LANGUAGE
+                        code: SmartContractErrorCode.InvalidInput,
                         methodName,
                         details: { language: input.language }
                     });
                 case 'stellar':
-                    // throw new Error(`[OpenZeppelinAdapter] Compilation for 'stellar' (Soroban/Rust) is not yet implemented in this adapter.`);
                     throw new AdapterError(`Compilation for 'stellar' is not yet implemented.`, {
-                        code: SmartContractErrorCode.InvalidInput, // Or SC_UNSUPPORTED_LANGUAGE
+                        code: SmartContractErrorCode.InvalidInput,
                         methodName,
                         details: { language: input.language }
                     });
                 case 'stylus':
-                    // throw new Error(`[OpenZeppelinAdapter] Compilation for 'stylus' (Rust) is not yet implemented in this adapter.`);
                     throw new AdapterError(`Compilation for 'stylus' is not yet implemented.`, {
-                        code: SmartContractErrorCode.InvalidInput, // Or SC_UNSUPPORTED_LANGUAGE
+                        code: SmartContractErrorCode.InvalidInput,
                         methodName,
                         details: { language: input.language }
                     });
                 default:
-                    // throw new Error(`[OpenZeppelinAdapter] Compilation not supported for language: ${input.language}`);
                     throw new AdapterError(`Compilation not supported for language: ${input.language}`, {
-                        code: SmartContractErrorCode.InvalidInput, // Or SC_UNSUPPORTED_LANGUAGE
+                        code: SmartContractErrorCode.InvalidInput,
                         methodName,
                         details: { language: input.language }
                     });
             }
         } catch (error: any) {
-            if (error instanceof AdapterError) throw error; // Re-throw if already an AdapterError (e.g., from solidityCompiler)
+            if (error instanceof AdapterError) throw error;
             throw new AdapterError(`Compilation failed: ${error.message}`, {
                 cause: error,
                 code: SmartContractErrorCode.CompilationFailed,
@@ -229,88 +242,4 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
             });
         }
     }
-
-    async deploy(input: DeployInput): Promise<DeployedOutput> {
-        if (!this.initialized) {
-            throw new AdapterError("Adapter not initialized", {
-                code: SmartContractErrorCode.AdapterNotInitialized,
-                methodName: 'deploy'
-            });
-        }
-
-        const language = input.compiledContract.metadata?.language?.toLowerCase();
-        console.log(`[OpenZeppelinAdapter] Routing deploy request for language: ${language}`);
-
-        try {
-            if (language === 'solidity') {
-                if (!this.evmInteractor) {
-                    throw new AdapterError("EVM Interactor not available for deployment.", {
-                        code: SmartContractErrorCode.AdapterNotInitialized, // Or a more specific internal error
-                        methodName: 'deploy'
-                    });
-                }
-                return await this.evmInteractor.deployContract(input);
-            } else {
-                // throw new Error(`Deployment not supported for language: ${language}`);
-                throw new AdapterError(`Deployment not supported for language: ${language || 'unknown'}`, {
-                    code: SmartContractErrorCode.InvalidInput, // Or SC_UNSUPPORTED_LANGUAGE
-                    methodName: 'deploy',
-                    details: { language: language || 'unknown' }
-                });
-            }
-        } catch (error: any) {
-            if (error instanceof AdapterError) throw error; // Re-throw if from evmInteractor
-            throw new AdapterError(`Deployment failed: ${error.message}`, {
-                cause: error,
-                code: SmartContractErrorCode.DeploymentFailed,
-                methodName: 'deploy',
-                details: { contractId: input.compiledContract?.metadata?.contractName }
-            });
-        }
-    }
-
-    async callMethod(input: CallInput): Promise<any> {
-        if (!this.initialized) {
-            throw new AdapterError("Adapter not initialized", {
-                code: SmartContractErrorCode.AdapterNotInitialized,
-                methodName: 'callMethod'
-            });
-        }
-        if (!this.evmInteractor) {
-            throw new AdapterError("EVM Interactor not available for method call.", {
-                code: SmartContractErrorCode.AdapterNotInitialized,
-                methodName: 'callMethod'
-            });
-        }
-
-        try {
-            // Try parsing as EVM ABI
-            new Interface(input.contractInterface); // Throws if not a valid EVM ABI
-            console.log(`[OpenZeppelinAdapter] Routing callMethod request to EvmInteractor (assuming EVM ABI).`);
-            return await this.evmInteractor.callContractMethod(input);
-        } catch (error: any) {
-            if (error instanceof AdapterError) throw error; // Re-throw if from evmInteractor or Interface parsing
-
-            // If error is from `new Interface`, it's likely an ABI issue.
-            if (error.message.toLowerCase().includes('abi') || error.code === 'INVALID_ARGUMENT') {
-                throw new AdapterError(`Invalid contract interface (ABI) provided: ${error.message}`, {
-                    cause: error,
-                    code: SmartContractErrorCode.InvalidAbi,
-                    methodName: 'callMethod',
-                    details: { functionName: input.functionName }
-                });
-            }
-
-            // Fallback for other errors or if it was not an ABI parsing error initially
-            console.warn(`[OpenZeppelinAdapter] callMethod failed. Assuming non-EVM ABI or other issue: ${error.message}`);
-            // throw new Error("Missing interactor for this chain: ", evmAbiError as any)
-            throw new AdapterError(`Method call failed or unsupported interface type: ${error.message}`, {
-                cause: error,
-                code: SmartContractErrorCode.MethodCallFailed, // Or SC_UNSUPPORTED_LANGUAGE if we could determine that
-                methodName: 'callMethod',
-                details: { functionName: input.functionName }
-            });
-        }
-    }
-
 }

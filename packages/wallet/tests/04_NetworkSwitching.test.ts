@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest';
-import { EvmWalletAdapter } from '../src/adapters/ethersWallet.js';
+import { EvmWalletAdapter } from '../src/adapters/ethers/ethersWallet.js';
 import { NetworkHelper, NetworkConfig, PrivateKeyHelper } from '@m3s/common';
 import { getTestPrivateKey } from '../config.js';
 import { WalletEvent } from '@m3s/wallet';
@@ -67,7 +67,8 @@ describe('Network Switching Functionality', () => {
     const privateKeyForAdapter = preConfiguredPrivateKey || generatedPrivateKey;
 
     const wallet = await EvmWalletAdapter.create({
-      adapterName: 'ethers',
+      name: 'ethers',
+      version: '1.0.0',
       options: { privateKey: privateKeyForAdapter }
     });
 
@@ -116,7 +117,9 @@ describe('Network Switching Functionality', () => {
     const privateKeyForAdapter = getTestPrivateKey() || pkHelper.generatePrivateKey();
 
     const wallet = await EvmWalletAdapter.create({
-      adapterName: 'ethers',
+      name: 'ethers',
+      version: '1.0.0',
+
       options: { privateKey: privateKeyForAdapter }
     });
     await wallet.initialize();

@@ -17,10 +17,6 @@ export function testContractHandlerInterface(handler: IBaseContractHandler, skip
       it('should implement isInitialized method', () => {
         expect(typeof handler.isInitialized).toBe('function');
       });
-
-      it('should implement disconnect method', () => {
-        expect(typeof handler.disconnect).toBe('function');
-      });
     });
 
     describe('Contract Generation & Compilation Methods', () => {
@@ -33,15 +29,6 @@ export function testContractHandlerInterface(handler: IBaseContractHandler, skip
       });
     });
 
-    describe('Contract Deployment & Interaction Methods', () => {
-      it('should implement deploy method', () => {
-        expect(typeof handler.deploy).toBe('function');
-      });
-
-      it('should implement callMethod method', () => {
-        expect(typeof handler.callMethod).toBe('function');
-      });
-    });
 
     // Only run functional tests if deployment tests aren't skipped
     if (!skipDeployment) {

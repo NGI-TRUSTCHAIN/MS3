@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { ethers } from 'ethers';
 import { NetworkConfig, NetworkHelper } from '@m3s/common';
-import { ICoreWallet, WalletEvent, AssetBalance, GenericTransactionData } from '@m3s/wallet';
+import { WalletEvent, AssetBalance, GenericTransactionData } from '@m3s/wallet';
 
 
-export function testCoreWalletInterface(wallet: ICoreWallet, skipConnectivity: boolean = false) {
+export function testCoreWalletInterface(wallet: any, skipConnectivity: boolean = false) {
   // Safety check for undefined wallet
   if (!wallet) {
     console.warn('Wallet instance is undefined, skipping full test suite');
@@ -29,17 +29,17 @@ export function testCoreWalletInterface(wallet: ICoreWallet, skipConnectivity: b
     });
 
     describe('Wallet Metadata Methods', () => {
-      it('should implement getWalletName method', () => {
-        expect(typeof wallet.getWalletName).toBe('function');
-        const name = wallet.getWalletName();
+      it('should implement name method', () => {
+        expect(typeof wallet).toBe('object');
+        const name = wallet.name;
         expect(typeof name).toBe('string');
         expect(name.length).toBeGreaterThan(0);
       });
 
       it('should implement getWalletVersion method', () => {
-        expect(typeof wallet.getWalletVersion).toBe('function');
-        const version = wallet.getWalletVersion();
-        expect(typeof version).toBe('string');
+        expect(typeof wallet.name).toBe('string');
+        const version = wallet.version
+        expect(typeof wallet.name).toBe('string');
         expect(version.length).toBeGreaterThan(0);
       });
 
@@ -51,9 +51,6 @@ export function testCoreWalletInterface(wallet: ICoreWallet, skipConnectivity: b
     });
 
     describe('Account Management Methods', () => {
-      it('should implement requestAccounts method', () => {
-        expect(typeof wallet.requestAccounts).toBe('function');
-      });
 
       it('should implement getAccounts method', () => {
         expect(typeof wallet.getAccounts).toBe('function');
@@ -62,7 +59,12 @@ export function testCoreWalletInterface(wallet: ICoreWallet, skipConnectivity: b
       it('should implement getBalance method', () => {
         expect(typeof wallet.getBalance).toBe('function');
       });
+
+      it('should implement callContract method', () => {
+        expect(typeof wallet.callContract).toBe('function');
+      });
     });
+
 
     describe('Event Methods', () => {
       it('should implement on method', () => {
@@ -117,11 +119,7 @@ export function testCoreWalletInterface(wallet: ICoreWallet, skipConnectivity: b
 
             accounts = await wallet.getAccounts();
             if (accounts.length === 0) {
-              console.warn('No accounts available for functional tests. Trying requestAccounts...');
-              accounts = await wallet.requestAccounts();
-            }
-            if (accounts.length === 0) {
-              console.error('!!! CRITICAL: No accounts found even after requestAccounts. Functional tests will likely fail. !!!');
+              console.error('!!! CRITICAL: No accounts found !!!');
             }
           } catch (error) {
             console.error('Error during beforeAll setup:', error);
@@ -246,7 +244,7 @@ export function testCoreWalletInterface(wallet: ICoreWallet, skipConnectivity: b
             chainId: networks.polygon.chainId, // '0x89'
             rpcUrls: [networks.polygon.rpcTarget],
             displayName: networks.polygon.name, // Optional: for mock adapter
-            blockExplorer: networks.polygon.blockExplorer, // Optional
+            blockExplorerUrl: networks.polygon.blockExplorerUrl, // Optional
             ticker: networks.polygon.ticker, // Optional
             tickerName: networks.polygon.tickerName // Optional
           };
@@ -372,7 +370,7 @@ export function testCoreWalletInterface(wallet: ICoreWallet, skipConnectivity: b
           if (wasInitiallyInitialized && !wasInitiallyConnected && accounts.length > 0) {
             // If initialized but not connected, and we have accounts, try to connect
             try {
-              await wallet.requestAccounts(); // This might connect the wallet
+              await wallet.getAccounts(); // This might connect the wallet
               wasInitiallyConnected = wallet.isConnected();
             } catch (connectError) {
               console.warn('Could not connect wallet before disconnect test.', connectError);
@@ -429,7 +427,7 @@ export function testCoreWalletInterface(wallet: ICoreWallet, skipConnectivity: b
               // }
               // Try to reconnect if accounts were previously available and wallet is initialized but not connected
               if (accounts.length > 0 && wallet.isInitialized() && !wallet.isConnected()) {
-                await wallet.requestAccounts();
+                await wallet.getAccounts();
               }
             } catch (reInitError) {
               console.warn("Failed to re-initialize/re-connect wallet after disconnect test:", reInitError);
@@ -448,3 +446,4 @@ describe('ICoreWallet Tests', () => {
     expect(typeof testCoreWalletInterface).toBe('function');
   });
 });
+

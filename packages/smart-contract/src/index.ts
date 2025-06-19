@@ -1,62 +1,70 @@
 import { IBaseContractHandler, SmartContractAdapterOptions } from './types/index.js';
 import pkgJson from '../package.json' with { type: "json" };
-import { registry, AdapterError, createErrorHandlingProxy, ModuleArguments, validateAdapterParameters, ValidatorArguments } from '@m3s/common';
+import { registry, AdapterError, createErrorHandlingProxy, ModuleArguments, validateAdapterParameters, ValidatorArguments, validateEnvironment } from '@m3s/common';
 
 // Register this module in the registry
-registry.registerModule({ name: 'contractHandler', version: pkgJson.version });
-
+registry.registerModule({ name: 'smart-contract', version: pkgJson.version });
 import './adapters/index.js';
-export * from './types/index.js';
-export { AdapterError };
-export type { IOpenZeppelinAdapterOptionsV1 } from './adapters/index.js';
 
-interface IContractOptions extends ModuleArguments<string, SmartContractAdapterOptions>{} 
+export * from './types/index.js';
+export type { IOpenZeppelinAdapterOptionsV1 } from './adapters/index.js';
+export interface IContractOptions extends ModuleArguments<string, SmartContractAdapterOptions> { }
 
 /**
  * Creates and returns a contract handler adapter instance based on the provided configuration.
  */
 export async function createContractHandler<T extends IBaseContractHandler = IBaseContractHandler>(
-    params: IContractOptions
+  params: IContractOptions
 ): Promise<T> {
-  const { adapterName } = params; // 'options' and 'provider' from params are accessed via getPropertyByPath or directly by adapter
+  const { name, version } = params; // 'options' and 'provider' from params are accessed via getPropertyByPath or directly by adapter
 
-  const adapterInfo = registry.getAdapter('contractHandler', adapterName);
+  const adapterInfo = registry.getAdapter('smart-contract', name, version);
 
   if (!adapterInfo) {
-    throw new AdapterError(`Adapter '${adapterName}' not found or not registered for the contractHandler module.`);
+    // ✅ Show available versions in error
+    const availableVersions = registry.getAdapterVersions('smart-contract', name);
+    const versionsText = availableVersions.length > 0
+      ? ` Available versions: ${availableVersions.join(', ')}`
+      : '';
+    throw new AdapterError(`Adapter '${name}' version '${version}' not found for contractHandler module.${versionsText}`);
   }
 
- const validatorArgs: ValidatorArguments = {
+  // ✅ ADD: Validate environment before creation
+  if (adapterInfo.environment) {
+    console.log(`[ContractHandler] Environment requirements for ${name}:`, adapterInfo.environment);
+    validateEnvironment(name, adapterInfo.environment);
+  }
+
+  // ✅ Updated ValidatorArguments with correct parameter names
+  const validatorArgs: ValidatorArguments = {
     moduleName: 'smart-contract',
-    adapterName,
+    name,
+    version,
     params,
     adapterInfo,
     registry,
     factoryMethodName: 'createContractHandler'
   };
 
+
   validateAdapterParameters(validatorArgs);
 
   const AdapterClass = adapterInfo.adapterClass;
   if (!AdapterClass || typeof AdapterClass.create !== 'function') {
-      throw new AdapterError(`Adapter class or its static 'create' method is invalid for '${adapterName}'.`);
+    throw new AdapterError(`Adapter class or its static 'create' method is invalid for '${name}'.`);
   }
 
-  // The 'create' method of adapters like OpenZeppelinAdapter expects IContractOptions (or its specific args type)
-  // The 'provider' parameter from IContractOptions is not explicitly used here for setProvider,
-  // as adapters like OpenZeppelinAdapter handle provider setup internally via options.providerConfig
-  // or expect a wallet with a provider for operations.
   const adapter = await AdapterClass.create(params);
 
   if (!adapter) {
-    throw new AdapterError(`Adapter '${adapterName}' failed to be created.`, { methodName: 'createContractHandler' });
+    throw new AdapterError(`Adapter '${name}' failed to be created.`, { methodName: 'createContractHandler' });
   }
 
-
+  // ✅ Preserve all error handling and proxy functionality
   return createErrorHandlingProxy(
-      adapter,
-      adapterInfo.errorMap || {},
-      undefined,
-      `ContractHandler(${adapterName})`
+    adapter,
+    adapterInfo.errorMap || {},
+    undefined,
+    `ContractHandler(${name})`  // ✅ Updated display name
   ) as T;
 }

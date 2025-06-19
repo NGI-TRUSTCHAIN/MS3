@@ -1,6 +1,7 @@
 // Keep the existing WalletErrorCode
 export enum WalletErrorCode {
     Unknown = 'UNKNOWN',
+    environment = 'ENVIRONMENT_MISMATCH',
     NotImplemented = 'NOT_IMPLEMENTED',
     AdapterNotInitialized = 'ADAPTER_NOT_INITIALIZED',
     WalletNotConnected = 'WALLET_NOT_CONNECTED',
@@ -21,7 +22,8 @@ export enum WalletErrorCode {
     InsufficientFunds = 'INSUFFICIENT_FUNDS',
     TransactionReceiptFailed = 'TRANSACTION_RECEIPT_FAILED',
     TokenBalanceFailed = 'TOKEN_BALANCE_FAILED',
-    SigningFailed = 'INVALID_SIGNATURE'
+    SigningFailed = 'INVALID_SIGNATURE',
+    ContractCallFailed = 'CONTRACT CALL FAILED'
 }
 
 // Define CrossChain Error Codes

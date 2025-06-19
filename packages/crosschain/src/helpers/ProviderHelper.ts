@@ -191,7 +191,7 @@ export class M3SLiFiViemProvider {
                 name: initialNetworkConfig.name || initialNetworkConfig.displayName || `Chain ${initialChainIdNum}`,
                 nativeCurrency: { name: initialNetworkConfig.tickerName || 'Ether', symbol: initialNetworkConfig.ticker || 'ETH', decimals: 18 },
                 rpcUrls: { default: { http: initialNetworkConfig.rpcUrls }, public: { http: initialNetworkConfig.rpcUrls } },
-                blockExplorers: initialNetworkConfig.blockExplorer ? { default: { name: 'Explorer', url: initialNetworkConfig.blockExplorer } } : undefined,
+                blockExplorers: initialNetworkConfig.blockExplorerUrl ? { default: { name: 'Explorer', url: initialNetworkConfig.blockExplorerUrl } } : undefined,
             };
         } else {
             console.log(`[M3SLiFiViemProvider.create] Updating existing Viem chain object for chainId: ${initialChainIdNum}`);
@@ -230,6 +230,16 @@ export class M3SLiFiViemProvider {
             throw new Error;
         }
 
+        // Only one RPC = no more silent retries
+        const rpc = await networkHelper.findFirstWorkingRpc(
+            targetNetworkConfig.rpcUrls,
+            chainId,
+            3000
+        );
+        if (rpc) {
+            targetNetworkConfig.rpcUrls = [rpc];
+        } // else leave the full list so you still see errors
+        
         NetworkHelper.assertConfigIsValid(targetNetworkConfig, `M3SLiFiViemProvider switchChain target (${chainId})`);
 
         let targetViemChain = getViemChain(chainId);
@@ -238,7 +248,7 @@ export class M3SLiFiViemProvider {
                 id: chainId, name: targetNetworkConfig.name || targetNetworkConfig.displayName || `Chain ${chainId}`,
                 nativeCurrency: { name: targetNetworkConfig.tickerName || 'Ether', symbol: targetNetworkConfig.ticker || 'ETH', decimals: 18 },
                 rpcUrls: { default: { http: targetNetworkConfig.rpcUrls }, public: { http: targetNetworkConfig.rpcUrls } },
-                blockExplorers: targetNetworkConfig.blockExplorer ? { default: { name: 'Explorer', url: targetNetworkConfig.blockExplorer } } : undefined,
+                blockExplorers: targetNetworkConfig.blockExplorerUrl ? { default: { name: 'Explorer', url: targetNetworkConfig.blockExplorerUrl } } : undefined,
             };
         } else {
             targetViemChain = {
@@ -251,7 +261,7 @@ export class M3SLiFiViemProvider {
             chainId: targetNetworkConfig.chainId, // hex string
             rpcUrls: targetNetworkConfig.rpcUrls,
             displayName: targetNetworkConfig.displayName,
-            blockExplorer: targetNetworkConfig.blockExplorer,
+            blockExplorerUrl: targetNetworkConfig.blockExplorerUrl,
             ticker: targetNetworkConfig.ticker,
             tickerName: targetNetworkConfig.tickerName,
         };
@@ -272,4 +282,3 @@ export class M3SLiFiViemProvider {
         return this.viemWalletClient;
     }
 }
-
