@@ -1,6 +1,6 @@
 {
   "name": "@m3s/wallet",
-  "version": "1.9.4",
+  "version": "1.9.5",
   "type": "module",
   "description": "A flexible wallet interface supporting multiple blockchain wallet types, including EVM wallets and Web3Auth integration",
   "license": "MIT",
