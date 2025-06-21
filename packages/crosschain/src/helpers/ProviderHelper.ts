@@ -16,7 +16,23 @@ import {
 
 import * as viemChains from 'viem/chains';
 import { EIP712TypedData, GenericTransactionData, IEVMWallet, NetworkConfig } from '@m3s/wallet';
+
 import { NetworkHelper } from '@m3s/common';
+/** Recursively turn every bigint into a string. */
+export function sanitizeBigInts<T>(obj: T): T {
+    if (typeof obj === 'bigint') {
+        return obj.toString() as any;
+    }
+    if (Array.isArray(obj)) {
+        return obj.map(sanitizeBigInts) as any;
+    }
+    if (obj && typeof obj === 'object') {
+        return Object.fromEntries(
+            Object.entries(obj).map(([k, v]) => [k, sanitizeBigInts(v)])
+        ) as any;
+    }
+    return obj;
+}
 
 /**
  * Maps a chain ID (number or hex string) to a Viem Chain object.
@@ -67,7 +83,7 @@ function createM3sViemAccount(wallet: IEVMWallet, address: Address): LocalAccoun
                 options: {
                     chainId: transaction.chainId,
                     nonce: transaction.nonce,
-                    gasLimit: transaction.gas,
+                    gasLimit: transaction.gas?.toString(),
                     gasPrice: transaction.gasPrice?.toString(),
                     maxFeePerGas: transaction.maxFeePerGas?.toString(),
                     maxPriorityFeePerGas: transaction.maxPriorityFeePerGas?.toString(),
@@ -92,8 +108,12 @@ function createM3sViemAccount(wallet: IEVMWallet, address: Address): LocalAccoun
         >(
             parameters: TypedDataDefinition<TTypedData, TPrimaryType>
         ): Promise<Hex> {
-            console.log("[ProviderHelper:ViemAccount] Delegating signTypedData to M3S wallet with Viem parameters:", JSON.stringify(parameters, null, 2));
+            
+            console.log("[ProviderHelper:ViemAccount] Mapped M3S EIP712TypedData payload:",
+                JSON.stringify(parameters, (_k, v) => typeof v === 'bigint' ? v.toString() : v, 2)
+            );
 
+            console.log("[ProviderHelper:ViemAccount] EVM original wallet", wallet)
 
             if (!wallet || typeof wallet.signTypedData !== 'function') {
                 console.error("[ProviderHelper:ViemAccount] M3S wallet or wallet.signTypedData is not available/valid.");
@@ -124,7 +144,8 @@ function createM3sViemAccount(wallet: IEVMWallet, address: Address): LocalAccoun
                 types: otherTypes as unknown as EIP712TypedData['types'], // otherTypes now correctly excludes EIP712Domain
                 value: parameters.message as EIP712TypedData['value'],
             };
-            console.log("[ProviderHelper:ViemAccount] Mapped M3S EIP712TypedData payload:", JSON.stringify(m3sPayload, null, 2));
+
+            // console.log("[ProviderHelper:ViemAccount] Mapped M3S EIP712TypedData payload:", JSON.stringify(m3sPayload, null, 2));
 
             try {
                 const signature = await wallet.signTypedData(m3sPayload);
@@ -143,18 +164,20 @@ export class M3SLiFiViemProvider {
     private viemAccount: LocalAccount<'custom', Address>;
     public viemWalletClient: WalletClient;
     public readonly address: Address;
+    private preferredRpcUrls?: string[];
 
     private constructor(
         m3sWallet: IEVMWallet,
         initialAccountAddress: Address,
         initialViemChain: Chain,
-        initialRpcUrls: string[]
+        initialRpcUrls: string[],
+        preferredRpcUrls?: string[]
     ) {
         this.m3sWallet = m3sWallet;
         this.address = initialAccountAddress;
         // Pass the m3sWallet instance to createM3sViemAccount
         this.viemAccount = createM3sViemAccount(this.m3sWallet, this.address);
-
+        this.preferredRpcUrls = preferredRpcUrls;
         this.viemWalletClient = createWalletClient({
             account: this.viemAccount,
             chain: initialViemChain,
@@ -165,7 +188,8 @@ export class M3SLiFiViemProvider {
 
     static async create(
         m3sWallet: IEVMWallet,
-        initialNetworkConfig: NetworkConfig
+        initialNetworkConfig: NetworkConfig,
+        preferredRpcUrls?: string[]
     ): Promise<M3SLiFiViemProvider> {
         if (!m3sWallet.isInitialized()) {
             throw new Error("M3S Wallet must be initialized before creating M3SLiFiViemProvider.");
@@ -204,7 +228,7 @@ export class M3SLiFiViemProvider {
         console.log(`[M3SLiFiViemProvider.create] Using initial RPCs:`, initialNetworkConfig.rpcUrls);
 
 
-        return new M3SLiFiViemProvider(m3sWallet, accountAddress, initialViemChain, initialNetworkConfig.rpcUrls);
+        return new M3SLiFiViemProvider(m3sWallet, accountAddress, initialViemChain, initialNetworkConfig.rpcUrls, preferredRpcUrls);
     }
 
     public async getWalletClient(): Promise<WalletClient> {
@@ -222,24 +246,21 @@ export class M3SLiFiViemProvider {
 
         const networkHelper = NetworkHelper.getInstance();
         await networkHelper.ensureInitialized();
-        // Ensure chainId is passed as number or string as getNetworkConfig expects
-        const targetNetworkConfig = await networkHelper.getNetworkConfig(chainId);
 
-        if (!targetNetworkConfig === null || !targetNetworkConfig) {
-            console.error('targetNetworkConfig error :', targetNetworkConfig)
-            throw new Error;
+        // ✅ CORE FIX: Use the stored map to find the preferred RPC for the *target* chain.
+        const chainIdHex = `0x${chainId.toString(16)}`;
+        const preferredRpcForTargetChain = this.preferredRpcUrls?.[chainIdHex as any];
+
+        const targetNetworkConfig = await networkHelper.getNetworkConfig(
+            chainId,
+            // Pass the looked-up preferred RPC to get a prioritized list.
+            preferredRpcForTargetChain ? [preferredRpcForTargetChain] : []
+        );
+
+        if (!targetNetworkConfig) {
+            throw new Error(`Could not get network config for chainId: ${chainId}`);
         }
 
-        // Only one RPC = no more silent retries
-        const rpc = await networkHelper.findFirstWorkingRpc(
-            targetNetworkConfig.rpcUrls,
-            chainId,
-            3000
-        );
-        if (rpc) {
-            targetNetworkConfig.rpcUrls = [rpc];
-        } // else leave the full list so you still see errors
-        
         NetworkHelper.assertConfigIsValid(targetNetworkConfig, `M3SLiFiViemProvider switchChain target (${chainId})`);
 
         let targetViemChain = getViemChain(chainId);

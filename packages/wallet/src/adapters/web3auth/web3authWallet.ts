@@ -666,28 +666,19 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
   /***************************/
 
   private parseValueToWei(value: string | number | bigint): string {
-    if (!value || value === '0') return '0';
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
+    const str = String(value).trim();
+    if (!str || str === '0') return '0';
 
     try {
-      if (typeof value === 'bigint') return value.toString();
-      if (typeof value === 'number') value = value.toString();
-
-      // ✅ FIX: Better decimal detection
-      if (typeof value === 'string' && value.includes('.')) {
-        return ethers.parseEther(value).toString();
-      }
-
-      // ✅ FIX: Better small number detection
-      const numValue = parseFloat(value as string);
-      if (numValue < 1000 && !value.toString().includes('e')) { // Avoid scientific notation
-        return ethers.parseEther(value as string).toString();
-      }
-
-      return value.toString();
-    } catch (error) {
+      return ethers.parseUnits(str, 18).toString();
+    } catch (err: any) {
       throw new AdapterError(`Invalid value format: ${value}`, {
+        methodName: 'parseValueToWei',
         code: WalletErrorCode.InvalidInput,
-        methodName: 'parseValueToWei'
+        cause: err
       });
     }
   }

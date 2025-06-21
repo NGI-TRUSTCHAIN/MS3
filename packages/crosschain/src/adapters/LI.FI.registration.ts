@@ -18,7 +18,8 @@ export const lifiOptionsSchema = Joi.object({
     defaultSlippage: Joi.number().min(0).max(1).default(0.03).description('Default slippage tolerance (3%)'),
     maxSlippage: Joi.number().min(0).max(1).default(0.1).description('Maximum allowed slippage (10%)')
   }).optional().description('Slippage tolerance configuration'),
-  wallet: Joi.any().optional().description('Wallet adapter instance for transaction execution')
+  wallet: Joi.any().optional().description('Wallet adapter instance for transaction execution'),
+  rpcOverrides: Joi.any().optional().description('rpcOverrides')
 });
 
 

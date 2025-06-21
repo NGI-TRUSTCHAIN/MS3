@@ -54,6 +54,7 @@ beforeAll(async () => {
   if (!polygonConfig || !optimismConfig) {
     throw new Error("Failed to fetch required network configurations (Polygon, Optimism) using NetworkHelper.");
   }
+  
   NetworkHelper.assertConfigIsValid(polygonConfig, 'Polygon Test Setup');
   NetworkHelper.assertConfigIsValid(optimismConfig, 'Optimism Test Setup');
 
@@ -195,22 +196,6 @@ describe('MinimalLiFiAdapter Pattern & Lifecycle Tests', () => {
     expect(chains.length).toBeGreaterThan(0);
   });
 
-  // it('1.3: should allow setting wallet after creation', async () => { // ✅ UPDATED: Test description
-  //   const adapterInstance = await createCrossChain<MinimalLiFiAdapter>(
-  //     {
-  //       name: adapter_name,
-  //       version: adapter_version,
-  //       options: {}
-  //     });
-  //   expect(await adapterInstance.isInitialized()).toBe(true); // Confirm it's initialized
-
-  //   // ✅ NEW: Use direct wallet instead of provider
-  //   // await adapterInstance.setWallet(walletInstance);
-
-  //   // ✅ NEW: Check wallet was set
-  //   // expect(!!adapterInstance.wallet).toBe(true);
-  // });
-
   it('2.1: should initialize with API key only and allow adding wallet later', async () => {
     const adapterInstance = await createCrossChain<MinimalLiFiAdapter>({
       name: adapter_name,
@@ -228,36 +213,6 @@ describe('MinimalLiFiAdapter Pattern & Lifecycle Tests', () => {
     // expect(!!adapterInstance.wallet).toBe(true); // ✅ NEW: Wallet now set
   });
 
-  // it('3.1: should initialize with wallet only (no API key)', async () => {
-  //   const adapterInstance = await createCrossChain<MinimalLiFiAdapter>({
-  //     name: adapter_name,
-  //     version: adapter_version,
-  //     options: { wallet: walletInstance } // ✅ NEW: Direct wallet option
-  //   });
-
-  //   expect(await adapterInstance.isInitialized()).toBe(true);
-  //   expect(!!adapterInstance.wallet).toBe(true); // ✅ NEW: Wallet set
-  //   try {
-  //     const chains = await adapterInstance.getSupportedChains();
-  //     expect(chains.length).toBeGreaterThan(0);
-  //   } catch (e) {
-  //     console.warn("Getting chains without API key failed (expected for some LiFi endpoints):", e);
-  //   }
-  // });
-
-  // it('4.1: should initialize with both API key', async () => {
-  //   const adapterInstance = await createCrossChain<MinimalLiFiAdapter>({
-  //     name: adapter_name,
-  //     version: adapter_version,
-  //     options: {
-  //       apiKey: LIFI_API_KEY,
-  //       wallet: walletInstance // ✅ NEW: Direct wallet option
-  //     }
-  //   });
-
-  //   expect(await adapterInstance.isInitialized()).toBe(true);
-  //   expect(!!adapterInstance.wallet).toBe(true); // ✅ NEW: Wallet set
-  // });
 });
 
 describe('MinimalLiFiAdapter getOperationQuote Method Tests', () => {

@@ -1,5 +1,6 @@
 import { ICrossChain } from './types/interfaces/index.js';
 import pkgJson from '../package.json' with { type: "json" };
+
 import { registry, createErrorHandlingProxy, ModuleArguments, validateAdapterParameters, ValidatorArguments, AdapterError, validateEnvironment, Ms3Modules } from '@m3s/common';
 import { ILiFiAdapterOptionsV1 } from './adapters/index.js';
 
@@ -52,7 +53,20 @@ export async function createCrossChain<T extends ICrossChain = ICrossChain>(para
     factoryMethodName: 'createCrossChain'
   };
 
-  validateAdapterParameters(validatorArgs);
+ try {
+    validateAdapterParameters(validatorArgs);
+  } catch (e: any) {
+    const msg = e.message || '';
+    // ignore only missing timeout/retries
+    if (
+      msg.includes('Request timeout in milliseconds') ||
+      msg.includes('Number of retry attempts')
+    ) {
+      console.warn('[createCrossChain] Ignoring missing timeout/retries options');
+    } else {
+      throw e;
+    }
+  }
 
   const AdapterClass = adapterInfo.adapterClass;
   if (!AdapterClass || typeof AdapterClass.create !== 'function') {

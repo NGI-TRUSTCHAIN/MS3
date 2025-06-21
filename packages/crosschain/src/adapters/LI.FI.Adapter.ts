@@ -1,5 +1,5 @@
 import { AdapterArguments, AdapterError, CrossChainErrorCode, NetworkHelper } from '@m3s/common';
-import { M3SLiFiViemProvider } from '../helpers/ProviderHelper.js';
+import { M3SLiFiViemProvider, sanitizeBigInts } from '../helpers/ProviderHelper.js';
 import {
   ICrossChain,
   OperationIntent,
@@ -36,6 +36,7 @@ import { EventEmitter } from 'eventemitter3';
 export interface ILiFiAdapterOptionsV1 {
   wallet?: IEVMWallet;
   apiKey?: string;
+  rpcOverrides?: Record<string, string[]>;
 }
 
 interface args extends AdapterArguments<ILiFiAdapterOptionsV1> { }
@@ -212,138 +213,6 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
     }
   }
 
-  // async executeOperation(
-  //   quote: OperationQuote,
-  //   options: {
-  //     wallet: IEVMWallet;
-  //     onStatusUpdate?: (route: RouteExtended) => void;
-  //   }
-  // ): Promise<OperationResult> {
-  //   if (!this.initialized) {
-  //     throw new AdapterError(`Initialization failed for MinimalLiFiAdapter`, {
-  //       code: CrossChainErrorCode.AdapterNotInitialized,
-  //       methodName: 'executeOperation',
-  //     });
-  //   }
-
-  //   // ✅ Check wallet first
-  //   if (!options?.wallet) {
-  //     throw new AdapterError("Execution provider not set. Cannot execute operation.", {
-  //       code: CrossChainErrorCode.ProviderSetFailed,
-  //       methodName: 'executeOperation',
-  //     });
-  //   }
-
-  //   // Then validate quote...
-  //   const step = quote.adapterQuote as LiFiStep | undefined;
-  //   if (!step?.id || !step.action || !step.estimate) {
-  //     throw new AdapterError("Invalid or incomplete quote provided for execution.", {
-  //       code: CrossChainErrorCode.InvalidInput,
-  //       methodName: 'performExecution',
-  //       details: { quoteId: quote?.id, hasRoute: !!quote?.intent }
-  //     });
-  //   }
-
-  //   // ✅ Create provider on-demand
-  //   const tempProvider = await this.createTemporaryViemProvider(options.wallet);
-
-  //   // Configure SDK with temporary provider
-  //   this._updateLifiSdkConfig(tempProvider);
-
-  //   // Execute and return
-  //   return this.performExecution(quote, options.onStatusUpdate);
-  // }
-
-  // private async performExecution(
-  //   quote: OperationQuote,
-  //   onStatusUpdate?: (route: RouteExtended) => void
-  // ): Promise<OperationResult> {
-  //   if (!this.initialized) {
-  //     throw new AdapterError(`Initialization failed for MinimalLiFiAdapter`, {
-  //       code: CrossChainErrorCode.AdapterNotInitialized,
-  //       methodName: 'performExecution',
-  //     });
-  //   }
-
-  //   const step = quote.adapterQuote as LiFiStep | undefined;
-  //   if (!step?.id || !step.action || !step.estimate) {
-  //     throw new AdapterError("Invalid or incomplete quote provided for execution.", {
-  //       code: CrossChainErrorCode.InvalidInput,
-  //       methodName: 'performExecution',
-  //       details: { quoteId: quote?.id, hasRoute: !!quote?.intent }
-  //     });
-  //   }
-
-  //   try {
-  //     const route = await convertQuoteToRoute(step);
-  //     try {
-  //       await executeRoute(route, { updateRouteHook: onStatusUpdate });
-  //     } catch (err: any) {
-  //       console.error('[MinimalLiFiAdapter] execution failed:', err);
-  //       if (onStatusUpdate) {
-  //         const now = Date.now();
-  //         const failedRoute = route as RouteExtended;
-
-  //         // Mark every step as FAILED
-  //         failedRoute.steps = failedRoute.steps.map((s: LiFiStepExtended) => {
-  //           const exec: any = s.execution || ({} as LiFiStepExtended['execution']);
-  //           const baseProc = Array.isArray(exec.process) && exec.process[0]
-  //             ? exec.process[0]
-  //             : ({} as Process);
-
-  //           // override only process.status—leave other props intact
-  //           const failedProc: Process = {
-  //             ...baseProc,
-  //             status: 'FAILED',
-  //             startedAt: baseProc.startedAt ?? now,
-  //             doneAt: now,
-  //             error: {
-  //               code: baseProc.error?.code ?? 'UNKNOWN',
-  //               message: err.message ?? 'Unknown error'
-  //             }
-  //           };
-
-  //           return {
-  //             ...s,
-  //             execution: {
-  //               ...exec,
-  //               status: 'FAILED',
-  //               startedAt: exec.startedAt ?? now,
-  //               endedAt: now,
-  //               process: [failedProc],
-  //               fromAmount: exec.fromAmount,
-  //               toAmount: exec.toAmount,
-  //               feeCosts: exec.feeCosts,
-  //               gasCosts: exec.gasCosts
-  //             }
-  //           };
-  //         });
-
-  //         onStatusUpdate(failedRoute);
-  //       }
-  //     }
-  //     return {
-  //       operationId: route.id,
-  //       status: ExecutionStatusEnum.PENDING,
-  //       statusMessage: 'Execution initiated via LI.FI SDK.',
-  //       adapter: { name: this.name, version: this.version },
-  //       sourceTx: { chainId: quote.intent.sourceAsset.chainId },
-  //       destinationTx: { chainId: quote.intent.destinationAsset.chainId }
-  //     };
-  //   } catch (error: any) {
-  //     console.error("[MinimalLiFiAdapter] Error executing operation:", error);
-  //     return {
-  //       operationId: step.id!,
-  //       status: ExecutionStatusEnum.FAILED,
-  //       statusMessage: `Execution failed: ${error.message}`,
-  //       adapter: { name: this.name, version: this.version },
-  //       sourceTx: { chainId: quote.intent.sourceAsset.chainId },
-  //       destinationTx: { chainId: quote.intent.destinationAsset.chainId },
-  //       error: error.message
-  //     };
-  //   }
-  // }
-
   async executeOperation(
     quote: OperationQuote,
     options: { wallet: IEVMWallet }
@@ -358,6 +227,14 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
     if (!options?.wallet) {
       throw new AdapterError("Execution provider not set. Cannot execute operation.", {
         code: CrossChainErrorCode.ProviderSetFailed,
+        methodName: 'executeOperation'
+      });
+    }
+
+    const step = quote.adapterQuote as LiFiStep | undefined;
+    if (!step?.id || !step.action || !step.estimate) {
+      throw new AdapterError("Invalid or incomplete quote provided for execution.", {
+        code: CrossChainErrorCode.InvalidInput,
         methodName: 'executeOperation'
       });
     }
@@ -377,22 +254,27 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
     this.emit('status', pending);
 
     try {
-      const route = await convertQuoteToRoute(quote.adapterQuote as LiFiStep);
+      // 1) convert the quote → route
+      const rawRoute = await convertQuoteToRoute(quote.adapterQuote as LiFiStep);
+
+      // 2) sanitize all BigInts before any JSON or SDK call
+      const route = sanitizeBigInts(rawRoute);
+
+      // 3) execute without extra JSON cloning
       await executeRoute(route, {
-        updateRouteHook: r => {
-          // 2) intermediate updates
-          const upd = this.translateRouteToStatus(r);
+        ...options,
+        updateRouteHook: (r: RouteExtended) => {
+          // re‐sanitize each update (LiFi will still deliver BigInts internally)
+          const cleanRoute = sanitizeBigInts(r);
+          const upd = this.translateRouteToStatus(cleanRoute);
           this.emit('status', upd);
         }
       });
-      // 3) final COMPLETED
-      // add these two lines:
-      console.log("[MinimalLiFiAdapter] executeRoute finished, emitting COMPLETED", route);
-      const completed = this.translateRouteToStatus(route);
-      this.emit("status", completed);
-      console.log("[MinimalLiFiAdapter] COMPLETED emitted", completed);
 
     } catch (err: any) {
+      
+      console.log('ERROR HAPPENING--->', JSON.parse(JSON.stringify(err)), err)
+      
       // 4) final FAILED
       const failed: OperationResult = {
         operationId: quote.id,
@@ -414,42 +296,35 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
     getWalletClient: () => Promise<WalletClient>;
     switchChain: (chainId: number) => Promise<WalletClient>;
   }> {
-    // Get the current network from wallet (just for chainId)
-    const currentNetwork = await wallet.getNetwork();
-
-    // Use NetworkHelper to get fresh, working network configuration
+    const current = await wallet.getNetwork();
     const networkHelper = NetworkHelper.getInstance();
     await networkHelper.ensureInitialized();
 
-    const networkConfig = await networkHelper.getNetworkConfig(currentNetwork.chainId);
+    // grab the array for THIS chain (or empty[])
+    const overrides = this.args.options?.rpcOverrides?.[String(current.chainId)] ?? [];
+
+    const networkConfig = await networkHelper.getNetworkConfig(
+      current.chainId,
+      overrides  // try these first, then fall back automatically
+    );
 
     if (!networkConfig) {
-      throw new AdapterError(`Failed to get network configuration for chain ${currentNetwork.chainId}`, {
-        code: CrossChainErrorCode.UnsupportedChain,
-        methodName: 'createTemporaryViemProvider'
-      });
+      throw new AdapterError(
+        `No RPC available for chain ${current.chainId}`,
+        { code: CrossChainErrorCode.UnsupportedChain, methodName: 'createTemporaryViemProvider' }
+      );
     }
 
-    // ONLY THE PRIMARY RPC.
-    const working = await networkHelper.findFirstWorkingRpc(
-      networkConfig.rpcUrls,
-      currentNetwork.chainId,
-      3000
+    // pass the SAME array into the provider so it can re-use on switchChain
+    const viemProv = await M3SLiFiViemProvider.create(
+      wallet,
+      networkConfig,
+      overrides
     );
-    if (!working) {
-      console.warn(`[MinimalLiFiAdapter] No working RPC found for chain ${currentNetwork.chainId}`);
-      // fallback to original list so errors bubble rather than silent no-ops
-      networkConfig.rpcUrls = [...networkConfig.rpcUrls];
-    } else {
-      networkConfig.rpcUrls = [working];
-    }
-
-    // Create M3SLiFiViemProvider with fresh network config from NetworkHelper
-    const viemProvider = await M3SLiFiViemProvider.create(wallet, networkConfig);
 
     return {
-      getWalletClient: () => viemProvider.getWalletClient(),
-      switchChain: (chainId: number) => viemProvider.switchChain(chainId)
+      getWalletClient: () => viemProv.getWalletClient(),
+      switchChain: (chainId: number) => viemProv.switchChain(chainId),
     };
   }
 
@@ -557,6 +432,7 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
   }
 
   private translateRouteToStatus(route: RouteExtended): OperationResult {
+
     const overallStatus = this.deriveOverallStatus(route);
     let error: string | undefined;
     let statusMessage: string = `Status: ${overallStatus}`;
@@ -567,10 +443,21 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
     let sourceTxExplorerUrl: string | undefined;
     let destTxHash: string | undefined;
     let destTxExplorerUrl: string | undefined;
+    let safeRoute: RouteExtended;
 
+    try {
+      safeRoute = JSON.parse(
+        JSON.stringify(route, (_key, val) =>
+          typeof val === 'bigint' ? val.toString() : val
+        )
+      );
+    } catch {
+      // If serialization fails, work with original route but be careful
+      safeRoute = route;
+    }
     // Extract source transaction (first step)
-    if (route.steps[0]?.execution?.process) {
-      for (const process of route.steps[0].execution.process) {
+    if (safeRoute.steps[0]?.execution?.process) {
+      for (const process of safeRoute.steps[0].execution.process) {
         if (process.txHash) {
           sourceTxHash = process.txHash;
           sourceTxExplorerUrl = process.txLink;
@@ -580,22 +467,22 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
     }
 
     // Extract destination transaction (last step)
-    const lastStep = route.steps[route.steps.length - 1];
+    const lastStep = safeRoute.steps[safeRoute.steps.length - 1];
     if (lastStep?.execution?.process) {
       // Look for destination transaction (not source)
       for (const process of lastStep.execution.process.reverse()) {
-        if (process.txHash && process.chainId === route.toChainId) {
+        if (process.txHash && process.chainId === safeRoute.toChainId) {
           destTxHash = process.txHash;
           destTxExplorerUrl = process.txLink;
           break;
         }
       }
-      receivedAmount = (lastStep.execution as Execution)?.toAmount || route.toAmount;
+      receivedAmount = (lastStep.execution as Execution)?.toAmount || safeRoute.toAmount;
     }
 
     // Set appropriate status messages
     if (overallStatus === 'FAILED') {
-      const failedStep = route.steps.find(step =>
+      const failedStep = safeRoute.steps.find(step =>
         this.mapLifiStatus(step.execution?.status) === 'FAILED'
       );
       error = failedStep?.execution?.process?.find(p => p.status === 'FAILED')?.error?.message || 'Unknown error in failed step';
@@ -606,27 +493,27 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
       statusMessage = 'Action required by user (check wallet).';
     } else if (overallStatus === 'PENDING') {
       // More specific pending messages
-      const executingSteps = route.steps.filter(s =>
+      const executingSteps = safeRoute.steps.filter(s =>
         s.execution && ['PENDING', 'STARTED'].includes(s.execution.status || '')
       );
       if (executingSteps.length > 0) {
-        statusMessage = `Processing step ${executingSteps.length}/${route.steps.length}...`;
+        statusMessage = `Processing step ${executingSteps.length}/${safeRoute.steps.length}...`;
       } else {
         statusMessage = 'Operation in progress...';
       }
     }
 
     return {
-      operationId: route.id,
+      operationId: safeRoute.id,
       status: overallStatus,
       sourceTx: {
         hash: sourceTxHash,
-        chainId: route.fromChainId,
+        chainId: safeRoute.fromChainId,
         explorerUrl: sourceTxExplorerUrl
       },
       destinationTx: {
         hash: destTxHash,
-        chainId: route.toChainId,
+        chainId: safeRoute.toChainId,
         explorerUrl: destTxExplorerUrl
       },
       receivedAmount,

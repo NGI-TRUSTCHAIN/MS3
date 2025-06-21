@@ -149,7 +149,7 @@ export interface NetworkConfig {
 }
 
 export interface EstimatedFeeData {
-  gasLimit: bigint;
+  gasLimit: bigint | string;
   gasPrice?: string; // For legacy transactions
   maxFeePerGas?: string; // For EIP-1559 transactions
   maxPriorityFeePerGas?: string; // For EIP-1559 transactions
