@@ -70,6 +70,11 @@ export async function createWallet<T extends ICoreWallet = ICoreWallet>(params: 
     // ✅ Preserve all error handling and proxy functionality
     return createErrorHandlingProxy(adapter, adapterInfo.errorMap || {}, undefined, `WalletAdapter(${name})`) as T;
   } catch (error) {
+     if (error instanceof AdapterError) {
+      // Re-throw the original AdapterError to preserve its code and details.
+      throw error;
+    }
+    // For other types of errors, wrap them in a generic AdapterError.
     throw new AdapterError(`Adapter '${name}' failed to be created: ${error}`);
   }
 }

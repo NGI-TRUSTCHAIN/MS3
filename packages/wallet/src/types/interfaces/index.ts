@@ -60,6 +60,18 @@ interface ITransactionHandler {
   getTransactionReceipt(txHash: string): Promise<ethers.TransactionReceipt | null>;
 }
 
+interface IRPCHandler {  
+  /**
+   * Get ALL configured RPC URLs for ALL chains
+   */
+  getAllChainRpcs(): Record<string, string[]>;
+
+  /**
+   * Update ALL RPC configurations at once
+   */
+  updateAllChainRpcs(multiChainRpcs: Record<string, string[]>): Promise<void>;
+}
+
 /**
  * Core wallet interface - only essential wallet operations
  */
@@ -88,6 +100,7 @@ export interface IEVMWallet extends
   ITypedDataSigner,
   IGasEstimation,
   ITokenOperations,
+  IRPCHandler,
   ITransactionStatus {
       callContract(to: string, data: string): Promise<string>;
   }

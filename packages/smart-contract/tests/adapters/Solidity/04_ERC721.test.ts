@@ -2,7 +2,7 @@ import { describe, beforeEach, it, expect } from 'vitest';
 import { createContractHandler } from '../../../src/index.js';
 import { CompiledOutput, GenerateContractInput, IBaseContractHandler } from '../../../src/types/index.js';
 import { ethers } from 'ethers';
-import { TEST_PRIVATE_KEY, RUN_INTEGRATION_TESTS, INFURA_API_KEY } from '../../../config.js';
+import { TEST_PRIVATE_KEY, RUN_INTEGRATION_TESTS, INFURA_API_KEY, ALCHEMY_API_KEY } from '../../../config.js';
 import { createWallet, IEVMWallet } from '@m3s/wallet';
 import { NetworkHelper } from '@m3s/common';
 
@@ -290,12 +290,12 @@ describe('ERC721 Options Tests', () => {
     const networkHelper = NetworkHelper.getInstance();
     await networkHelper.ensureInitialized();
 
-    const testNetworkName = 'sepolia';
+    const testNetworkName = 'holesky';
 
     if (!INFURA_API_KEY) {
       throw new Error("INFURA_API_KEY is not set in config.js. Cannot run integration tests that require a specific RPC.");
     }
-    const preferredRpcUrl = `https://sepolia.infura.io/v3/${INFURA_API_KEY}`;
+    const preferredRpcUrl = `https://eth-holesky.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
 
     const networkConfig = await networkHelper.getNetworkConfig(testNetworkName, [preferredRpcUrl]);
 

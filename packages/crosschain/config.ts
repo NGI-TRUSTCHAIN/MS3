@@ -21,10 +21,10 @@ export const INFURA_API_KEY = process.env.INFURA_API_KEY || ''; // Added for tes
 export const RUN_REAL_EXECUTION = process.env.RUN_REAL_EXECUTION === 'true'; // Using a more specific env var name
 
 // Test-specific constants
-export const TEST_MATIC_AMOUNT = '0.0001'; // Example amount.
+export const TEST_MATIC_AMOUNT = '0.01'; // Example amount.
 export const DEFAULT_TEST_TIMEOUT = 30000; // 30 seconds, increased from previous.
 export const QUOTE_TEST_TIMEOUT = 90 * 1000; // 90 seconds for potentially slow quote APIs.
-export const SWAP_EXECUTION_TIMEOUT = 300 * 1000; // 10 minutes for same-chain swaps.
+export const SWAP_EXECUTION_TIMEOUT = 600 * 1000; // 10 minutes for same-chain swaps.
 export const BRIDGE_TIMEOUT = 1500 * 1000; // 25 minutes for cross-chain bridge operations.
 
 // Test function to verify if .env is loading correctly

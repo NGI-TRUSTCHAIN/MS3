@@ -1,17 +1,17 @@
-import { describe, it, expect, beforeAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { registry } from '@m3s/common';
 import { getRequirements, getEnvironments, getFeatures } from '@m3s/common';
-import { EvmWalletAdapter } from '../src/adapters/ethers/ethersWallet.js';
 import { RuntimeEnvironment } from '@m3s/common';
-import { ethersOptionsSchema } from '../src/adapters/ethers/ethersWallet.registration.js';
-import { web3AuthOptionsSchema } from '../src/adapters/web3auth/web3authWallet.registration.js';
 import Joi from 'joi';
+import { EvmWalletAdapter } from '../src/adapters/ethers/v1/ethersWallet.js';
+import { ethersOptionsSchema } from '../src/adapters/ethers/v1/ethersWallet.registration.js';
+import { web3AuthOptionsSchema } from '../src/adapters/web3auth/v1/web3authWallet.registration.js';
+import '@m3s/wallet'
 
 describe('Auto-Generation System Tests (JOI-Based)', () => {
   describe('JOI Schema Requirements Generation', () => {
     it('should generate correct requirements from Ethers JOI schema', () => {
       const requirements = getRequirements(ethersOptionsSchema, 'ethers');
-
       expect(requirements).toHaveLength(2);
       
       // Check privateKey requirement
@@ -320,7 +320,6 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
         
         // All wallet methods should be properly marked as async or not
         const asyncMethods = features.filter(f => f.isAsync);
-        const nonAsyncMethods = features.filter(f => !f.isAsync);
         
         // Most wallet methods are async
         expect(asyncMethods.length).toBeGreaterThan(0);
@@ -373,7 +372,7 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
     beforeAll(async () => {
       // Import registrations to ensure adapters are registered
       await import('../src/adapters/ethers/ethersWallet.registration.js');
-      await import('../src/adapters/web3auth/web3authWallet.registration.js');
+      await import('../src/adapters/web3auth/web3authWallet.js')
     });
 
     it('should have registered web3auth adapter with JOI-generated data', () => {

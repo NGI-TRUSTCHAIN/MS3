@@ -109,13 +109,9 @@ export function testCoreWalletInterface(wallet: any, skipConnectivity: boolean =
             const polygonNetConfig = await networkHelper.getNetworkConfig('polygon');
             if (polygonNetConfig) networks.polygon = polygonNetConfig;
 
-            const sepoliaNetConfig = await networkHelper.getNetworkConfig('sepolia');
-            if (sepoliaNetConfig) networks.sepolia = sepoliaNetConfig;
+            const holeskyNetConfig = await networkHelper.getNetworkConfig('holesky');
+            if (holeskyNetConfig) networks.holesky = holeskyNetConfig;
 
-            // Ensure wallet is initialized before getting accounts
-            // if (!wallet.isInitialized()) {
-            //   await wallet.initialize();
-            // }
 
             accounts = await wallet.getAccounts();
             if (accounts.length === 0) {
@@ -241,6 +237,7 @@ export function testCoreWalletInterface(wallet: any, skipConnectivity: boolean =
           // Use a different network config from utils.ts, e.g., Polygon (chainId 137 / 0x89)
           const polygonConfig: NetworkConfig = {
             name: 'polygon',
+            decimals: networks.polygon.decimals,
             chainId: networks.polygon.chainId, // '0x89'
             rpcUrls: [networks.polygon.rpcTarget],
             displayName: networks.polygon.name, // Optional: for mock adapter
@@ -391,10 +388,12 @@ export function testCoreWalletInterface(wallet: any, skipConnectivity: boolean =
           try {
             await wallet.disconnect(); // disconnect can be async
 
-            // Most adapters will set initialized to false on disconnect.
-            expect(wallet.isInitialized(), "Wallet should be uninitialized after disconnect").toBe(false);
-            expect(wallet.isConnected(), "Wallet should be disconnected").toBe(false);
-
+            if (wallet) {
+              // Most adapters will set initialized to false on disconnect.
+              expect(wallet.isInitialized(), "Wallet should be uninitialized after disconnect").toBe(false);
+              expect(wallet.isConnected(), "Wallet should be disconnected").toBe(false);
+            }
+            
             // After disconnect, getAccounts should ideally return empty or throw if called when uninitialized
             try {
               const postDisconnectAccounts = await wallet.getAccounts();
@@ -422,9 +421,7 @@ export function testCoreWalletInterface(wallet: any, skipConnectivity: boolean =
             // Attempt to re-initialize for subsequent tests, as disconnect() uninitializes.
             // This helps restore state similar to what beforeAll would establish.
             try {
-              // if (!wallet.isInitialized()) { // Only if truly uninitialized
-              //   await wallet.initialize();
-              // }
+
               // Try to reconnect if accounts were previously available and wallet is initialized but not connected
               if (accounts.length > 0 && wallet.isInitialized() && !wallet.isConnected()) {
                 await wallet.getAccounts();

@@ -2,7 +2,6 @@ import { RuntimeEnvironment, EnvironmentRequirements, Requirement, MethodSignatu
 import Joi from 'joi';
 
 
-
 /**
  * Recursively analyze JOI schema to generate requirements
  */
@@ -270,36 +269,76 @@ export function getEnvironments(
 /**
  * ✅ SIMPLIFIED: Extract basic method signatures from compiled JavaScript
  */
-export function getFeatures(adapterClass: any): MethodSignature[] {
+// export function getFeatures(adapterClass: any): MethodSignature[] {
 
-  // ✅ Check for null/invalid input FIRST
+//   // ✅ Check for null/invalid input FIRST
+//   if (!adapterClass || typeof adapterClass !== 'function') {
+//     console.warn(`[getFeatures] Invalid adapter class provided:`, typeof adapterClass);
+//     return [];
+//   }
+
+//   console.log(`🔧 [getFeatures] Analyzing ${adapterClass.name} for method signatures`);
+
+//   const signatures: MethodSignature[] = [];
+
+//   try {
+
+//     const prototype = adapterClass.prototype;
+//     const methodNames = Object.getOwnPropertyNames(prototype)
+//       .filter(name => typeof prototype[name] === 'function' && name !== 'constructor');
+
+//     console.log(`🔍 [getFeatures] Found ${methodNames.length} methods:`, methodNames);
+
+//     for (const methodName of methodNames) {
+//       const method = prototype[methodName];
+//       const signature = analyzeMethodSignature(method, methodName);
+//       signatures.push(signature);
+//     }
+//   } catch (error) {
+//     console.warn(`[getFeatures] Failed to analyze ${adapterClass.name}:`, error);
+//   }
+
+//   console.log(`✅ [getFeatures] Generated ${signatures.length} method signatures`);
+//   return signatures;
+// }
+
+/**
+ * ✅ SIMPLIFIED: Extract basic method signatures from compiled JavaScript
+ */
+export function getFeatures(adapterClass: any): MethodSignature[] {
   if (!adapterClass || typeof adapterClass !== 'function') {
     console.warn(`[getFeatures] Invalid adapter class provided:`, typeof adapterClass);
     return [];
   }
 
-  console.log(`🔧 [getFeatures] Analyzing ${adapterClass.name} for method signatures`);
+  console.log(`🔧 [getFeatures] Analyzing ${adapterClass.name} for method signatures by walking prototype chain.`);
 
   const signatures: MethodSignature[] = [];
+  const seenMethods = new Set<string>();
 
-  try {
+  let currentProto = adapterClass.prototype;
 
-    const prototype = adapterClass.prototype;
-    const methodNames = Object.getOwnPropertyNames(prototype)
-      .filter(name => typeof prototype[name] === 'function' && name !== 'constructor');
+  // Walk the prototype chain to find all methods, including those from BaseEvmWallet
+  while (currentProto && currentProto !== Object.prototype) {
+    const methodNames = Object.getOwnPropertyNames(currentProto).filter(name => {
+      // Exclude constructor, private/protected methods (_), and methods we've already added from a child class
+      return name !== 'constructor' && !name.startsWith('_') && !seenMethods.has(name) && typeof currentProto[name] === 'function';
+    });
 
-    console.log(`🔍 [getFeatures] Found ${methodNames.length} methods:`, methodNames);
+    console.log(`🔍 [getFeatures] Found ${methodNames.length} methods on ${currentProto.constructor.name}:`, methodNames);
 
     for (const methodName of methodNames) {
-      const method = prototype[methodName];
+      seenMethods.add(methodName); // Mark as seen to prevent duplicates from parent prototypes
+      const method = currentProto[methodName];
       const signature = analyzeMethodSignature(method, methodName);
       signatures.push(signature);
     }
-  } catch (error) {
-    console.warn(`[getFeatures] Failed to analyze ${adapterClass.name}:`, error);
+
+    // Move up the chain to the parent class (e.g., from EvmWalletAdapter to BaseEvmWallet)
+    currentProto = Object.getPrototypeOf(currentProto);
   }
 
-  console.log(`✅ [getFeatures] Generated ${signatures.length} method signatures`);
+  console.log(`✅ [getFeatures] Generated ${signatures.length} total method signatures for ${adapterClass.name}`);
   return signatures;
 }
 
@@ -312,21 +351,28 @@ export function getRequirements(
 ): Requirement[] {
   console.log(`🔍 [getRequirements] Starting analysis for ${adapterName}`);
 
-  // ✅ In browser: always use fallback (no JOI validation)
+  // ONLY short‐circuit the ethers adapter to 2 hard‐coded requirements
+  if (adapterName.toLowerCase() === 'ethers') {
+    console.log(`[getRequirements] Using fallback requirements for ${adapterName}`);
+    return generateFallbackRequirements(adapterName);
+  }
+
+  // In browser always fallback (no JOI)
   if (typeof window !== 'undefined') {
     console.log(`🌐 [getRequirements] Browser environment - using fallback for ${adapterName}`);
     return generateFallbackRequirements(adapterName);
   }
 
-  // ✅ In Node.js: use JOI validation as before
+  // In Node.js, if we have a Joi schema, use it
   if (joiSchema && typeof joiSchema.describe === 'function') {
     try {
       return analyzeJoiSchema(joiSchema, 'options');
     } catch (error) {
       console.error(`❌ [getRequirements] JOI validation failed:`, error);
-      return generateFallbackRequirements(adapterName);
+      // fall through to fallback
     }
   }
 
+  // Fallback for anything else (e.g. unknown adapters)
   return generateFallbackRequirements(adapterName);
 }

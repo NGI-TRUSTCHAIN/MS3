@@ -7,7 +7,7 @@ import { AdapterArguments, NetworkConfig } from "@m3s/common";
 export interface WalletTemplateOptions {
   /** Required string option - describe what this does */
   option_1: string;
-  
+
   /** Required nested object option */
   option_2: {
     /** Required number sub-option */
@@ -15,10 +15,10 @@ export interface WalletTemplateOptions {
     /** Required string array sub-option */
     option_2_2: string[]
   },
-  
+
   /** Optional BigInt option - describe what this does */
   option_3?: BigInt;
-  
+
   // TODO: Add the options as required by your specific adapter implementation
 }
 
@@ -30,7 +30,7 @@ interface args extends AdapterArguments<WalletTemplateOptions> { }
 export class WalletTemplateAdapter implements IEVMWallet {
   public readonly name: string;
   public readonly version: string;
-  
+
   private initialized: boolean = false;
 
   private constructor(args: args) {
@@ -48,7 +48,7 @@ export class WalletTemplateAdapter implements IEVMWallet {
     if (this.initialized) {
       return;
     }
-    
+
     // TODO: Implement initialization logic
     this.initialized = true;
   }
@@ -74,10 +74,10 @@ export class WalletTemplateAdapter implements IEVMWallet {
     throw new Error("getBalance not implemented");
   }
 
-async callContract(to: string, data: string): Promise<string> {
-  console.log('callContract', to, data)
-  throw new Error("callContract not implemented");
-}
+  async callContract(to: string, data: string): Promise<string> {
+    console.log('callContract', to, data)
+    throw new Error("callContract not implemented");
+  }
 
   async getNetwork(): Promise<NetworkConfig> {
     throw new Error("getNetwork not implemented");
@@ -131,5 +131,14 @@ async callContract(to: string, data: string): Promise<string> {
     throw new Error("getTransactionReceipt not implemented");
   }
 
+  getAllChainRpcs(): Record<string, string[]> {
+    throw new Error("getAllChainRpcs not implemented");
+  }
+
+  async updateAllChainRpcs(multiChainRpcs: Record<string, string[]>) {
+    console.log('updateAllChainRpcs', multiChainRpcs)
+
+    throw new Error("updateAllChainRpcs not implemented");
+  }
 
 }

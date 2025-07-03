@@ -1,9 +1,9 @@
-import { describe, beforeEach, it, expect, vi, beforeAll } from 'vitest';
-import { createWallet, EIP712TypedData, IEVMWallet, WalletEvent } from '@m3s/wallet';
+import { describe, beforeEach, it, expect, beforeAll } from 'vitest';
+import { createWallet, EIP712TypedData, IEVMWallet } from '@m3s/wallet';
 import { EIP712Validator } from '../src/helpers/signatures.js';
-import { getTestPrivateKey } from '../config.js';
 import { NetworkHelper, PrivateKeyHelper } from '@m3s/common';
 import { ethers } from 'ethers';
+import { TEST_PRIVATE_KEY } from '../config.js';
 
 describe('Signature and EIP-712 Tests', () => {
     let ethersWallet: IEVMWallet;
@@ -16,7 +16,7 @@ describe('Signature and EIP-712 Tests', () => {
     }, 15000); // ✅ Increase timeout
 
     beforeEach(async () => {
-        const privateKey = getTestPrivateKey() || pkHelper.generatePrivateKey();
+        const privateKey = TEST_PRIVATE_KEY || pkHelper.generatePrivateKey();
 
         ethersWallet = await createWallet({
             name: 'ethers',
@@ -24,11 +24,11 @@ describe('Signature and EIP-712 Tests', () => {
             options: { privateKey }
         });
 
-        const sepoliaConfig = await networkHelper.getNetworkConfig('sepolia');
-        if (sepoliaConfig && sepoliaConfig.rpcUrls && sepoliaConfig.rpcUrls.length > 0) {
+        const networkConfig = await networkHelper.getNetworkConfig('holesky');
+        if (networkConfig && networkConfig.rpcUrls && networkConfig.rpcUrls.length > 0) {
             console.log('[Test Setup 07_Signatures] Attempting to set provider with Sepolia config for ethersWallet.');
             try {
-                await ethersWallet.setProvider(sepoliaConfig);
+                await ethersWallet.setProvider(networkConfig);
                 if (ethersWallet.isConnected()) {
                     console.log('[Test Setup 07_Signatures] ethersWallet successfully connected via setProvider.');
                     const network = await ethersWallet.getNetwork();
@@ -255,7 +255,7 @@ describe('Signature and EIP-712 Tests', () => {
         it('should validate types structure', async () => {
             // Test invalid types - not an array
             const invalidTypes1: EIP712TypedData = {
-                domain: { name: 'Test', version: '1', chainId: '1' },
+                domain: { name: 'Test', version: '1', chainId: '0x4268' },
                 types: {
                     Person: 'not_an_array'
                 } as any,

@@ -13,6 +13,47 @@ export function testEVMWalletInterface(wallet: IEVMWallet, skipConnectivity: boo
     return;
   }
 
+
+  describe('RPC Management Methods', () => {
+    it('should implement getAllChainRpcs method', () => {
+      expect(typeof wallet.getAllChainRpcs).toBe('function');
+    });
+
+    it('should implement updateAllChainRpcs method', () => {
+      expect(typeof wallet.updateAllChainRpcs).toBe('function');
+    });
+
+    // Only run functional tests if connectivity tests aren't skipped
+    if (!skipConnectivity) {
+      it('should get all chain RPCs as object', () => {
+        const allRpcs = wallet.getAllChainRpcs();
+        expect(typeof allRpcs).toBe('object');
+        expect(allRpcs).not.toBeNull();
+      });
+
+      it('should update all chain RPCs', async () => {
+        const testRpcs = {
+          '1': ['https://mainnet.infura.io/v3/test-key'],
+          '137': ['https://polygon-mainnet.infura.io/v3/test-key']
+        };
+
+        // Should not throw
+        await wallet.updateAllChainRpcs(testRpcs);
+
+        const updatedRpcs = wallet.getAllChainRpcs();
+        expect(updatedRpcs['1']).toBeDefined();
+        expect(updatedRpcs['137']).toBeDefined();
+      });
+
+      it('should handle empty RPC configuration', async () => {
+        await wallet.updateAllChainRpcs({});
+
+        const emptyRpcs = wallet.getAllChainRpcs();
+        expect(typeof emptyRpcs).toBe('object');
+      });
+    }
+  });
+
   describe('IEVMWallet Extension Tests', () => {
     describe('EVM-Specific Methods', () => {
       it('should implement signTypedData method', () => {
@@ -43,10 +84,7 @@ export function testEVMWalletInterface(wallet: IEVMWallet, skipConnectivity: boo
 
         beforeAll(async () => {
           try {
-            // Ensure wallet is initialized before getting accounts
-            // if (!wallet.isInitialized()) {
-            //   await wallet.initialize();
-            // }
+
             accounts = await wallet.getAccounts();
             if (accounts.length === 0) {
               console.warn('No accounts available for EVM functional tests. Trying requestAccounts...');

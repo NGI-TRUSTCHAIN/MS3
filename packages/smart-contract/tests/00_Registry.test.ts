@@ -532,7 +532,7 @@ describe('Smart Contract Auto-Generation System Tests', () => {
       // Test that contract validation error messages are descriptive
       const contractSchema = Joi.object({
         contractType: Joi.string().valid('erc20', 'erc721', 'erc1155').required().description('Must be a supported contract standard'),
-        deploymentNetwork: Joi.string().valid('mainnet', 'goerli', 'sepolia', 'polygon').required().description('Must be a supported network')
+        deploymentNetwork: Joi.string().valid('mainnet', 'goerli', 'sepolia', 'holesky', 'polygon').required().description('Must be a supported network')
       });
 
       const requirements = getRequirements(contractSchema, 'validation-test');

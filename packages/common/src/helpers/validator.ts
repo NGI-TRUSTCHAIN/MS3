@@ -20,8 +20,12 @@ export function validateAdapterParameters(args: ValidatorArguments
   const { moduleName, name, version, params, adapterInfo, registry, factoryMethodName } = args
   const { neededFeature } = params; // neededFeature here is a string
 
+  console.log('Validator - arguments, ', args)
+
   // Check feature compatibility if specified (neededFeature is a string)
   if (neededFeature && typeof neededFeature === 'string') {
+    console.log('Validator - neededFeature, ', neededFeature)
+
     if (!registry.supportsFeature(moduleName, name, version, neededFeature)) {
       throw new AdapterError(
         `Feature '${neededFeature}' is not supported by adapter '${name}' for module '${moduleName}'.`,
@@ -39,6 +43,8 @@ export function validateAdapterParameters(args: ValidatorArguments
 
   // Check requirements from adapter metadata (adapterInfo.requirements is Requirement[])
   if (adapterInfo.requirements && adapterInfo.requirements.length > 0) {
+    console.log('Validator - adapterInfo, ', adapterInfo)
+
     for (const req of adapterInfo.requirements) {
       const value = getPropertyByPath(params, req.path); // req.path like "options.privateKey"
 

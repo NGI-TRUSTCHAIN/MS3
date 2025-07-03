@@ -19,7 +19,7 @@ export interface ChainAsset {
 export interface OperationIntent {
   sourceAsset: ChainAsset;
   destinationAsset: ChainAsset;
-  amount: string;           // Amount in sourceAsset's smallest unit (e.g., wei)
+  amount: string;            // Amount in human-readable units (e.g., '0.1' for 0.1 ETH, '100' for 100 USDC)
   userAddress: string;      // The primary user address initiating the operation
   recipientAddress?: string; // Destination address (defaults to userAddress if not provided)
   /** Optional slippage tolerance in basis points (e.g., 50 for 0.5%) */

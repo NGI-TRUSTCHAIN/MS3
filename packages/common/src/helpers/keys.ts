@@ -187,7 +187,7 @@ export class PrivateKeyHelper implements IPrivateKeyHelper {
      * @param privateKey The string to validate.
      * @returns True if it matches the basic format, false otherwise.
      */
-    private isValidEvmPrivateKey(privateKey: string): boolean {
+    public isValidEvmPrivateKey(privateKey: string): boolean {
         return typeof privateKey === 'string' && isHexString(privateKey, 32);
     }
 }

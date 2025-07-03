@@ -67,6 +67,7 @@ export interface NetworkConfig {
   name: string;
   displayName: string;
   rpcUrls: string[];
+  decimals: number;
   blockExplorerUrl?: string;
   ticker?: string;
   tickerName?: string;

@@ -1,7 +1,7 @@
 import { AdapterError } from "./AdapterError.js";
 import { WalletErrorCode } // Assuming WalletErrorCode is a general type for error codes, adjust if needed
-// Or import a more generic ErrorCode type if you have one for all modules
-from "../types/error.js"; // Or the correct path to your error code definitions
+  // Or import a more generic ErrorCode type if you have one for all modules
+  from "../types/error.js"; // Or the correct path to your error code definitions
 
 /**
  * Creates a Proxy around an adapter instance to standardize error handling.
@@ -19,10 +19,10 @@ from "../types/error.js"; // Or the correct path to your error code definitions
  * @returns {T} - A proxied version of the adapter instance with enhanced error handling.
  */
 export function createErrorHandlingProxy<T extends object>(
-    adapterInstance: T,
-    errorMap: Record<string, WalletErrorCode | string> = {},
-    defaultErrorCode?: WalletErrorCode | string, // Can be undefined
-    contextName: string = 'UnknownAdapter' // Renamed from adapterType for clarity
+  adapterInstance: T,
+  errorMap: Record<string, WalletErrorCode | string> = {},
+  defaultErrorCode?: WalletErrorCode | string, // Can be undefined
+  contextName: string = 'UnknownAdapter' // Renamed from adapterType for clarity
 ): T {
   return new Proxy(adapterInstance, {
     get(target, prop, receiver) {
@@ -30,39 +30,54 @@ export function createErrorHandlingProxy<T extends object>(
       const methodName = String(prop);
 
       if (typeof originalValue === 'function') {
-        return async function (...args: any[]) {
-          try {
-            return await originalValue.apply(target, args);
-          } catch (error: unknown) {
-            const originalErrorMessage = error instanceof Error ? error.message : String(error);
-            console.error(`[${contextName} Error] Method '${methodName}' failed: ${originalErrorMessage}`, error);
 
-            if (error instanceof AdapterError) {
-              // If it's already an AdapterError, re-throw it,
-              // potentially enriching it if more context is available here (optional)
-              throw error;
-            }
+        const isAsync = originalValue.constructor.name === 'AsyncFunction';
 
-            let mappedErrorCode: WalletErrorCode | string | undefined = defaultErrorCode;
+        const handleError = (error: unknown) => {
+          const originalErrorMessage = error instanceof Error ? error.message : String(error);
+          console.error(`[${contextName} Error] Method '${methodName}' failed: ${originalErrorMessage}`, error);
 
-            // Attempt to map the error using the errorMap
-            for (const key in errorMap) {
-              if (originalErrorMessage.includes(key)) {
-                mappedErrorCode = errorMap[key];
-                break;
-              }
-            }
-
-            throw new AdapterError(
-              `${contextName} method '${methodName}' failed: ${originalErrorMessage}`,
-              {
-                cause: error,
-                methodName: methodName,
-                code: mappedErrorCode as string | undefined // Cast as string if WalletErrorCode is an enum
-              }
-            );
+          if (error instanceof AdapterError) {
+            throw error;
           }
+
+          let mappedErrorCode: WalletErrorCode | string | undefined = defaultErrorCode;
+          for (const key in errorMap) {
+            if (originalErrorMessage.includes(key)) {
+              mappedErrorCode = errorMap[key];
+              break;
+            }
+          }
+
+          throw new AdapterError(
+            `${contextName} method '${methodName}' failed: ${originalErrorMessage}`,
+            {
+              cause: error,
+              methodName: methodName,
+              code: mappedErrorCode as string | undefined
+            }
+          );
         };
+
+        if (isAsync) {
+          // Return an async wrapper for async functions
+          return async function (...args: any[]) {
+            try {
+              return await originalValue.apply(target, args);
+            } catch (error: unknown) {
+              handleError(error);
+            }
+          };
+        } else {
+          // Return a synchronous wrapper for sync functions
+          return function (...args: any[]) {
+            try {
+              return originalValue.apply(target, args);
+            } catch (error: unknown) {
+              handleError(error);
+            }
+          };
+        }
       }
       return originalValue;
     }

@@ -28,6 +28,8 @@ export enum WalletErrorCode {
 
 // Define CrossChain Error Codes
 export enum CrossChainErrorCode {
+    RpcValidationFailed = 'RPC_VALIDATION_FAILED',
+    RpcReliabilityWarning = 'RPC_RELIABILITY_WARNING',
     Unknown = 'CC_UNKNOWN',
     AdapterNotInitialized = 'CC_ADAPTER_NOT_INITIALIZED',
     NetworkError = 'CC_NETWORK_ERROR',

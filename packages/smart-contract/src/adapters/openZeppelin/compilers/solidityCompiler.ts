@@ -121,6 +121,13 @@ module.exports = {
         } finally {
             if (this.preserveOutput) {
                 console.log(`[SolidityCompiler] Preserving output for proxy in: ${proxyCompilationInstanceDir}`);
+            } else {
+                try {
+                    await fs.rm(proxyCompilationInstanceDir, { recursive: true, force: true });
+                    console.log(`[SolidityCompiler] Cleaned up temporary proxy directory: ${proxyCompilationInstanceDir}`);
+                } catch (cleanupError: any) {
+                    console.warn(`[SolidityCompiler] Failed to cleanup temporary proxy directory ${proxyCompilationInstanceDir}: ${cleanupError.message}`);
+                }
             }
         }
     }
@@ -223,11 +230,13 @@ module.exports = {
             const isUpgradeableImplementation = sourceCode.includes('@openzeppelin/contracts-upgradeable');
             if (isUpgradeableImplementation) {
                 const packageJsonPath = path.join(contractDir, 'package.json');
+                const ozContractsVersion = "^5.0.0";
                 const ozContractsUpgradeableVersion = "^5.0.0";
                 await fs.writeFile(packageJsonPath, JSON.stringify({
                     name: `implementation-compilation-${hash}`,
                     version: "1.0.0",
                     dependencies: {
+                        "@openzeppelin/contracts": ozContractsVersion,
                         "@openzeppelin/contracts-upgradeable": ozContractsUpgradeableVersion,
                     }
                 }, null, 2));

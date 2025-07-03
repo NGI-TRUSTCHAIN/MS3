@@ -4,7 +4,7 @@ import { describe, beforeEach, it, expect, afterEach } from 'vitest';
 import { createContractHandler, GenerateContractInput, IBaseContractHandler } from '../../../src/index.js';
 import { testContractHandlerInterface } from '../../02_IBaseContractHandler.test.js';
 import { ethers } from 'ethers';
-import { TEST_PRIVATE_KEY, RUN_INTEGRATION_TESTS, INFURA_API_KEY } from '../../../config.js';
+import { TEST_PRIVATE_KEY, RUN_INTEGRATION_TESTS, INFURA_API_KEY, ALCHEMY_API_KEY } from '../../../config.js';
 import { createWallet, IEVMWallet } from '@m3s/wallet';
 import { NetworkHelper } from '@m3s/common';
 import * as node_path from 'path';
@@ -274,9 +274,9 @@ describe('OpenZeppelinAdapter Tests', () => {
       const networkHelper = NetworkHelper.getInstance();
       await networkHelper.ensureInitialized();
 
-      const preferredRpcUrl = `https://sepolia.infura.io/v3/${INFURA_API_KEY}`;
-      const networkConfig = await networkHelper.getNetworkConfig('sepolia', [preferredRpcUrl]);
-      const testNetworkName = 'sepolia';
+      const preferredRpcUrl = `https://eth-holesky.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
+      const networkConfig = await networkHelper.getNetworkConfig('holesky', [preferredRpcUrl]);
+      const testNetworkName = 'holesky';
 
       if (!INFURA_API_KEY) throw new Error("INFURA_API_KEY is not set.");
       if (!networkConfig?.rpcUrls?.length) throw new Error(`No RPC for ${testNetworkName}.`);
@@ -338,10 +338,42 @@ describe('OpenZeppelinAdapter Tests', () => {
     };
 
     const waitForReceipt = async (txHash: string, maxAttempts = 20, waitTime = 6000): Promise<ethers.TransactionReceipt | null> => {
+
       for (let i = 0; i < maxAttempts; i++) {
         const receipt = await walletAdapter.getTransactionReceipt(txHash);
         if (receipt) {
           console.log(`Receipt found for ${txHash} (attempt ${i + 1}). Status: ${receipt.status === 1 ? 'Success' : 'Failed'}`);
+
+          if (receipt.status === 0) {
+            console.log(`🚨 [DIAGNOSTIC] Transaction FAILED! Getting transaction details...`);
+
+            try {
+              // ✅ FIX: Access provider property directly since getProvider() is protected
+              const provider = (walletAdapter as any).provider;
+
+              if (provider) {
+                const tx = await provider.getTransaction(txHash);
+                console.log(`🔍 [DIAGNOSTIC] Transaction details:`, {
+                  from: tx?.from,
+                  to: tx?.to,
+                  value: tx?.value?.toString(),
+                  gasLimit: tx?.gasLimit?.toString(),
+                  gasPrice: tx?.gasPrice?.toString(),
+                  maxFeePerGas: tx?.maxFeePerGas?.toString(),
+                  maxPriorityFeePerGas: tx?.maxPriorityFeePerGas?.toString(),
+                  data: tx?.data?.substring(0, 100) + '...'
+                });
+              } else {
+                console.log(`⚠️ [DIAGNOSTIC] Provider not accessible for transaction debug`);
+              }
+
+              console.log(`🔍 [DIAGNOSTIC] Attempting to get revert reason...`);
+
+            } catch (debugError) {
+              console.log(`⚠️ [DIAGNOSTIC] Could not get transaction debug info:`, debugError);
+            }
+          }
+
           return receipt;
         }
         console.log(`Receipt not found for ${txHash} (attempt ${i + 1}). Waiting ${waitTime / 1000}s...`);
@@ -387,6 +419,7 @@ describe('OpenZeppelinAdapter Tests', () => {
           language: 'solidity',
           contractName: 'MultiFeatureToken'
         });
+        
         expect(compiled.artifacts?.abi).toBeDefined();
         // console.log('MultiFeatureToken ABI:', JSON.stringify(compiled.artifacts.abi, null, 2));
 

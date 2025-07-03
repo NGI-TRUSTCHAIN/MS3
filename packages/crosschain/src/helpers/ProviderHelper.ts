@@ -18,6 +18,7 @@ import * as viemChains from 'viem/chains';
 import { EIP712TypedData, GenericTransactionData, IEVMWallet, NetworkConfig } from '@m3s/wallet';
 
 import { NetworkHelper } from '@m3s/common';
+import { ethers } from 'ethers';
 /** Recursively turn every bigint into a string. */
 export function sanitizeBigInts<T>(obj: T): T {
     if (typeof obj === 'bigint') {
@@ -73,12 +74,14 @@ function createM3sViemAccount(wallet: IEVMWallet, address: Address): LocalAccoun
         },
 
         async signTransaction(
-            transaction: TransactionSerializable,
+            _transaction: TransactionSerializable,
         ): Promise<Hex> {
             console.log("[ProviderHelper:ViemAccount] Delegating signTransaction to M3S wallet");
+            const transaction = sanitizeBigInts(_transaction);
+
             const m3sTx: GenericTransactionData = {
                 to: transaction.to as string | undefined,
-                value: transaction.value?.toString(),
+                value: transaction.value ? ethers.formatEther(transaction.value.toString()) : undefined,
                 data: transaction.data,
                 options: {
                     chainId: transaction.chainId,
@@ -89,15 +92,22 @@ function createM3sViemAccount(wallet: IEVMWallet, address: Address): LocalAccoun
                     maxPriorityFeePerGas: transaction.maxPriorityFeePerGas?.toString(),
                 }
             };
+
+            console.log('createM3sViemAccount - signTransaction', m3sTx)
+
             if (m3sTx.options) {
                 Object.keys(m3sTx.options).forEach(key =>
                     (m3sTx.options as any)[key] === undefined && delete (m3sTx.options as any)[key]
                 );
                 if (Object.keys(m3sTx.options).length === 0) delete m3sTx.options;
             }
+
             if (m3sTx.to === undefined) delete m3sTx.to;
             if (m3sTx.value === undefined) delete m3sTx.value;
             if (m3sTx.data === undefined) delete m3sTx.data;
+
+            console.log('createM3sViemAccount - signTransaction 2', m3sTx)
+
             console.log("[ProviderHelper:ViemAccount] Mapped m3sTx for signTransaction:", m3sTx);
             return await wallet.signTransaction(m3sTx) as Hex;
         },
@@ -108,7 +118,7 @@ function createM3sViemAccount(wallet: IEVMWallet, address: Address): LocalAccoun
         >(
             parameters: TypedDataDefinition<TTypedData, TPrimaryType>
         ): Promise<Hex> {
-            
+
             console.log("[ProviderHelper:ViemAccount] Mapped M3S EIP712TypedData payload:",
                 JSON.stringify(parameters, (_k, v) => typeof v === 'bigint' ? v.toString() : v, 2)
             );
@@ -164,20 +174,20 @@ export class M3SLiFiViemProvider {
     private viemAccount: LocalAccount<'custom', Address>;
     public viemWalletClient: WalletClient;
     public readonly address: Address;
-    private preferredRpcUrls?: string[];
+    private walletRpcs: Record<string, string[]> = {};
 
     private constructor(
         m3sWallet: IEVMWallet,
         initialAccountAddress: Address,
         initialViemChain: Chain,
         initialRpcUrls: string[],
-        preferredRpcUrls?: string[]
+        walletRpcs: Record<string, string[]> = {}
     ) {
         this.m3sWallet = m3sWallet;
         this.address = initialAccountAddress;
         // Pass the m3sWallet instance to createM3sViemAccount
         this.viemAccount = createM3sViemAccount(this.m3sWallet, this.address);
-        this.preferredRpcUrls = preferredRpcUrls;
+        this.walletRpcs = walletRpcs;
         this.viemWalletClient = createWalletClient({
             account: this.viemAccount,
             chain: initialViemChain,
@@ -189,7 +199,6 @@ export class M3SLiFiViemProvider {
     static async create(
         m3sWallet: IEVMWallet,
         initialNetworkConfig: NetworkConfig,
-        preferredRpcUrls?: string[]
     ): Promise<M3SLiFiViemProvider> {
         if (!m3sWallet.isInitialized()) {
             throw new Error("M3S Wallet must be initialized before creating M3SLiFiViemProvider.");
@@ -204,6 +213,11 @@ export class M3SLiFiViemProvider {
         }
         const accountAddress = accounts[0] as Address;
         console.log(`[M3SLiFiViemProvider.create] Using address from M3S wallet: ${accountAddress}`);
+
+        // --- NEW: Automatically get all RPCs from the wallet ---
+        const allWalletRpcs = m3sWallet.getAllChainRpcs();
+        console.log(`[M3SLiFiViemProvider.create] Loaded ${Object.keys(allWalletRpcs).length} chain RPC configs from M3S wallet.`);
+        // --- END NEW ---
 
         const initialChainIdNum = parseInt(initialNetworkConfig.chainId, initialNetworkConfig.chainId.startsWith('0x') ? 16 : 10);
         let initialViemChain = getViemChain(initialChainIdNum);
@@ -227,8 +241,8 @@ export class M3SLiFiViemProvider {
         console.log(`[M3SLiFiViemProvider.create] Using initial Viem chain:`, initialViemChain);
         console.log(`[M3SLiFiViemProvider.create] Using initial RPCs:`, initialNetworkConfig.rpcUrls);
 
-
-        return new M3SLiFiViemProvider(m3sWallet, accountAddress, initialViemChain, initialNetworkConfig.rpcUrls, preferredRpcUrls);
+        // Pass the fetched RPCs to the constructor
+        return new M3SLiFiViemProvider(m3sWallet, accountAddress, initialViemChain, initialNetworkConfig.rpcUrls, allWalletRpcs);
     }
 
     public async getWalletClient(): Promise<WalletClient> {
@@ -239,23 +253,31 @@ export class M3SLiFiViemProvider {
 
     public async switchChain(chainId: number): Promise<WalletClient> {
         console.log(`[M3SLiFiViemProvider] switchChain requested for chainId: ${chainId}`);
+
         if (this.viemWalletClient.chain?.id === chainId) {
             console.log(`[M3SLiFiViemProvider] Already on chain ${chainId}. Returning existing Viem client.`);
             return this.viemWalletClient;
         }
 
+        // pick up user’s private RPCs for this chain
+        const cidDec = String(chainId);
+        const cidHex = `0x${chainId.toString(16)}`;
+        const preferredRpcs = this.walletRpcs[cidDec] || this.walletRpcs[cidHex] || [];
+
+        if (preferredRpcs.length === 0) {
+            throw new Error(
+                `No private RPCs configured for chain ${cidHex}. ` +
+                `Please call wallet.updateAllChainRpcs({ "${cidHex}": ["<yourRpcUrl>"] }) before executing cross-chain operations.`
+            );
+        }
+
         const networkHelper = NetworkHelper.getInstance();
         await networkHelper.ensureInitialized();
 
-        // ✅ CORE FIX: Use the stored map to find the preferred RPC for the *target* chain.
-        const chainIdHex = `0x${chainId.toString(16)}`;
-        const preferredRpcForTargetChain = this.preferredRpcUrls?.[chainIdHex as any];
-
         const targetNetworkConfig = await networkHelper.getNetworkConfig(
             chainId,
-            // Pass the looked-up preferred RPC to get a prioritized list.
-            preferredRpcForTargetChain ? [preferredRpcForTargetChain] : []
-        );
+            preferredRpcs  // Use wallet's RPCs for target chain
+        )
 
         if (!targetNetworkConfig) {
             throw new Error(`Could not get network config for chainId: ${chainId}`);
@@ -279,6 +301,7 @@ export class M3SLiFiViemProvider {
 
         const m3sProviderConfig: NetworkConfig = {
             name: targetNetworkConfig.name,
+            decimals: targetNetworkConfig.decimals,
             chainId: targetNetworkConfig.chainId, // hex string
             rpcUrls: targetNetworkConfig.rpcUrls,
             displayName: targetNetworkConfig.displayName,
