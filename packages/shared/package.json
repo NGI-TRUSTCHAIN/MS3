@@ -1,13 +1,13 @@
 {
-  "name": "@m3s/common",
+  "name": "@m3s/shared",
   "version": "0.1.1",
   "private": true,
   "type": "module",
-  "description": "Common utilities, types, and registry for M3S packages",
+  "description": "Shared utilities, types, and registry for M3S packages",
   "license": "MIT",
   "keywords": [
     "m3s",
-    "common",
+    "shared",
     "utilities",
     "types"
   ],
@@ -23,14 +23,14 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "prepublishOnly": "echo \"Error: @m3s/common is a private package and should not be published.\" && exit 1"
+    "prepublishOnly": "echo \"Error: @m3s/shared is a private package and should not be published.\" && exit 1"
   },
   "author": "Your Name/Org",
-  "homepage": "https://github.com/your-repo/m3s-package/tree/main/packages/common#readme",
+  "homepage": "https://github.com/your-repo/m3s-package/tree/main/packages/shared#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/your-repo/m3s-package.git",
-    "directory": "packages/common"
+    "directory": "packages/shared"
   },
   "bugs": {
     "url": "https://github.com/your-repo/m3s-package/issues"

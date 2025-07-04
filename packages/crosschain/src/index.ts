@@ -1,7 +1,7 @@
 import { ICrossChain } from './types/interfaces/index.js';
 import pkgJson from '../package.json' with { type: "json" };
 
-import { registry, createErrorHandlingProxy, ModuleArguments, validateAdapterParameters, ValidatorArguments, AdapterError, validateEnvironment, Ms3Modules } from '@m3s/common';
+import { registry, createErrorHandlingProxy, ModuleArguments, validateAdapterParameters, ValidatorArguments, AdapterError, validateEnvironment, Ms3Modules } from '@m3s/shared';
 import { ILiFiAdapterOptionsV1 } from './adapters/index.js';
 
 // Register this module in the registry

@@ -15,4 +15,4 @@ export {
   AdapterMetadata,
   NetworkHelper,
   PrivateKeyHelper
-} from '@m3s/common';
+} from '@m3s/shared';

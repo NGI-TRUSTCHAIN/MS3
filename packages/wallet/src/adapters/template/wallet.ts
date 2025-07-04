@@ -1,5 +1,5 @@
 import { IEVMWallet, AssetBalance, EstimatedFeeData } from "@m3s/wallet";
-import { AdapterArguments, NetworkConfig } from "@m3s/common";
+import { AdapterArguments, NetworkConfig } from "@m3s/shared";
 
 /**
  * Specific options for this wallet adapter template.

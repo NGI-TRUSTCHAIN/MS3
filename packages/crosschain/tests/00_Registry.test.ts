@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest';
-import { registry } from '@m3s/common';
-import { getRequirements, getEnvironments, getFeatures } from '@m3s/common';
+import { registry } from '@m3s/shared';
+import { getRequirements, getEnvironments, getFeatures } from '@m3s/shared';
 import { MinimalLiFiAdapter } from '../src/adapters/LI.FI.Adapter.js';
-import { RuntimeEnvironment, Ms3Modules } from '@m3s/common';
+import { RuntimeEnvironment, Ms3Modules } from '@m3s/shared';
 import { lifiOptionsSchema } from '../src/adapters/LI.FI.registration.js';
 import Joi from 'joi';
 
@@ -587,7 +587,7 @@ describe('Crosschain Auto-Generation System Tests', () => {
   describe('Static Cross-Package Compatibility Matrix', () => {
     it('should test static compatibility declarations (what crosschain package controls)', async () => {
       // ✅ Import the static compatibility functions
-      const { checkCrossPackageCompatibility } = await import('@m3s/common');
+      const { checkCrossPackageCompatibility } = await import('@m3s/shared');
 
       // ✅ Test what the crosschain package DECLARES
 
@@ -610,7 +610,7 @@ describe('Crosschain Auto-Generation System Tests', () => {
     });
 
     it('should validate environment-aware compatibility (server vs browser)', async () => {
-      const { checkCrossPackageCompatibility } = await import('@m3s/common');
+      const { checkCrossPackageCompatibility } = await import('@m3s/shared');
       const { wallet } = Ms3Modules
       const { crosschain } = Ms3Modules
 
@@ -632,7 +632,7 @@ describe('Crosschain Auto-Generation System Tests', () => {
     });
 
     it('should handle bridge compatibility with smart contract module', async () => {
-      const { checkCrossPackageCompatibility } = await import('@m3s/common');
+      const { checkCrossPackageCompatibility } = await import('@m3s/shared');
 
       // Crosschain bridges might interact with smart contracts
       // This tests the theoretical compatibility
@@ -661,7 +661,7 @@ describe('Crosschain Auto-Generation System Tests', () => {
   // ✅ NEW CROSSCHAIN INTEGRATION TESTS SECTION
   describe('Cross-Package Bridge Integration Tests', () => {
     it('should validate bridge adapter compatibility with wallet modules', async () => {
-      const { checkCrossPackageCompatibility } = await import('@m3s/common');
+      const { checkCrossPackageCompatibility } = await import('@m3s/shared');
 
       // Test bridge compatibility with ethers wallet
       const bridgeToEthers = checkCrossPackageCompatibility(

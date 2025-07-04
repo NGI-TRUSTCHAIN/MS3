@@ -4,7 +4,7 @@ import { CompiledOutput, GenerateContractInput, IBaseContractHandler } from '../
 import { ethers } from 'ethers';
 import { TEST_PRIVATE_KEY, RUN_INTEGRATION_TESTS, INFURA_API_KEY, ALCHEMY_API_KEY } from '../../../config.js';
 import { createWallet, IEVMWallet } from '@m3s/wallet';
-import { NetworkHelper } from '@m3s/common';
+import { NetworkHelper } from '@m3s/shared';
 
 
 describe('ERC721 Options Tests', () => {

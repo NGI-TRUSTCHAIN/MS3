@@ -1,4 +1,7 @@
 console.log("Build.ts: Script execution started - Top Level Log");
+import fs from 'fs';
+import { join } from 'path';
+
 
 async function runBuildProcess() {
   console.log("Build.ts: runBuildProcess() started.");
@@ -40,6 +43,27 @@ async function runBuildProcess() {
 
     console.log(`\n=== Building ${packageName} ===`);
 
+    // ✅ CRITICAL FIX: Always ensure shared is built first if this package depends on it
+    if (packageName !== 'shared') {
+      const sharedDistPath = join(rootDir, 'packages/shared/dist');
+      const sharedIndexDts = join(sharedDistPath, 'index.d.ts');
+
+      if (!fs.existsSync(sharedIndexDts)) {
+        console.log(`[${packageName}] Shared types not found. Building shared first...`);
+        await buildPackage('shared');
+      } else {
+        // Check if shared source is newer than built types
+        const sharedSrcPath = join(rootDir, 'packages/shared/src');
+        const sharedSrcMtime = getLatestFileTime(sharedSrcPath);
+        const sharedDistMtime = fs.statSync(sharedIndexDts).mtime;
+
+        if (sharedSrcMtime > sharedDistMtime) {
+          console.log(`[${packageName}] Shared source is newer than built types. Rebuilding shared...`);
+          await buildPackage('shared');
+        }
+      }
+    }
+
     // 1. Clean dist directory
     if (fs.existsSync(distDir)) {
       console.log(`[${packageName}] Cleaning dist directory: ${distDir}`);
@@ -47,9 +71,16 @@ async function runBuildProcess() {
     }
     fs.mkdirSync(distDir, { recursive: true });
 
-    // 2. TypeScript Compilation
-    console.log(`[${packageName}] Building package and its dependencies with tsc --build...`);
-    execSync(`npx tsc --build ${tsconfigPath} --verbose --listEmittedFiles`, { stdio: "inherit", cwd: pkgPath });
+    // ✅ ENHANCED: Clean all build artifacts for this package
+    const tsbuildInfoPath = join(pkgPath, 'tsconfig.tsbuildinfo');
+    if (fs.existsSync(tsbuildInfoPath)) {
+      console.log(`[${packageName}] Cleaning ${tsbuildInfoPath}`);
+      fs.rmSync(tsbuildInfoPath, { force: true });
+    }
+
+    // 2. TypeScript Compilation with force rebuild
+    console.log(`[${packageName}] Building package with fresh TypeScript compilation...`);
+    execSync(`npx tsc --build ${tsconfigPath} --force --verbose`, { stdio: "inherit", cwd: pkgPath });
     console.log(`[${packageName}] TypeScript compilation step finished.`);
 
     const expectedDtsPath = join(distDir, 'index.d.ts');
@@ -57,10 +88,20 @@ async function runBuildProcess() {
       console.warn(`[${packageName}] WARNING: Declaration file ${expectedDtsPath} was NOT found after tsc.`);
     } else {
       console.log(`[${packageName}] Declaration file ${expectedDtsPath} found.`);
+
+      // ✅ VERIFY: Check if NetworkConfig has decimals field
+      if (packageName === 'shared') {
+        const dtsContent = fs.readFileSync(expectedDtsPath, 'utf-8');
+        if (dtsContent.includes('interface NetworkConfig') && dtsContent.includes('decimals:')) {
+          console.log(`[${packageName}] ✅ Verified: NetworkConfig includes decimals field in generated types`);
+        } else {
+          console.warn(`[${packageName}] ⚠️  WARNING: NetworkConfig missing decimals field in generated types!`);
+        }
+      }
     }
 
-    // 3. esbuild bundling
-    if (packageName !== 'common') {
+    // 3. esbuild bundling (unchanged)
+    if (packageName !== 'shared') {
       const tscEntryPoint = join(distDir, 'index.js');
       if (!fs.existsSync(tscEntryPoint)) {
         console.error(`[${packageName}] TSC output entry point ${tscEntryPoint} not found. Cannot bundle.`);
@@ -69,27 +110,20 @@ async function runBuildProcess() {
       console.log(`[${packageName}] Bundling with esbuild from ${tscEntryPoint}...`);
 
       let externalDependencies = Object.keys(pkgJson.dependencies || {})
-        .filter(dep => dep !== '@m3s/common'); 
+        .filter(dep => dep !== '@m3s/shared');
 
       if (pkgJson.peerDependencies) {
         externalDependencies.push(...Object.keys(pkgJson.peerDependencies));
       }
-      externalDependencies = externalDependencies.filter(dep => dep !== '@m3s/common');
-      
+      externalDependencies = externalDependencies.filter(dep => dep !== '@m3s/shared');
+
       const externalArgs = externalDependencies.map(dep => `--external:${dep}`).join(' ');
 
-
-     // Determine platform based on package name
-      let platform = 'neutral'; // Default platform
+      let platform = 'neutral';
       if (packageName === 'smart-contract') {
         platform = 'node';
         console.log(`[${packageName}] Using --platform=node for esbuild because it's a Node.js-specific package.`);
       }
-      
-      // Add other package-specific platform adjustments if needed:
-      // else if (packageName === 'wallet' || packageName === 'crosschain') {
-      //   platform = 'browser'; // Or 'neutral' if they are environment-agnostic
-      // }
 
       const esbuildBaseCmd = `npx esbuild "${tscEntryPoint}" --bundle --platform=${platform} --target=es2020 ${externalArgs} --sourcemap`;
 
@@ -101,25 +135,40 @@ async function runBuildProcess() {
       execSync(`${esbuildBaseCmd} --format=cjs --outfile="${cjsOutfile}"`, { stdio: "inherit", cwd: rootDir });
       console.log(`[${packageName}] CJS bundle created: ${cjsOutfile}`);
     } else {
-      console.log(`[${packageName}] 'common' package built with tsc. JS and .d.ts files are in its dist directory. No esbuild bundling for common itself.`);
+      console.log(`[${packageName}] 'shared' package built with tsc. JS and .d.ts files are in its dist directory. No esbuild bundling for shared itself.`);
     }
 
     console.log(`[${packageName}] Successfully built.`);
   }
 
-  async function buildAll() {
+ async function buildAll() {
     console.log("Build.ts: buildAll() started.");
-    const packagesOrder = ['common', 'wallet', 'crosschain', 'smart-contract'];
-    console.log("Starting build for all packages...");
+    
+    // ✅ ENHANCED: Always clean all build artifacts first
+    const packagesOrder = ['shared', 'wallet', 'crosschain', 'smart-contract'];
+    
+    console.log("Cleaning all build artifacts...");
     for (const pkg of packagesOrder) {
-      const pkgTsBuildInfoPath = join(rootDir, `packages/${pkg}`, 'tsconfig.tsbuildinfo');
-      if (fs.existsSync(pkgTsBuildInfoPath)) {
-        console.log(`[${pkg}] Cleaning ${pkgTsBuildInfoPath} before build.`);
-        fs.rmSync(pkgTsBuildInfoPath, { force: true });
+      const pkgPath = join(rootDir, `packages/${pkg}`);
+      const distPath = join(pkgPath, 'dist');
+      const tsbuildInfoPath = join(pkgPath, 'tsconfig.tsbuildinfo');
+      
+      if (fs.existsSync(distPath)) {
+        console.log(`[${pkg}] Cleaning ${distPath}`);
+        fs.rmSync(distPath, { recursive: true, force: true });
       }
+      
+      if (fs.existsSync(tsbuildInfoPath)) {
+        console.log(`[${pkg}] Cleaning ${tsbuildInfoPath}`);
+        fs.rmSync(tsbuildInfoPath, { force: true });
+      }
+    }
+
+    console.log("Starting fresh build for all packages...");
+    for (const pkg of packagesOrder) {
       await buildPackage(pkg);
     }
-    console.log("\n✓ All packages built successfully.");
+    console.log("\n✓ All packages built successfully with fresh types.");
   }
 
   // Main module execution logic
@@ -147,6 +196,30 @@ async function runBuildProcess() {
     console.log("Build.ts: Mismatch - process.argv[1]:", process.argv[1]);
     console.log("Build.ts: Mismatch - scriptPath from import.meta.url:", scriptPath);
   }
+}
+
+// ✅ NEW: Helper function to get latest file modification time recursively
+function getLatestFileTime(dirPath: string): Date {
+  let latestTime = new Date(0);
+
+  function scanDir(currentPath: string) {
+    const items = fs.readdirSync(currentPath);
+    for (const item of items) {
+      const itemPath = join(currentPath, item);
+      const stat = fs.statSync(itemPath);
+
+      if (stat.isDirectory() && item !== 'node_modules' && item !== 'dist') {
+        scanDir(itemPath);
+      } else if (stat.isFile() && (item.endsWith('.ts') || item.endsWith('.js'))) {
+        if (stat.mtime > latestTime) {
+          latestTime = stat.mtime;
+        }
+      }
+    }
+  }
+
+  scanDir(dirPath);
+  return latestTime;
 }
 
 // Execute the build process and catch any unhandled errors

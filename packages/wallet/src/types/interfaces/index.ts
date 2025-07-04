@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { IAdapterIdentity, IAdapterLifecycle } from "@m3s/common";
+import { IAdapterIdentity, IAdapterLifecycle, NetworkConfig } from "@m3s/shared";
 import { WalletEvent } from "../enums/index.js";
 
 
@@ -148,19 +148,6 @@ export interface AssetBalance {
   /** Optional: A human-readable formatted version of the balance. */
   formattedAmount?: string;
 }
-
-export interface NetworkConfig {
-  chainId: string; // Hexadecimal string (e.g., '0x1')
-  name: string;
-  displayName: string;
-  rpcUrls: string[]; // Array of RPC URLs, ordered by preference/validation
-  blockExplorerUrl?: string;
-  ticker?: string;
-  tickerName?: string;
-  shortName?: string;
-  chainSlug?: string;
-}
-
 export interface EstimatedFeeData {
   gasLimit: bigint | string;
   gasPrice?: string; // For legacy transactions

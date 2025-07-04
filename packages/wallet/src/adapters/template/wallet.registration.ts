@@ -1,7 +1,7 @@
-import { AdapterMetadata, registry } from '@m3s/common';
-import { getRequirements, getEnvironments, getFeatures, getStaticCompatibilityMatrix } from '@m3s/common';
+import { AdapterMetadata, registry } from '@m3s/shared';
+import { getRequirements, getEnvironments, getFeatures, getStaticCompatibilityMatrix } from '@m3s/shared';
 import { WalletTemplateAdapter } from './wallet.js';
-import { RuntimeEnvironment } from '@m3s/common';
+import { RuntimeEnvironment } from '@m3s/shared';
 import Joi from 'joi';
 import { WalletType } from '../../types/index.js';
 

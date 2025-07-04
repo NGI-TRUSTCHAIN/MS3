@@ -1,5 +1,5 @@
 
-import { AdapterMetadata, getStaticCompatibilityMatrix, getEnvironments, getFeatures, getRequirements, registry, RuntimeEnvironment } from '@m3s/common';
+import { AdapterMetadata, getStaticCompatibilityMatrix, getEnvironments, getFeatures, getRequirements, registry, RuntimeEnvironment } from '@m3s/shared';
 import { ContractHandlerType } from '../../types/index.js';
 import { OpenZeppelinAdapter } from './adapter.js';
 import Joi from "joi";

@@ -1,4 +1,4 @@
-import { AdapterArguments, AdapterError, CrossChainErrorCode, NetworkHelper } from '@m3s/common';
+import { AdapterArguments, AdapterError, CrossChainErrorCode, NetworkHelper } from '@m3s/shared';
 import { M3SLiFiViemProvider, sanitizeBigInts } from '../helpers/ProviderHelper.js';
 import {
   ICrossChain,
@@ -179,6 +179,66 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
       receivedAmount = (lastStep.execution as Execution)?.toAmount || safeRoute.toAmount;
     }
 
+  // ✅ CRITICAL FIX: Better completion detection
+    // If we have transaction hash AND received amount, operation likely completed
+    if (sourceTxHash && receivedAmount && parseFloat(receivedAmount) > 0) {
+      // Check if this is likely a completed same-chain swap
+      if (safeRoute.fromChainId === safeRoute.toChainId) {
+        console.log('[LiFi Adapter] 🎉 Same-chain swap detected with tx hash and received amount - marking as COMPLETED');
+        return {
+          operationId: safeRoute.id,
+          status: ExecutionStatusEnum.COMPLETED,
+          sourceTx: {
+            hash: sourceTxHash,
+            chainId: safeRoute.fromChainId,
+            explorerUrl: sourceTxExplorerUrl
+          },
+          destinationTx: {
+            hash: sourceTxHash, // Same transaction for same-chain swaps
+            chainId: safeRoute.toChainId,
+            explorerUrl: sourceTxExplorerUrl
+          },
+          receivedAmount,
+          statusMessage: 'Operation completed successfully.',
+          adapter: {
+            name: this.name,
+            version: this.version
+          },
+        };
+      }
+    }
+
+    // ✅ ENHANCED: Check for explicit completion markers in LiFi response
+    const hasCompletionMarkers = safeRoute.steps.every(step => {
+      if (!step.execution) return false;
+      return step.execution.status === 'DONE' || 
+             (step.execution.process && step.execution.process.some(p => p.status === 'DONE'));
+    });
+
+    if (hasCompletionMarkers && receivedAmount) {
+      console.log('[LiFi Adapter] 🎉 All steps marked as DONE with received amount - marking as COMPLETED');
+      return {
+        operationId: safeRoute.id,
+        status: ExecutionStatusEnum.COMPLETED,
+        sourceTx: {
+          hash: sourceTxHash,
+          chainId: safeRoute.fromChainId,
+          explorerUrl: sourceTxExplorerUrl
+        },
+        destinationTx: {
+          hash: destTxHash || sourceTxHash,
+          chainId: safeRoute.toChainId,
+          explorerUrl: destTxExplorerUrl || sourceTxExplorerUrl
+        },
+        receivedAmount,
+        statusMessage: 'Operation completed successfully.',
+        adapter: {
+          name: this.name,
+          version: this.version
+        },
+      };
+    }
+
     // Set appropriate status messages
     if (overallStatus === 'FAILED') {
       const failedStep = safeRoute.steps.find(step =>
@@ -211,9 +271,9 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
         explorerUrl: sourceTxExplorerUrl
       },
       destinationTx: {
-        hash: destTxHash,
+        hash: destTxHash || sourceTxHash,
         chainId: safeRoute.toChainId,
-        explorerUrl: destTxExplorerUrl
+        explorerUrl: destTxExplorerUrl || sourceTxExplorerUrl
       },
       receivedAmount,
       error,

@@ -3,7 +3,7 @@ import { NetworkConfig } from '../types/base.js';
 import { AdapterError } from '../errors/AdapterError.js';
 import { WalletErrorCode } from '../types/error.js';
 
-// A curated list of common chains to serve as a reliable fallback.
+// A curated list of shared chains to serve as a reliable fallback.
 const staticChainList = [
     {
         name: 'Ethereum Mainnet',

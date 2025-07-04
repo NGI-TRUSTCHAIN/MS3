@@ -82,7 +82,7 @@ console.log(`Token deployed at: ${deployed.contractId}`);
 
 ### ERC20 Tokens
 ```javascript
-// Basic token with common features
+// Basic token with shared features
 {
   name: 'MyToken',
   symbol: 'MTK',

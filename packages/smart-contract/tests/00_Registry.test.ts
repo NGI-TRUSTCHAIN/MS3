@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { registry } from '@m3s/common';
-import { getRequirements, getEnvironments, getFeatures } from '@m3s/common';
+import { registry } from '@m3s/shared';
+import { getRequirements, getEnvironments, getFeatures } from '@m3s/shared';
 import { OpenZeppelinAdapter } from '../src/adapters/openZeppelin/adapter.js';
-import { RuntimeEnvironment } from '@m3s/common';
+import { RuntimeEnvironment } from '@m3s/shared';
 import { openZeppelinOptionsSchema } from '../src/adapters/openZeppelin/openZeppelin.registration.js';
 import Joi from 'joi';
 
@@ -614,7 +614,7 @@ describe('Smart Contract Auto-Generation System Tests', () => {
   describe('Static Cross-Package Compatibility Matrix', () => {
     it('should test static compatibility declarations (what smart-contract package controls)', async () => {
       // ✅ Import the static compatibility functions
-      const { checkCrossPackageCompatibility } = await import('@m3s/common');
+      const { checkCrossPackageCompatibility } = await import('@m3s/shared');
 
       // ✅ Test what the smart-contract package DECLARES
       const scToEthers = checkCrossPackageCompatibility(
@@ -633,7 +633,7 @@ describe('Smart Contract Auto-Generation System Tests', () => {
     });
 
     it('should validate environment-aware compatibility (crosschain example)', async () => {
-      const { checkCrossPackageCompatibility } = await import('@m3s/common');
+      const { checkCrossPackageCompatibility } = await import('@m3s/shared');
 
       // ✅ Smart contract should work with ethers (both support server)
       const scToEthers = checkCrossPackageCompatibility(
@@ -653,7 +653,7 @@ describe('Smart Contract Auto-Generation System Tests', () => {
     });
 
     it('should handle contract compatibility with crosschain module', async () => {
-      const { checkCrossPackageCompatibility } = await import('@m3s/common');
+      const { checkCrossPackageCompatibility } = await import('@m3s/shared');
 
       // Smart contracts might interact with crosschain protocols
       // This tests the theoretical compatibility
@@ -680,7 +680,7 @@ describe('Smart Contract Auto-Generation System Tests', () => {
   // ✅ NEW SMART CONTRACT INTEGRATION TESTS SECTION
   describe('Cross-Package Contract Integration Tests', () => {
     it('should validate contract adapter compatibility with wallet modules', async () => {
-      const { checkCrossPackageCompatibility } = await import('@m3s/common');
+      const { checkCrossPackageCompatibility } = await import('@m3s/shared');
 
       // Test contract compatibility with ethers wallet
       const contractToEthers = checkCrossPackageCompatibility(

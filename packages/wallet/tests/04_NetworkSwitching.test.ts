@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest';
-import { NetworkHelper, NetworkConfig, PrivateKeyHelper } from '@m3s/common';
+import { NetworkHelper, NetworkConfig, PrivateKeyHelper } from '@m3s/shared';
 import { createWallet, IEVMWallet, WalletEvent } from '@m3s/wallet';
 import { TEST_PRIVATE_KEY } from '../config.js';
 

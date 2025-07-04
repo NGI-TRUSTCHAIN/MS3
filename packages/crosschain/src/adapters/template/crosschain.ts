@@ -1,4 +1,4 @@
-import { AdapterArguments } from '@m3s/common';
+import { AdapterArguments } from '@m3s/shared';
 import { ICrossChain, OperationQuote, OperationResult, ChainAsset } from '../../types/index.js';
 
 /**

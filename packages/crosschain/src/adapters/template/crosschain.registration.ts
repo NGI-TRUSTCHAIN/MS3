@@ -1,5 +1,5 @@
 import { CrosschainTemplateAdapter } from './crosschain.js';
-import { AdapterMetadata, getEnvironments, getFeatures, getRequirements, registry, RuntimeEnvironment, getStaticCompatibilityMatrix } from '@m3s/common';
+import { AdapterMetadata, getEnvironments, getFeatures, getRequirements, registry, RuntimeEnvironment, getStaticCompatibilityMatrix } from '@m3s/shared';
 import Joi from 'joi';
 import { CrossChainAdapterType } from '../../types/index.js';
 

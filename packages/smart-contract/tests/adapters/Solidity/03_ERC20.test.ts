@@ -6,12 +6,12 @@ import { testContractHandlerInterface } from '../../02_IBaseContractHandler.test
 import { ethers } from 'ethers';
 import { TEST_PRIVATE_KEY, RUN_INTEGRATION_TESTS, INFURA_API_KEY, ALCHEMY_API_KEY } from '../../../config.js';
 import { createWallet, IEVMWallet } from '@m3s/wallet';
-import { NetworkHelper } from '@m3s/common';
+import { NetworkHelper } from '@m3s/shared';
 import * as node_path from 'path';
 import * as fs_promises from 'fs/promises';
 
 // Debug check for adapter registration
-import { registry } from '@m3s/common';
+import { registry } from '@m3s/shared';
 const smartContractAdapters = registry.getModuleAdapters('smart-contract');
 console.log('🔍 Available smart-contract adapters:', smartContractAdapters.map(a => `${a.name}@${a.version}`));
 

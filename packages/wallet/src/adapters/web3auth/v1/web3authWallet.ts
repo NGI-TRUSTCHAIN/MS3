@@ -1,7 +1,7 @@
 import { Web3AuthNoModal } from "@web3auth/no-modal";
 import { ChainNamespaceType, CustomChainConfig, IBaseProvider, WALLET_ADAPTERS } from "@web3auth/base";
 import { BrowserProvider, ethers, Provider, TransactionReceipt } from "ethers";
-import { AdapterArguments, AdapterError, NetworkConfig, NetworkHelper, WalletErrorCode } from "@m3s/common";
+import { AdapterArguments, AdapterError, NetworkConfig, NetworkHelper, WalletErrorCode } from "@m3s/shared";
 import { AuthAdapter, LoginConfig } from "@web3auth/auth-adapter";
 import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
 import { IEVMWallet, WalletEvent, GenericTransactionData, AssetBalance, EIP712TypedData, EstimatedFeeData } from '../../../types/index.js';
@@ -158,27 +158,74 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
     }
     const newChainIdHex = config.chainId.startsWith('0x') ? config.chainId : `0x${parseInt(config.chainId, 10).toString(16)}`;
 
+    // ✅ MISSING PART: Use RPC data like ethers adapter does
+    const cid = config.chainId;
+    const cidDecimal = parseInt(newChainIdHex, 16).toString();
+    const preferred = this.multiChainRpcs[cid] || this.multiChainRpcs[cidDecimal] || this.multiChainRpcs[newChainIdHex] || [];
+
+    // ✅ Get proper network config with RPC preferences
+    const networkHelper = NetworkHelper.getInstance();
+    await networkHelper.ensureInitialized();
+    let finalConfig: NetworkConfig;
+
+    try {
+      // Try to get enhanced config with preferred RPCs
+      const enhancedConfig = await networkHelper.getNetworkConfig(cid, preferred, false);
+      finalConfig = enhancedConfig || config; // Fall back to original config
+    } catch (error) {
+      console.warn(`[Web3AuthWalletAdapter] NetworkHelper failed, using original config:`, error);
+      finalConfig = config;
+    }
+
+    // ✅ Ensure we have valid RPC URLs
+    if (!finalConfig.rpcUrls || finalConfig.rpcUrls.length === 0) {
+      if (preferred.length > 0) {
+        finalConfig = { ...finalConfig, rpcUrls: preferred };
+      } else {
+        throw new AdapterError(`No RPC URLs available for chain ${newChainIdHex}`, {
+          code: WalletErrorCode.ConnectionFailed,
+          methodName: 'setProvider'
+        });
+      }
+    }
+
     try {
       await this.web3auth.switchChain({ chainId: newChainIdHex });
     } catch (switchError: any) {
-      if (switchError.code === 4902) { // Unrecognized chain ID
+      if (switchError.code === 4902 || switchError.message?.includes('Unrecognized chain ID') || switchError.message?.includes('Chain config has not been added')) {
         try {
+          console.log(`[Web3AuthWalletAdapter] Adding chain ${newChainIdHex} to Web3Auth`);
+
           const chainToAdd = {
             chainId: newChainIdHex,
             chainNamespace: "eip155" as ChainNamespaceType,
-            displayName: config.displayName || config.name,
-            rpcTarget: config.rpcUrls[0],
-            blockExplorerUrl: config.blockExplorerUrl,
-            ticker: config.ticker,
-            tickerName: config.tickerName,
+            displayName: finalConfig.displayName || finalConfig.name,
+            rpcTarget: finalConfig.rpcUrls[0], // ✅ Use the proper RPC URL
+            blockExplorerUrl: finalConfig.blockExplorerUrl,
+            ticker: finalConfig.ticker || "ETH",
+            tickerName: finalConfig.tickerName || "Ethereum",
           };
+
           await this.web3auth.addChain(chainToAdd as any);
+          console.log(`[Web3AuthWalletAdapter] ✅ Successfully added chain ${newChainIdHex}`);
+
+          // Now try to switch again
           await this.web3auth.switchChain({ chainId: newChainIdHex });
+          console.log(`[Web3AuthWalletAdapter] ✅ Successfully switched to chain ${newChainIdHex}`);
+
         } catch (addError: any) {
-          throw new AdapterError(`Failed to add or switch chain ${newChainIdHex}.`, { cause: addError, code: 'PROVIDER_SWITCH_FAILED' });
+          throw new AdapterError(`Failed to add or switch to chain ${newChainIdHex}: ${addError.message}`, {
+            cause: addError,
+            code: WalletErrorCode.ConnectionFailed,
+            methodName: 'setProvider'
+          });
         }
       } else {
-        throw new AdapterError(`Failed to switch chain ${newChainIdHex}.`, { cause: switchError, code: 'PROVIDER_SWITCH_FAILED' });
+        throw new AdapterError(`Failed to switch chain ${newChainIdHex}: ${switchError.message}`, {
+          cause: switchError,
+          code: WalletErrorCode.ConnectionFailed,
+          methodName: 'setProvider'
+        });
       }
     }
 

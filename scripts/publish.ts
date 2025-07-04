@@ -33,7 +33,7 @@ async function runPublishProcess() {
 
     try {
       const allPackageDirs = fs.readdirSync(packagesDir)
-        .filter(dir => dir !== 'common' && dir !== packageName); // Exclude common and the package itself
+        .filter(dir => dir !== 'shared' && dir !== packageName); // Exclude shared and the package itself
 
       allPackageDirs.forEach(pkgDir => {
         const dependentPkgJsonPath = join(packagesDir, pkgDir, 'package.json');
@@ -74,13 +74,23 @@ async function runPublishProcess() {
 
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
     const currentVersion = packageJson.version;
-    const fullPackageName = packageJson.name; // This will be @m3s/wallet, @m3s/common etc.
+    const fullPackageName = packageJson.name;
     console.log(`[${packageName}] Current version of ${fullPackageName}: ${currentVersion}`);
 
-    // 1. Build the package
+    console.log(`[${packageName}] Cleaning build artifacts before fresh build...`);
+    const distPath = join(packagePath, 'dist');
+    const tsbuildInfoPath = join(packagePath, 'tsconfig.tsbuildinfo');
+
+    if (fs.existsSync(distPath)) {
+      fs.rmSync(distPath, { recursive: true, force: true });
+    }
+    if (fs.existsSync(tsbuildInfoPath)) {
+      fs.rmSync(tsbuildInfoPath, { force: true });
+    }
+
+    // Build the package
     console.log(`[${packageName}] Building package ${packageName} before publishing...`);
     try {
-      // Execute the build.ts script for the specific package
       execSync(`node --loader ts-node/esm "${join(rootDir, 'scripts', 'build.ts')}" ${packageName}`, { stdio: 'inherit', cwd: rootDir });
       console.log(`[${packageName}] Build completed successfully.`);
     } catch (buildError) {
@@ -91,11 +101,10 @@ async function runPublishProcess() {
     // 2. Bump version
     const versionParts = currentVersion.split('.').map(Number);
     versionParts[2]++; // Increment patch
-    // Your existing version bump logic:
-    if (versionParts[2] > 9 && versionParts.length > 1) { // Ensure minor part exists
+    if (versionParts[2] > 9 && versionParts.length > 1) {
       versionParts[2] = 0;
       versionParts[1]++;
-      if (versionParts[1] > 9 && versionParts.length > 0) { // Ensure major part exists
+      if (versionParts[1] > 9 && versionParts.length > 0) {
         versionParts[1] = 0;
         versionParts[0]++;
       }
@@ -121,7 +130,6 @@ async function runPublishProcess() {
       if (error.stderr) console.error("Stderr:", error.stderr.toString());
       process.exit(1);
     }
-
     // 4. Update dependent packages in the monorepo
     // Pass the simple name (e.g., "wallet") not "@m3s/wallet" to updateDependentPackages
     updateDependentPackages(packageName, newVersion);
@@ -156,27 +164,25 @@ async function runPublishProcess() {
 
   async function publishAllPackages(options: { otp?: string } = {}) {
     console.log("Publish.ts: publishAllPackages() started.");
-    // Define a sensible publish order based on dependencies
-    const orderedPackagesToPublish = ['wallet', 'smart-contract', 'crosschain'];
 
-    // getPublishablePackages still respects "private": true in package.json
+    // ✅ ENHANCED: Always publish shared first, then dependents
+    const orderedPackagesToPublish = ['shared', 'wallet', 'smart-contract', 'crosschain'];
+
     const allAllowedToPublish = getPublishablePackages();
-
-    // Filter our desired publish order by what's actually allowed to be published
     const packagesToActuallyPublish = orderedPackagesToPublish.filter(pkgName => allAllowedToPublish.includes(pkgName));
 
     if (packagesToActuallyPublish.length === 0) {
-      console.log("No packages found in the defined order that are eligible for publishing (excluding common).");
+      console.log("No packages found in the defined order that are eligible for publishing.");
       return;
     }
 
     console.log(`\n🚀 Starting publishing process for: ${packagesToActuallyPublish.join(', ')}`);
-    
+
     for (const pkgName of packagesToActuallyPublish) {
-      await publishPackage(pkgName, options); // publishPackage calls buildPackage internally
+      await publishPackage(pkgName, options);
     }
 
-    console.log("\n✅ All selected packages processed for publishing.");
+    console.log("\n✅ All selected packages processed for publishing with fresh types.");
   }
 
   // Main module execution logic
@@ -197,14 +203,7 @@ async function runPublishProcess() {
       await publishAllPackages({ otp: otpArg });
     }
     console.log("Publish.ts: Script operations finished successfully.");
-    // Optional: Consider git push --follow-tags here after all successful publishes
-    // try {
-    //     console.log("Pushing git changes and tags...");
-    //     execSync(`git push --follow-tags`, { cwd: rootDir, stdio: 'inherit' });
-    //     console.log("Git push successful.");
-    // } catch (error) {
-    //     console.warn("Failed to push git changes. Please do it manually.", error);
-    // }
+
   } else {
     console.log("Publish.ts: Script is NOT main module.");
   }

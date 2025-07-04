@@ -2,7 +2,7 @@ export * from './types/index.js'
 export * from './enums/index.js'
 export * from './interfaces/index.js'
 
-// ✅ Re-export common types and utilities for adapter developers
+// ✅ Re-export shared types and utilities for adapter developers
 export {
   AdapterArguments,
   AdapterError,
@@ -17,4 +17,4 @@ export {
   AdapterMetadata,
   NetworkHelper,
   PrivateKeyHelper
-} from '@m3s/common';
+} from '@m3s/shared';

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { AdapterArguments, detectRuntimeEnvironment, RuntimeEnvironment, registry } from '@m3s/common';
+import { AdapterArguments, detectRuntimeEnvironment, RuntimeEnvironment, registry } from '@m3s/shared';
 import { IEthersWalletOptionsV1 } from '../src/adapters/index.js';
 
 /**

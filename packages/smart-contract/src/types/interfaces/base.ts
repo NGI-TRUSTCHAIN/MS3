@@ -1,4 +1,4 @@
-import { IAdapterIdentity, IAdapterLifecycle } from "@m3s/common";
+import { IAdapterIdentity, IAdapterLifecycle } from "@m3s/shared";
 
 /** Input for generating contract source code */
 export interface GenerateContractInput {

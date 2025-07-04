@@ -5,7 +5,7 @@ import { IBaseContractHandler, GenerateContractInput, CompileInput, CompiledOutp
 import SolidityCompiler from "./compilers/solidityCompiler.js";
 import CodeGenerator from "./generator.js";
 import { NetworkConfig } from "@m3s/wallet"
-import { AdapterArguments, AdapterError, SmartContractErrorCode } from "@m3s/common";
+import { AdapterArguments, AdapterError, SmartContractErrorCode } from "@m3s/shared";
 
 export interface IOpenZeppelinAdapterOptionsV1 {
     workDir?: string;

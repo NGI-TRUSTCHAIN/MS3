@@ -6,7 +6,7 @@ import { createWallet, IEVMWallet } from '@m3s/wallet';
 import { RouteExtended } from '@lifi/sdk';
 import { TEST_PRIVATE_KEY, LIFI_API_KEY, RUN_REAL_EXECUTION, INFURA_API_KEY, BRIDGE_TIMEOUT, QUOTE_TEST_TIMEOUT, SWAP_EXECUTION_TIMEOUT } from '../../config.js';
 import { OperationMonitor } from '../../src/helpers/OperationMonitor.js';
-import { AdapterArguments, NetworkConfig, NetworkHelper } from '@m3s/common';
+import { AdapterArguments, NetworkConfig, NetworkHelper } from '@m3s/shared';
 import { testAdapterPattern } from '../01_Core.test.js';
 import { IEthersWalletOptionsV1 } from '@m3s/wallet';
 

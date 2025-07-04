@@ -2,7 +2,7 @@ import { describe, beforeEach, it, expect, vi, beforeAll } from 'vitest';
 import { testAdapterPattern } from '../01_Core.test.js';
 import { testEVMWalletInterface } from '../03_IEVMWallet.test.js';
 import { TEST_PRIVATE_KEY } from '../../config.js'
-import { NetworkHelper } from '@m3s/common';
+import { NetworkHelper } from '@m3s/shared';
 import { JsonRpcProvider } from 'ethers';
 import { WalletEvent, GenericTransactionData, createWallet, IEVMWallet } from '@m3s/wallet';
 import { EvmWalletAdapter } from '../../src/adapters/ethers/v1/ethersWallet.js';

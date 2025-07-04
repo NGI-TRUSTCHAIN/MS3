@@ -1,5 +1,5 @@
 import pkgJson from '../package.json' with { type: "json" };
-import { registry, createErrorHandlingProxy, AdapterError, validateAdapterParameters, ModuleArguments, ValidatorArguments, validateEnvironment, Ms3Modules } from '@m3s/common'
+import { registry, createErrorHandlingProxy, AdapterError, validateAdapterParameters, ModuleArguments, ValidatorArguments, validateEnvironment, Ms3Modules } from '@m3s/shared'
 import { ICoreWallet, WalletAdapterOptionsV1 } from "./types/index.js";
 
 // Register this module in the registry

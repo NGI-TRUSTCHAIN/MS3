@@ -1,4 +1,4 @@
-import { AdapterMetadata, getStaticCompatibilityMatrix, getEnvironments, getFeatures, getRequirements, registry, RuntimeEnvironment } from '@m3s/common';
+import { AdapterMetadata, getStaticCompatibilityMatrix, getEnvironments, getFeatures, getRequirements, registry, RuntimeEnvironment } from '@m3s/shared';
 import { Web3AuthWalletAdapter } from './web3authWallet.js';
 import { WalletType } from '../../../types/index.js';
 import Joi from 'joi';

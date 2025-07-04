@@ -1,6 +1,6 @@
 import { IBaseContractHandler, SmartContractAdapterOptions } from './types/index.js';
 import pkgJson from '../package.json' with { type: "json" };
-import { registry, AdapterError, createErrorHandlingProxy, ModuleArguments, validateAdapterParameters, ValidatorArguments, validateEnvironment } from '@m3s/common';
+import { registry, AdapterError, createErrorHandlingProxy, ModuleArguments, validateAdapterParameters, ValidatorArguments, validateEnvironment } from '@m3s/shared';
 
 // Register this module in the registry
 registry.registerModule({ name: 'smart-contract', version: pkgJson.version });

@@ -1,5 +1,5 @@
 import { ethers, Provider, Wallet as EthersWallet, JsonRpcProvider, TransactionReceipt } from 'ethers';
-import { AdapterArguments, AdapterError, NetworkConfig, NetworkHelper, WalletErrorCode } from '@m3s/common';
+import { AdapterArguments, AdapterError, NetworkConfig, NetworkHelper, WalletErrorCode } from '@m3s/shared';
 import { IEVMWallet, WalletEvent, GenericTransactionData, AssetBalance, EIP712TypedData, EstimatedFeeData } from '../../../types/index.js';
 import { EIP712Validator } from '../../../helpers/signatures.js';
 import { toBigInt, toWei } from '../../../helpers/units.js';

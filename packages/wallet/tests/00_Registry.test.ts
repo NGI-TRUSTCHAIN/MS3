@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { registry } from '@m3s/common';
-import { getRequirements, getEnvironments, getFeatures } from '@m3s/common';
-import { RuntimeEnvironment } from '@m3s/common';
+import { registry } from '@m3s/shared';
+import { getRequirements, getEnvironments, getFeatures } from '@m3s/shared';
+import { RuntimeEnvironment } from '@m3s/shared';
 import Joi from 'joi';
 import { EvmWalletAdapter } from '../src/adapters/ethers/v1/ethersWallet.js';
 import { ethersOptionsSchema } from '../src/adapters/ethers/v1/ethersWallet.registration.js';
@@ -371,8 +371,8 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
   describe('Registry Integration', () => {
     beforeAll(async () => {
       // Import registrations to ensure adapters are registered
-      await import('../src/adapters/ethers/ethersWallet.registration.js');
-      await import('../src/adapters/web3auth/web3authWallet.js')
+      await import('../src/adapters/ethers/v1/ethersWallet.registration.js');
+      await import('../src/adapters/web3auth/v1/web3authWallet.js')
     });
 
     it('should have registered web3auth adapter with JOI-generated data', () => {
@@ -566,7 +566,7 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
   // ✅ NEW INTEGRATION TESTS SECTION
   describe('Cross-Package Integration Tests', () => {
     it('should validate wallet adapter compatibility with smart-contract module', async () => {
-      const { checkCrossPackageCompatibility } = await import('@m3s/common');
+      const { checkCrossPackageCompatibility } = await import('@m3s/shared');
       
       // Test ethers wallet compatibility with smart contract module
       const ethersToSC = checkCrossPackageCompatibility(
@@ -584,7 +584,7 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
     });
 
     it('should validate wallet adapter compatibility with crosschain module', async () => {
-      const { checkCrossPackageCompatibility } = await import('@m3s/common');
+      const { checkCrossPackageCompatibility } = await import('@m3s/shared');
       
       // Test ethers wallet compatibility with crosschain module
       const ethersToCrosschain = checkCrossPackageCompatibility(

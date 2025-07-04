@@ -1,6 +1,6 @@
 import { IEVMWallet } from "@m3s/wallet";
 import { ExecutionStatusEnum } from "../enums/index.js";
-import { IAdapterIdentity, IAdapterLifecycle } from "@m3s/common";
+import { IAdapterIdentity, IAdapterLifecycle } from "@m3s/shared";
 
 /**
  * Represents an asset on a blockchain
