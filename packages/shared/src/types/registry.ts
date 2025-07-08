@@ -55,8 +55,10 @@ export interface AdapterMetadata {
   module: string;
   adapterType: string | number;
   adapterClass: any; // Constructor type for the adapter (typically with a static `create` method)
+  capabilities: string[]; // ✅ ADD: The definitive list of implemented capability interfaces.
   requirements?: Requirement[];
   errorMap?: Record<string, WalletErrorCode | string>;
+  /** @deprecated The `capabilities` array is now the source of truth for adapter features. This may be removed in a future version. */
   features?: MethodSignature[];
   environment?: EnvironmentRequirements;
 }
@@ -98,9 +100,6 @@ export interface CompatibilityMatrix {
   }[];
   crossModuleCompatibility: {
     moduleName: string;
-    compatibleAdapters: {
-      name: string;
-      versions: string[];
-    }[];
+    requiresCapabilities: string[];
   }[];
 }

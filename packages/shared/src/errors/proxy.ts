@@ -2,6 +2,7 @@ import { AdapterError } from "./AdapterError.js";
 import { WalletErrorCode } // Assuming WalletErrorCode is a general type for error codes, adjust if needed
   // Or import a more generic ErrorCode type if you have one for all modules
   from "../types/error.js"; // Or the correct path to your error code definitions
+import { MethodToCapabilityMap } from "../registry/capability.js";
 
 /**
  * Creates a Proxy around an adapter instance to standardize error handling.
@@ -20,6 +21,7 @@ import { WalletErrorCode } // Assuming WalletErrorCode is a general type for err
  */
 export function createErrorHandlingProxy<T extends object>(
   adapterInstance: T,
+  capabilities: string[], // ✅ ADD: The adapter's capabilities
   errorMap: Record<string, WalletErrorCode | string> = {},
   defaultErrorCode?: WalletErrorCode | string, // Can be undefined
   contextName: string = 'UnknownAdapter' // Renamed from adapterType for clarity
@@ -31,6 +33,18 @@ export function createErrorHandlingProxy<T extends object>(
 
       if (typeof originalValue === 'function') {
 
+        const requiredCapability = MethodToCapabilityMap[methodName];
+        if (requiredCapability && !capabilities.includes(requiredCapability)) {
+          // If a capability is required for this method but the adapter doesn't have it,
+          // return a function that throws an informative error immediately upon being called.
+          return () => {
+            throw new AdapterError(
+              `Method '${methodName}' is not supported by ${contextName}. It lacks the required capability: '${requiredCapability}'.`,
+              { code: 'METHOD_NOT_SUPPORTED', methodName }
+            );
+          };
+        }
+        
         const isAsync = originalValue.constructor.name === 'AsyncFunction';
 
         const handleError = (error: unknown) => {

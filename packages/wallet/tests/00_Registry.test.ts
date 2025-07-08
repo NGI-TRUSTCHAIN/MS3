@@ -565,6 +565,11 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
 
   // ✅ NEW INTEGRATION TESTS SECTION
   describe('Cross-Package Integration Tests', () => {
+    beforeAll(async () => {
+      await import('../../smart-contract/src/adapters/openZeppelin/openZeppelin.registration.js');
+      await import('../../crosschain/src/adapters/LI.FI.registration.js');
+    });
+
     it('should validate wallet adapter compatibility with smart-contract module', async () => {
       const { checkCrossPackageCompatibility } = await import('@m3s/shared');
       
@@ -580,7 +585,7 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
         'wallet', 'web3auth', '1.0.0',
         'smart-contract', 'openZeppelin', '1.0.0'
       );
-      expect(web3authToSC).toBe(true);
+      expect(web3authToSC).toBe(false);
     });
 
     it('should validate wallet adapter compatibility with crosschain module', async () => {

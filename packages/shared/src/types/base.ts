@@ -35,7 +35,6 @@ export interface AdapterArguments<SpecificOptionsType = Record<string, any>> {
  * @template ModuleOptionsUnion - A union of all possible specific option types for adapters within this module.
  */
 export interface ModuleArguments<
-  FeatureType = string,
   ModuleOptionsUnion = Record<string, any>
 > {
   /** The unique name of the adapter to be created or configured. */
@@ -48,8 +47,8 @@ export interface ModuleArguments<
    * possible option structures for the module.
    */
   options: ModuleOptionsUnion;
-  /** Optional feature or capability string identifier required from the adapter. */
-  neededFeature?: FeatureType;
+    /** ✅ NEW: The name of the specific interface the user expects to get back. */
+  expectedInterface?: string;
 }
 
 export interface NetworkInfo {

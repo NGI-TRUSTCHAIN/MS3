@@ -1,4 +1,8 @@
-import { AdapterMetadata, CompatibilityConflict, CompatibilityMatrix, CompatibilityReport, EnvironmentRequirements, ModuleMetadata, RuntimeEnvironment } from "../types/index.js";
+import { AdapterMetadata, CompatibilityMatrix, CompatibilityReport, EnvironmentRequirements, ModuleMetadata, RuntimeEnvironment } from "../types/index.js";
+import { Capability } from "./capability.js";
+import { checkCrossPackageCompatibility } from "./compatibility.js";
+
+
 
 // Helper function to get a value from a nested path
 export function getPropertyByPath(obj: any, path: string): any {
@@ -13,7 +17,42 @@ class UniversalRegistry {
   private modules: Map<string, ModuleMetadata> = new Map();
   private adapters: Map<string, Map<string, AdapterMetadata>> = new Map();
   private compatibilityMatrices: Map<string, Map<string, CompatibilityMatrix>> = new Map();
+  private interfaceShapes: Map<string, string[]> = new Map(); // ✅ ADD: The missing map
 
+    /**
+   * ✅ NEW: Register the shape of a convenience alias.
+   * This is called by modules (e.g., wallet/index.ts) to define their aliases.
+   * @param interfaceName The name of the alias (e.g., 'IEVMWallet').
+   * @param requiredCapabilities An array of base capability names it requires.
+   */
+  registerInterfaceShape(interfaceName: string, requiredCapabilities: Capability[]): void {
+    this.interfaceShapes.set(interfaceName, requiredCapabilities);
+  }
+
+  /**
+   * ✅ NEW: Get the shape of a convenience alias.
+   * This is called by the validator to verify an adapter meets an interface's requirements.
+   */
+  getInterfaceShape(interfaceName: string): string[] | undefined {
+    return this.interfaceShapes.get(interfaceName);
+  }
+
+   /**
+   * ✅ NEW: A modern replacement for findAdaptersWithFeature that uses our new architecture.
+   * Finds all adapters that have a specific capability.
+   */
+  findAdaptersWithCapability(capability: Capability): AdapterMetadata[] {
+    const result: AdapterMetadata[] = [];
+    for (const moduleAdapters of this.adapters.values()) {
+      for (const metadata of moduleAdapters.values()) {
+        if (metadata.capabilities?.includes(capability)) {
+          result.push(metadata);
+        }
+      }
+    }
+    return result;
+  }
+  
   /**
  * Get compatibility matrix for an adapter
  */
@@ -135,56 +174,21 @@ class UniversalRegistry {
     const modulesToCheck = targetModuleName ? [targetModuleName] : Array.from(this.adapters.keys());
 
     for (const moduleName of modulesToCheck) {
+      // Don't check for compatibility within the same module
+      if (moduleName === currentAdapter.moduleName) continue;
+
       const moduleAdapters = this.adapters.get(moduleName);
       if (!moduleAdapters) continue;
 
-      // Get compatibility matrix for current adapter
-      const matrix = this.getCompatibilityMatrix(
-        currentAdapter.moduleName,
-        currentAdapter.name,
-        currentAdapter.version
-      );
-
-      for (const [, adapterMetadata] of moduleAdapters) {
-        // Skip same adapter
-        if (moduleName === currentAdapter.moduleName &&
-          adapterMetadata.name === currentAdapter.name &&
-          adapterMetadata.version === currentAdapter.version) {
-          continue;
-        }
-
-        let isCompatible = true;
-
-        // Check environment compatibility
-        if (adapterMetadata.environment && matrix) {
-          const currentAdapterMeta = this.getAdapter(currentAdapter.moduleName, currentAdapter.name, currentAdapter.version);
-          if (currentAdapterMeta?.environment) {
-            // Check if environments overlap
-            const environmentOverlap = currentAdapterMeta.environment.supportedEnvironments.some(env =>
-              adapterMetadata.environment!.supportedEnvironments.includes(env)
-            );
-            if (!environmentOverlap) {
-              isCompatible = false;
-            }
-          }
-        }
-
-        // Check cross-module compatibility from matrix
-        if (matrix && isCompatible) {
-          const crossModuleCompat = matrix.crossModuleCompatibility.find(cmc =>
-            cmc.moduleName === moduleName
-          );
-
-          if (crossModuleCompat) {
-            const compatibleAdapter = crossModuleCompat.compatibleAdapters.find(ca =>
-              ca.name === adapterMetadata.name && ca.versions.includes(adapterMetadata.version)
-            );
-            isCompatible = !!compatibleAdapter;
-          }
-        }
+      for (const [, targetAdapterMetadata] of moduleAdapters) {
+        // Use the new, authoritative compatibility checker
+        const isCompatible = checkCrossPackageCompatibility(
+          currentAdapter.moduleName, currentAdapter.name, currentAdapter.version,
+          targetAdapterMetadata.module, targetAdapterMetadata.name, targetAdapterMetadata.version
+        );
 
         if (isCompatible) {
-          compatibleAdapters.push(adapterMetadata);
+          compatibleAdapters.push(targetAdapterMetadata);
         }
       }
     }
@@ -321,35 +325,6 @@ class UniversalRegistry {
   }
 
   /**
-   * Check if an adapter supports a specific feature/method
-   */
-  supportsFeature(moduleName: string, name: string, version: string, featureName: string): boolean {
-    const adapter = this.getAdapter(moduleName, name, version);
-    if (!adapter) return false;
-
-    // Check if the method exists on the adapter class prototype
-    return typeof adapter.adapterClass.prototype[featureName] === 'function';
-  }
-
-  /**
-    * Find adapters that support a specific feature across all modules
-    */
-  findAdaptersWithFeature(featureName: string): AdapterMetadata[] {
-    const result: AdapterMetadata[] = [];
-
-    // Check each module's adapters
-    for (const [moduleName, moduleAdapters] of Array.from(this.adapters.entries())) {
-      for (const [, metadata] of Array.from(moduleAdapters.entries())) {
-        if (this.supportsFeature(moduleName, metadata.name, metadata.version, featureName)) {
-          result.push(metadata);
-        }
-      }
-    }
-
-    return result;
-  }
-
-  /**
      * Get environment requirements for an adapter
      */
   getEnvironmentRequirements(moduleName: string, name: string, version: string): EnvironmentRequirements | undefined {
@@ -387,156 +362,6 @@ class UniversalRegistry {
     return result;
   }
 
-  /**
-   * ✅ NEW: Helper methods extracted from devtool.ts
-   */
-  private areEnvironmentsCompatible(adapter1: AdapterMetadata, adapter2: AdapterMetadata): boolean {
-    if (!adapter1.environment || !adapter2.environment) return true;
-    
-    return adapter1.environment.supportedEnvironments.some(env =>
-      adapter2.environment!.supportedEnvironments.includes(env)
-    );
-  }
-
-  private areInterfacesCompatible(adapter1: AdapterMetadata, adapter2: AdapterMetadata): boolean {
-    if (!adapter1.features || !adapter2.features) return true;
-    
-    const methods1 = adapter1.features.map(f => f.name);
-    const methods2 = adapter2.features.map(f => f.name);
-    
-    const coreMethods = ['initialize', 'isInitialized'];
-    return coreMethods.every(method => 
-      methods1.includes(method) && methods2.includes(method)
-    );
-  }
-
-  /**
-   * ✅ NEW: Find all compatible adapters for a given adapter
-   */
-  findCompatibleAdapters(
-    moduleName: string, 
-    adapterName: string, 
-    version: string
-  ): { module: string; adapter: string; version: string; compatibility: number }[] {
-    const sourceAdapter = this.getAdapter(moduleName, adapterName, version);
-    if (!sourceAdapter) return [];
-
-    const compatible: { module: string; adapter: string; version: string; compatibility: number }[] = [];
-    
-    // ✅ Check all modules except source module
-    for (const module of this.getAllModules()) {
-      if (module.name === moduleName) continue;
-      
-      const moduleAdapters = this.getModuleAdapters(module.name);
-      for (const targetAdapter of moduleAdapters) {
-        const report = this.getCompatibilityReport(
-          moduleName, adapterName, version,
-          module.name, targetAdapter.name, targetAdapter.version
-        );
-        
-        if (report.compatible) {
-          // ✅ Calculate compatibility score
-          const envScore = this.areEnvironmentsCompatible(sourceAdapter, targetAdapter) ? 1 : 0;
-          const interfaceScore = this.areInterfacesCompatible(sourceAdapter, targetAdapter) ? 1 : 0;
-          const compatibility = (envScore + interfaceScore) / 2;
-          
-          compatible.push({
-            module: module.name,
-            adapter: targetAdapter.name,
-            version: targetAdapter.version,
-            compatibility
-          });
-        }
-      }
-    }
-
-    return compatible.sort((a, b) => b.compatibility - a.compatibility);
-  }
-  
-    /**
-   * ✅ NEW: Get detailed compatibility report between adapters
-   */
-  getCompatibilityReport(
-    module1: string, adapter1: string, version1: string,
-    module2: string, adapter2: string, version2: string
-  ): CompatibilityReport {
-    const metadata1 = this.getAdapter(module1, adapter1, version1);
-    const metadata2 = this.getAdapter(module2, adapter2, version2);
-    
-    if (!metadata1 || !metadata2) {
-      return {
-        compatible: false,
-        conflicts: [{
-          type: 'version',
-          severity: 'error',
-          description: 'One or both adapters not found',
-          affectedVersions: [version1, version2]
-        }],
-        recommendations: ['Verify adapter names and versions'],
-        supportedVersions: []
-      };
-    }
-
-    const conflicts: CompatibilityConflict[] = [];
-    let compatible = true;
-
-    // ✅ Environment compatibility
-    if (!this.areEnvironmentsCompatible(metadata1, metadata2)) {
-      compatible = false;
-      conflicts.push({
-        type: 'environment',
-        severity: 'error',
-        description: `Environment incompatibility: ${adapter1} requires ${metadata1.environment?.supportedEnvironments.join(', ')}, ${adapter2} requires ${metadata2.environment?.supportedEnvironments.join(', ')}`,
-        affectedVersions: [version1, version2],
-        suggestedAction: `Use ${adapter1} in ${metadata1.environment?.supportedEnvironments.join('/')} environment, or ${adapter2} in ${metadata2.environment?.supportedEnvironments.join('/')} environment`
-      });
-    }
-
-    // ✅ Interface compatibility
-    if (!this.areInterfacesCompatible(metadata1, metadata2)) {
-      compatible = false;
-      conflicts.push({
-        type: 'feature',
-        severity: 'error',
-        description: `Interface incompatibility: Core methods missing or incompatible`,
-        affectedVersions: [version1, version2],
-        suggestedAction: 'Verify both adapters implement required interface methods'
-      });
-    }
-
-    // ✅ Build recommendations
-    const recommendations: string[] = [];
-    if (compatible) {
-      recommendations.push(`✅ ${adapter1}@${version1} and ${adapter2}@${version2} are compatible`);
-      if (metadata1.environment && metadata2.environment) {
-        const commonEnvs = metadata1.environment.supportedEnvironments.filter(env =>
-          metadata2.environment!.supportedEnvironments.includes(env)
-        );
-        recommendations.push(`💡 Use in ${commonEnvs.join(' or ')} environment${commonEnvs.length > 1 ? 's' : ''}`);
-      }
-    } else {
-      recommendations.push(`❌ ${adapter1}@${version1} and ${adapter2}@${version2} are not compatible`);
-      
-      if (conflicts.some(c => c.type === 'environment')) {
-        // ✅ Suggest environment-compatible alternatives
-        const allAdapters = this.getModuleAdapters(module1);
-        for (const alt of allAdapters) {
-          if (alt.name !== adapter1 && metadata2.environment && 
-              alt.environment?.supportedEnvironments.some(env => 
-                metadata2.environment!.supportedEnvironments.includes(env))) {
-            recommendations.push(`💡 Try ${alt.name}@${alt.version} instead of ${adapter1} for ${metadata2.environment.supportedEnvironments.join('/')} compatibility`);
-          }
-        }
-      }
-    }
-
-    return {
-      compatible,
-      conflicts,
-      recommendations,
-      supportedVersions: compatible ? [version1, version2] : []
-    };
-  }
 }
 
 // Export the singleton instance

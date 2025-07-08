@@ -4,12 +4,11 @@ import { ModuleArguments } from '../types/base.js';
 import { getPropertyByPath, UniversalRegistry } from '../registry/registry.js';
 
 
-
 export interface ValidatorArguments {
   moduleName: string,
   name: string,
   version: string,
-  params: ModuleArguments<any, any>, // Generic params object
+  params: ModuleArguments<any>, // Generic params object
   adapterInfo: AdapterMetadata,
   registry: UniversalRegistry,
   factoryMethodName: string
@@ -17,27 +16,29 @@ export interface ValidatorArguments {
 
 export function validateAdapterParameters(args: ValidatorArguments
 ): void {
-  const { moduleName, name, version, params, adapterInfo, registry, factoryMethodName } = args
-  const { neededFeature } = params; // neededFeature here is a string
+  const { name, version, params, adapterInfo, registry, factoryMethodName } = args
+  const { expectedInterface } = params;
 
   console.log('Validator - arguments, ', args)
 
-  // Check feature compatibility if specified (neededFeature is a string)
-  if (neededFeature && typeof neededFeature === 'string') {
-    console.log('Validator - neededFeature, ', neededFeature)
-
-    if (!registry.supportsFeature(moduleName, name, version, neededFeature)) {
-      throw new AdapterError(
-        `Feature '${neededFeature}' is not supported by adapter '${name}' for module '${moduleName}'.`,
-        { 
-          methodName: factoryMethodName,
-          code: 'FEATURE_NOT_SUPPORTED',
-          details: { feature: neededFeature } }
-      );
+  // ✅ NEW: Implement the "Promise & Verify" check from our blueprint.
+  if (expectedInterface) {
+    const requiredCapabilities = registry.getInterfaceShape(expectedInterface);
+    if (!requiredCapabilities) {
+      // This is a developer error, the interface shape was likely not registered.
+      throw new AdapterError(`Unknown interface shape requested: '${expectedInterface}'. Ensure it is registered in the registry.`, { code: 'INTERNAL_ERROR' });
     }
-  } else if (neededFeature && !Array.isArray(neededFeature) && typeof neededFeature !== 'string') {
-    // Handle cases where neededFeature might be something else unexpected, like an object not an array
-    console.warn(`[validateAdapterParameters] 'neededFeature' for ${name} is of an unexpected type: ${typeof neededFeature}. It should typically be a string.`);
+
+    const adapterCapabilities = adapterInfo.capabilities || [];
+    for (const req of requiredCapabilities) {
+      if (!adapterCapabilities.includes(req)) {
+        // FAIL FAST! The user's assumption was wrong.
+        throw new AdapterError(
+          `Adapter '${name}@${version}' does not fully implement the '${expectedInterface}' interface. Missing capability: '${req}'.`,
+          { code: 'INCOMPATIBLE_ADAPTER', methodName: factoryMethodName }
+        );
+      }
+    }
   }
 
 

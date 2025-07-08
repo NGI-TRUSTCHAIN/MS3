@@ -33,6 +33,7 @@ const adapterMetadata: AdapterMetadata = {
   module: 'crosschain',
   adapterType: CrossChainAdapterType.bridge,
   adapterClass: CrosschainTemplateAdapter,
+  capabilities: [],
   requirements: crosschainRequirements,
   environment: crosschainEnvironment,
   features: crosschainFeatures

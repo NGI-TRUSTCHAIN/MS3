@@ -507,9 +507,11 @@ describe('MinimalLiFiAdapter executeOperation Method Tests', () => {
 
 describe('MinimalLiFiAdapter Swap Operation Lifecycle', () => {
   let operationMonitor: OperationMonitor;
+  
   beforeEach(() => {
     operationMonitor = new OperationMonitor(adapter)
   });
+
   afterEach(() => {
     operationMonitor.clearAllOperations(); // Clean up tracked operations
   });

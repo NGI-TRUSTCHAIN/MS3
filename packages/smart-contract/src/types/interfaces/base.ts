@@ -14,6 +14,7 @@ export interface CompileInput {
   contractName?: string; // Optional hint for the main contract artifact
   compilerOptions?: Record<string, any>; // Language/toolchain specific compiler flags
 }
+
 export interface CompiledOutput {
   artifacts: {
     abi: any[];

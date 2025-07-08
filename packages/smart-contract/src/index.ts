@@ -1,6 +1,6 @@
 import { IBaseContractHandler, SmartContractAdapterOptions } from './types/index.js';
 import pkgJson from '../package.json' with { type: "json" };
-import { registry, AdapterError, createErrorHandlingProxy, ModuleArguments, validateAdapterParameters, ValidatorArguments, validateEnvironment } from '@m3s/shared';
+import { registry, AdapterError, createErrorHandlingProxy, ModuleArguments, validateAdapterParameters, ValidatorArguments, validateEnvironment, Capability } from '@m3s/shared';
 
 // Register this module in the registry
 registry.registerModule({ name: 'smart-contract', version: pkgJson.version });
@@ -8,7 +8,12 @@ import './adapters/index.js';
 
 export * from './types/index.js';
 export type { IOpenZeppelinAdapterOptionsV1 } from './adapters/index.js';
-export interface IContractOptions extends ModuleArguments<string, SmartContractAdapterOptions> { }
+export interface IContractOptions extends ModuleArguments<SmartContractAdapterOptions> { }
+
+registry.registerInterfaceShape('IContractHandler', [
+  Capability.ContractGenerator,
+  Capability.ContractCompiler
+]);
 
 /**
  * Creates and returns a contract handler adapter instance based on the provided configuration.
@@ -61,10 +66,11 @@ export async function createContractHandler<T extends IBaseContractHandler = IBa
   }
 
   // ✅ Preserve all error handling and proxy functionality
-  return createErrorHandlingProxy(
-    adapter,
-    adapterInfo.errorMap || {},
-    undefined,
-    `ContractHandler(${name})`  // ✅ Updated display name
-  ) as T;
+    return createErrorHandlingProxy(
+      adapter,
+      adapterInfo.capabilities,
+      adapterInfo.errorMap || {},
+      undefined,
+      `ContractHandler(${name})`
+    ) as T;
 }

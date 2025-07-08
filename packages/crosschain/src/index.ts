@@ -1,7 +1,7 @@
 import { ICrossChain } from './types/interfaces/index.js';
 import pkgJson from '../package.json' with { type: "json" };
 
-import { registry, createErrorHandlingProxy, ModuleArguments, validateAdapterParameters, ValidatorArguments, AdapterError, validateEnvironment, Ms3Modules } from '@m3s/shared';
+import { registry, createErrorHandlingProxy, ModuleArguments, validateAdapterParameters, ValidatorArguments, AdapterError, validateEnvironment, Ms3Modules, Capability } from '@m3s/shared';
 import { ILiFiAdapterOptionsV1 } from './adapters/index.js';
 
 // Register this module in the registry
@@ -12,7 +12,13 @@ export * from './types/index.js';
 export * from './helpers/index.js'
 export type { ILiFiAdapterOptionsV1 } from './adapters/index.js';
 
-export interface ICrossChainOptions extends ModuleArguments<string, ILiFiAdapterOptionsV1> { }
+export interface ICrossChainOptions extends ModuleArguments< ILiFiAdapterOptionsV1> { }
+
+registry.registerInterfaceShape('ICrossChain', [
+  Capability.AdapterIdentity, Capability.AdapterLifecycle, Capability.QuoteProvider,
+  Capability.OperationExecutor, Capability.OperationMonitor, Capability.ChainDiscovery,
+  Capability.GasEstimator, Capability.OperationMaintenance
+]);
 
 /**
  * Creates a CrossChain module instance with the specified adapter.
@@ -80,10 +86,11 @@ export async function createCrossChain<T extends ICrossChain = ICrossChain>(para
   }
 
   // ✅ Preserve all error handling and proxy functionality
-  return createErrorHandlingProxy(
-    adapter,
-    adapterInfo.errorMap || {},
-    undefined,
-    `CrossChainAdapter(${name})`  // ✅ Updated display name
-  ) as T;
+   return createErrorHandlingProxy(
+      adapter,
+      adapterInfo.capabilities,
+      adapterInfo.errorMap || {},
+      undefined,
+      `CrossChainAdapter(${name})`
+    ) as T;
 }

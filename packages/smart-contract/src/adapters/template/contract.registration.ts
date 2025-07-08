@@ -36,6 +36,7 @@ const adapterMetadata: AdapterMetadata = {
   module: 'smart-contract',
   adapterType: ContractHandlerType.openZeppelin,
   adapterClass: ContractTemplateAdapter,
+  capabilities: [],
   requirements: contractRequirements,
   environment: contractEnvironment,
   features: contractFeatures

@@ -36,6 +36,7 @@ const adapterMetadata: AdapterMetadata = {
   module: 'wallet',
   adapterType: WalletType.evm,
   adapterClass: WalletTemplateAdapter,
+  capabilities: [],
   requirements: walletRequirements,
   environment: walletEnvironment,
   features: walletFeatures

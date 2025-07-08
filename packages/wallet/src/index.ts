@@ -1,5 +1,5 @@
 import pkgJson from '../package.json' with { type: "json" };
-import { registry, createErrorHandlingProxy, AdapterError, validateAdapterParameters, ModuleArguments, ValidatorArguments, validateEnvironment, Ms3Modules } from '@m3s/shared'
+import { registry, createErrorHandlingProxy, AdapterError, validateAdapterParameters, ModuleArguments, ValidatorArguments, validateEnvironment, Ms3Modules, Capability } from '@m3s/shared'
 import { ICoreWallet, WalletAdapterOptionsV1 } from "./types/index.js";
 
 // Register this module in the registry
@@ -8,7 +8,12 @@ import './adapters/index.js';
 
 export * from './types/index.js';
 export type { IEthersWalletOptionsV1, IWeb3AuthWalletOptionsV1 } from './adapters/index.js';
-export interface IWalletOptions extends ModuleArguments<string, WalletAdapterOptionsV1> {}
+export interface IWalletOptions extends ModuleArguments<WalletAdapterOptionsV1> { }
+
+registry.registerInterfaceShape('IEVMWallet', [
+  Capability.CoreWallet, Capability.EventEmitter, Capability.MessageSigner, Capability.TransactionHandler,
+  Capability.TypedDataSigner, Capability.GasEstimation, Capability.TokenOperations, Capability.RPCHandler, Capability.TransactionStatus
+]);
 
 /**
  * Creates and returns a wallet adapter instance based on the provided configuration.
@@ -19,13 +24,13 @@ export async function createWallet<T extends ICoreWallet = ICoreWallet>(params: 
 
   try {
     const adapterInfo = registry.getAdapter(
-      Ms3Modules.wallet, 
+      Ms3Modules.wallet,
       name, version
     );
 
     if (!adapterInfo) {
       // ✅ Enhanced error message with available versions
-      const availableVersions = registry.getAdapterVersions( Ms3Modules.wallet, name);
+      const availableVersions = registry.getAdapterVersions(Ms3Modules.wallet, name);
       const versionsText = availableVersions.length > 0
         ? ` Available versions: ${availableVersions.join(', ')}`
         : '';
@@ -34,14 +39,14 @@ export async function createWallet<T extends ICoreWallet = ICoreWallet>(params: 
 
     // ✅ Validate environment before creation
     if (adapterInfo.environment) {
-      console.log(adapterInfo.environment); 
+      console.log(adapterInfo.environment);
       validateEnvironment(name, adapterInfo.environment);
     }
 
     // Use the validation utility
     // ✅ Updated ValidatorArguments
     const validatorArgs: ValidatorArguments = {
-      moduleName:  Ms3Modules.wallet,
+      moduleName: Ms3Modules.wallet,
       name,
       version,  // ✅ Add version
       params,
@@ -68,9 +73,15 @@ export async function createWallet<T extends ICoreWallet = ICoreWallet>(params: 
     }
 
     // ✅ Preserve all error handling and proxy functionality
-    return createErrorHandlingProxy(adapter, adapterInfo.errorMap || {}, undefined, `WalletAdapter(${name})`) as T;
+    return createErrorHandlingProxy(
+      adapter,
+      adapterInfo.capabilities, // Pass the capabilities
+      adapterInfo.errorMap || {},
+      undefined,
+      `WalletAdapter(${name})`
+    ) as T;
   } catch (error) {
-     if (error instanceof AdapterError) {
+    if (error instanceof AdapterError) {
       // Re-throw the original AdapterError to preserve its code and details.
       throw error;
     }

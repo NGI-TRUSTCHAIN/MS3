@@ -41,7 +41,7 @@ interface ITransactionHandler {
 /**
  * Gas estimation and management for EVM chains
  */
- interface IGasEstimation {
+interface IGasEstimation {
   getGasPrice(): Promise<bigint>;
   estimateGas(tx: GenericTransactionData): Promise<EstimatedFeeData>;
 }
@@ -148,6 +148,7 @@ export interface AssetBalance {
   /** Optional: A human-readable formatted version of the balance. */
   formattedAmount?: string;
 }
+
 export interface EstimatedFeeData {
   gasLimit: bigint | string;
   gasPrice?: string; // For legacy transactions

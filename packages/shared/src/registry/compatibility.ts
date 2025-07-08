@@ -1,4 +1,7 @@
+import { detectRuntimeEnvironment } from '../helpers/environment.js';
 import { CompatibilityMatrix } from '../types/registry.js';
+import { Capability } from './capability.js';
+import { registry } from './registry.js';
 
 /**
  * ✅ STATIC COMPATIBILITY DATABASE
@@ -15,15 +18,13 @@ export const WALLET_COMPATIBILITY: Record<string, CompatibilityMatrix> = {
     crossModuleCompatibility: [
       {
         moduleName: 'smart-contract',
-        compatibleAdapters: [
-          { name: 'openZeppelin', versions: ['1.0.0'] }
-        ]
+        // ✅ This wallet can work with any smart-contract adapter that can generate contracts.
+        requiresCapabilities: [Capability.ContractGenerator]
       },
       {
         moduleName: 'crosschain',
-        compatibleAdapters: [
-          { name: 'lifi', versions: ['1.0.0'] }
-        ]
+        // ✅ This wallet can work with any crosschain adapter that can execute operations.
+        requiresCapabilities: [Capability.OperationExecutor]
       }
     ]
   },
@@ -35,12 +36,14 @@ export const WALLET_COMPATIBILITY: Record<string, CompatibilityMatrix> = {
     crossModuleCompatibility: [
       {
         moduleName: 'smart-contract',
-        compatibleAdapters: [
-          { name: 'openZeppelin', versions: ['1.0.0'] }
-        ]
+        // ✅ This wallet can work with any smart-contract adapter that can generate contracts.
+        requiresCapabilities: [Capability.ContractGenerator]
       },
-      // ❌ NOTE: web3auth is BROWSER-only, so NO crosschain compatibility
-      // crosschain adapters typically need server environment
+      {
+        moduleName: 'crosschain',
+        // ✅ This wallet can work with any crosschain adapter that can execute operations.
+        requiresCapabilities: [Capability.OperationExecutor]
+      }
     ]
   }
 };
@@ -55,10 +58,8 @@ export const SMART_CONTRACT_COMPATIBILITY: Record<string, CompatibilityMatrix> =
     crossModuleCompatibility: [
       {
         moduleName: 'wallet',
-        compatibleAdapters: [
-          { name: 'ethers', versions: ['1.0.0'] },
-          { name: 'web3auth', versions: ['1.0.0'] }
-        ]
+        // ✅ This smart-contract adapter needs a wallet that can handle transactions.
+        requiresCapabilities: [Capability.TransactionHandler, Capability.RPCHandler]
       }
     ]
   }
@@ -74,10 +75,8 @@ export const CROSSCHAIN_COMPATIBILITY: Record<string, CompatibilityMatrix> = {
     crossModuleCompatibility: [
       {
         moduleName: 'wallet',
-        compatibleAdapters: [
-          { name: 'ethers', versions: ['1.0.0'] }
-          // ❌ NOTE: NO web3auth - environment incompatibility
-        ]
+        // ✅ This crosschain adapter needs a wallet that can handle transactions and RPC calls.
+        requiresCapabilities: [Capability.TransactionHandler, Capability.RPCHandler]
       }
     ]
   }
@@ -85,12 +84,12 @@ export const CROSSCHAIN_COMPATIBILITY: Record<string, CompatibilityMatrix> = {
 
 // ✅ Master lookup function
 export function getStaticCompatibilityMatrix(
-  moduleName: string, 
-  adapterName: string, 
+  moduleName: string,
+  adapterName: string,
   version: string
 ): CompatibilityMatrix | undefined {
   const key = `${adapterName}@${version}`;
-  
+
   switch (moduleName) {
     case 'wallet':
       return WALLET_COMPATIBILITY[key];
@@ -108,18 +107,37 @@ export function checkCrossPackageCompatibility(
   sourceModule: string, sourceAdapter: string, sourceVersion: string,
   targetModule: string, targetAdapter: string, targetVersion: string
 ): boolean {
-  const matrix = getStaticCompatibilityMatrix(sourceModule, sourceAdapter, sourceVersion);
-  if (!matrix) return false;
-  
-  const targetModuleCompat = matrix.crossModuleCompatibility.find(
+  const sourceMatrix = getStaticCompatibilityMatrix(sourceModule, sourceAdapter, sourceVersion);
+  if (!sourceMatrix) return false;
+
+  // Find the compatibility rule for the target module (e.g., 'wallet')
+  const targetModuleCompatRule = sourceMatrix.crossModuleCompatibility.find(
     cmc => cmc.moduleName === targetModule
   );
-  
-  if (!targetModuleCompat) return false;
-  
-  const compatibleAdapter = targetModuleCompat.compatibleAdapters.find(
-    ca => ca.name === targetAdapter && ca.versions.includes(targetVersion)
+
+  if (!targetModuleCompatRule) return false; // No rule defined for this pairing
+
+   // Get the metadata for the actual target adapter instance
+  const targetAdapterInfo = registry.getAdapter(targetModule, targetAdapter, targetVersion);
+  if (!targetAdapterInfo?.capabilities) return false; // Target adapter not found or has no capabilities
+
+  // ✅ --- REVISED ENVIRONMENT CHECK ---
+  const sourceAdapterInfo = registry.getAdapter(sourceModule, sourceAdapter, sourceVersion);
+  const currentEnvironments = detectRuntimeEnvironment();
+
+  // 1. Check if the source adapter can run in the current environment.
+  if (sourceAdapterInfo?.environment && !sourceAdapterInfo.environment.supportedEnvironments.some(env => currentEnvironments.includes(env))) {
+    return false; // Source adapter cannot run here.
+  }
+
+  // 2. Check if the target adapter can run in the current environment.
+  if (targetAdapterInfo.environment && !targetAdapterInfo.environment.supportedEnvironments.some(env => currentEnvironments.includes(env))) {
+    return false; // Target adapter cannot run here.
+  }
+  // ✅ --- END REVISED CHECK ---
+
+  // ✅ CORE LOGIC: Check if the target adapter's capabilities include ALL required capabilities.
+  return targetModuleCompatRule.requiresCapabilities.every(requiredCap =>
+    targetAdapterInfo.capabilities.includes(requiredCap)
   );
-  
-  return !!compatibleAdapter;
 }

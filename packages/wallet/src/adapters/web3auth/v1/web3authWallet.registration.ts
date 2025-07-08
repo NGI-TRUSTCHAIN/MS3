@@ -1,4 +1,4 @@
-import { AdapterMetadata, getStaticCompatibilityMatrix, getEnvironments, getFeatures, getRequirements, registry, RuntimeEnvironment } from '@m3s/shared';
+import { AdapterMetadata, getStaticCompatibilityMatrix, getEnvironments, getFeatures, getRequirements, registry, RuntimeEnvironment, Capability } from '@m3s/shared';
 import { Web3AuthWalletAdapter } from './web3authWallet.js';
 import { WalletType } from '../../../types/index.js';
 import Joi from 'joi';
@@ -63,6 +63,19 @@ const adapterMetadata: AdapterMetadata = {
   module: 'wallet',
   adapterType: WalletType.web3auth,
   adapterClass: Web3AuthWalletAdapter,
+   /** ✅ ADD: Define the capabilities this adapter implements. */
+   capabilities: [
+     Capability.CoreWallet,
+     Capability.EventEmitter,
+     Capability.MessageSigner,
+     Capability.TransactionHandler,
+     Capability.TypedDataSigner,
+     Capability.GasEstimation,
+     Capability.TokenOperations,
+     Capability.RPCHandler,
+     Capability.TransactionStatus,
+         Capability.AdapterLifecycle
+   ],
   requirements: web3authRequirements,
   environment: web3authEnvironment,
   features: web3authFeatures

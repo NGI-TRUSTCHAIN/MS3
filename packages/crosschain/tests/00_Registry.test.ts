@@ -404,22 +404,19 @@ describe('Crosschain Auto-Generation System Tests', () => {
     });
 
     it('should have static compatibility matrix with wallet compatibility declarations', () => {
-      const compatMatrix = registry.getCompatibilityMatrix(Ms3Modules.crosschain, 'lifi', '1.0.0');
+      const compatMatrix = registry.getCompatibilityMatrix('crosschain', 'lifi', '1.0.0');
       expect(compatMatrix).toBeDefined();
       expect(compatMatrix!.adapterName).toBe('lifi');
       expect(compatMatrix!.version).toBe('1.0.0');
 
-      // ✅ TEST: What this package DECLARES about wallet compatibility  
-      const walletCompat = compatMatrix!.crossModuleCompatibility.find(c => c.moduleName === Ms3Modules.wallet);
+      // ✅ FIX: Test what this package DECLARES about wallet compatibility using requiresCapabilities
+      const walletCompat = compatMatrix!.crossModuleCompatibility.find(c => c.moduleName === 'wallet');
       expect(walletCompat).toBeDefined();
+      expect(walletCompat!.requiresCapabilities).toBeDefined();
+      expect(Array.isArray(walletCompat!.requiresCapabilities)).toBe(true);
+      expect(walletCompat!.requiresCapabilities.length).toBeGreaterThan(0);
 
-      const ethersCompat = walletCompat!.compatibleAdapters.find(a => a.name === 'ethers');
-      expect(ethersCompat).toBeDefined();
-
-      const web3authCompat = walletCompat!.compatibleAdapters.find(a => a.name === 'web3auth');
-      expect(web3authCompat).toBeUndefined(); // Should NOT be compatible (environment mismatch)
-
-      console.log('✅ Crosschain correctly DECLARES wallet adapter compatibility');
+      console.log('✅ Crosschain correctly DECLARES wallet adapter compatibility requirements');
     });
 
     it('should have generated bridge-specific compatibility matrices', () => {
@@ -585,6 +582,11 @@ describe('Crosschain Auto-Generation System Tests', () => {
   });
 
   describe('Static Cross-Package Compatibility Matrix', () => {
+    beforeAll(async () => {
+      await import('../../wallet/src/adapters/ethers/v1/ethersWallet.registration.js');
+      await import('../../wallet/src/adapters/web3auth/v1/web3authWallet.registration.js');
+    }, 20000);
+
     it('should test static compatibility declarations (what crosschain package controls)', async () => {
       // ✅ Import the static compatibility functions
       const { checkCrossPackageCompatibility } = await import('@m3s/shared');
@@ -598,6 +600,7 @@ describe('Crosschain Auto-Generation System Tests', () => {
         crosschain, 'lifi', '1.0.0',
         wallet, 'ethers', '1.0.0'
       );
+
       expect(ccToEthers).toBe(true);
 
       const ccToWeb3Auth = checkCrossPackageCompatibility(
@@ -660,8 +663,13 @@ describe('Crosschain Auto-Generation System Tests', () => {
 
   // ✅ NEW CROSSCHAIN INTEGRATION TESTS SECTION
   describe('Cross-Package Bridge Integration Tests', () => {
+    beforeAll(async () => {
+      await import('../../wallet/src/adapters/ethers/v1/ethersWallet.registration.js');
+      await import('../../wallet/src/adapters/web3auth/v1/web3authWallet.registration.js');
+    }, 20000);
+
     it('should validate bridge adapter compatibility with wallet modules', async () => {
-      const { checkCrossPackageCompatibility } = await import('@m3s/shared');
+      const { checkCrossPackageCompatibility, Ms3Modules } = await import('@m3s/shared');
 
       // Test bridge compatibility with ethers wallet
       const bridgeToEthers = checkCrossPackageCompatibility(

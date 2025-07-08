@@ -1,4 +1,4 @@
-import { AdapterMetadata, registry } from '@m3s/shared';
+import { AdapterMetadata, Capability, registry } from '@m3s/shared';
 import { getRequirements, getEnvironments, getFeatures, getStaticCompatibilityMatrix } from '@m3s/shared';
 import { EvmWalletAdapter } from './ethersWallet.js';
 import { WalletType } from '../../../types/index.js';
@@ -11,7 +11,7 @@ export const ethersOptionsSchema = Joi.object({
     .pattern(/^0x[a-fA-F0-9]{64}$/)
     .optional()
     .description("Private key for wallet (generates random if not provided)"),
-    
+
   provider: Joi.object({
     name: Joi.string().required().description("Real Chain name"),
     chainId: Joi.string()
@@ -19,16 +19,16 @@ export const ethersOptionsSchema = Joi.object({
       .required()
       .description("Hex chain ID (e.g., 0xaa36a7)"),
     rpcUrls: Joi.array()
-        .items(
-          Joi.string()
-            .uri({ scheme: ["https"] })
-            .required()
-        )
+      .items(
+        Joi.string()
+          .uri({ scheme: ["https"] })
+          .required()
+      )
       .min(1)
       .required()
       .description("Array of HTTPS RPC URLs"),
     displayName: Joi.string().required().description("Wallet display label for the chain")
-    })
+  })
     .optional()
     .description('Optional provider configuration'),
 
@@ -71,6 +71,18 @@ const adapterMetadata: AdapterMetadata = {
   module: 'wallet',
   adapterType: WalletType.evm,
   adapterClass: EvmWalletAdapter,
+  capabilities: [
+    Capability.CoreWallet,
+    Capability.EventEmitter,
+    Capability.MessageSigner,
+    Capability.TransactionHandler,
+    Capability.TypedDataSigner,
+    Capability.GasEstimation,
+    Capability.TokenOperations,
+    Capability.RPCHandler,
+    Capability.TransactionStatus,
+    Capability.AdapterLifecycle
+  ],
   requirements: ethersRequirements,
   environment: ethersEnvironment,
   features: ethersFeatures
