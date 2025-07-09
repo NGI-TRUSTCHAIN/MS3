@@ -358,6 +358,7 @@ describe('ERC721 Options Tests', () => {
       language: 'solidity',
       contractName: 'ComplexNFT'
     });
+
     expect(compiled.artifacts?.abi).toBeDefined();
     expect(compiled.artifacts?.bytecode).toBeDefined();
     expect(compiled.getRegularDeploymentData).toBeDefined();
@@ -593,6 +594,7 @@ describe('ERC721 Options Tests', () => {
       data: deploymentData.implementation.data,
       value: deploymentData.implementation.value || '0'
     });
+
     const implReceipt = await waitForReceipt(implTxHash);
     expect(implReceipt?.status).toBe(1);
     const implementationAddress = implReceipt!.contractAddress!;
@@ -603,14 +605,17 @@ describe('ERC721 Options Tests', () => {
       deploymentData.proxy.abi,
       deploymentData.proxy.bytecode
     );
+
     const proxyDeployTx = await proxyFactory.getDeployTransaction(
       implementationAddress,
       deploymentData.proxy.logicInitializeData
     );
+
     const proxyTxHash = await walletAdapter.sendTransaction({
       data: proxyDeployTx.data!,
       value: deploymentData.proxy.value || '0'
     });
+    
     const proxyReceipt = await waitForReceipt(proxyTxHash);
     expect(proxyReceipt?.status).toBe(1);
     const proxyAddress = proxyReceipt!.contractAddress!;

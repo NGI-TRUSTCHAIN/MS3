@@ -31,7 +31,7 @@ export class EvmWalletAdapter implements IEVMWallet {
   protected decimals: number = 18;
   protected eventListeners: Map<string, Set<(payload: any) => void>> = new Map();
   private multiChainRpcs: Record<string, string[]> = {};
-  private currentNetworkConfig?: NetworkConfig;
+  private network?: NetworkConfig | null = null; // NEW: Add local network state
 
   private constructor(args: args) {
     this.name = args.name;
@@ -163,8 +163,10 @@ export class EvmWalletAdapter implements IEVMWallet {
       );
     }
 
+    this.network = null;
+
     // 3) Record it and wire up ethers.js
-    this.currentNetworkConfig = netConf;
+    this.network = netConf;
     this.provider = new JsonRpcProvider(netConf.rpcUrls[0]);
 
     if (this.wallet) {
@@ -213,13 +215,13 @@ export class EvmWalletAdapter implements IEVMWallet {
   }
 
   async getNetwork(): Promise<NetworkConfig> {
-    if (!this.currentNetworkConfig) {
+    if (!this.network) {
       throw new AdapterError(
         "No network configured.",
         { code: WalletErrorCode.WalletNotConnected, methodName: 'getNetwork' }
       );
     }
-    return this.currentNetworkConfig;
+    return this.network;
   }
 
   public async getBalance(account?: string): Promise<AssetBalance> {

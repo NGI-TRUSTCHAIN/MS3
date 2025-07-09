@@ -229,6 +229,7 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
       }
     }
 
+    this.network = null;
     const network = await this.getNetwork();
     this.network = network;
     this.decimals = network.decimals || 18;
