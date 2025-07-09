@@ -1,0 +1,27 @@
+[
+  {
+    "step": 1,
+    "title": "Select Adapter",
+    "content": "Choose a wallet adapter (**Ethers** or **Web3Auth**)."
+  },
+  {
+    "step": 2,
+    "title": "Create Wallet",
+    "content": "Use the m3s wallet module to create and connect a wallet."
+  },
+  {
+    "step": 3,
+    "title": "Check Incoming Balance",
+    "content": "Check if the wallet has received the expected amount. This simulates a funding transaction from the M3S system."
+  },
+  {
+    "step": 4,
+    "title": "Return Funds and Selected Currency",
+    "content": "Send back the funds in the selected currency using the m3s crosschain module."
+  },
+  {
+    "step": 5,
+    "title": "View Transaction Details",
+    "content": "View the result of the refund, such as the transaction hash and destination."
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "step": 1,
+    "title": "Select Wallet Adapter and Contract Type",
+    "content": "Choose a wallet adapter: **Ethers** (direct provider) or **Web3Auth** (social login). Then choose the type of contract to deploy: **ERC20** (fungible token) or **ERC721** (NFT)."
+  },
+  {
+    "step": 2,
+    "title": "Create Wallet",
+    "content": "Use the selected adapter to create and connect a wallet using the **m3s wallet module**."
+  },
+  {
+    "step": 3,
+    "title": "Fund Wallet with Testnet ETH",
+    "content": "To deploy a contract, your wallet must have testnet ETH. Visit [Goerli Faucet](https://goerlifaucet.com/) and paste your wallet address to receive funds."
+  },
+  {
+    "step": 4,
+    "title": "Deploy Smart Contract",
+    "content": "Deploy a contract using the **m3s smart contract module**, depending on the selected contract type. This can be an ERC20 or ERC721 implementation."
+  },
+  {
+    "step": 5,
+    "title": "Mint Token or NFT",
+    "content": "Call the mint function to issue a token (ERC20) or NFT (ERC721) to a specific address."
+  },
+  {
+    "step": 6,
+    "title": "Review Outputs",
+    "content": "View the deployed contract address, transaction hash, and any on-chain interaction results."
+  }
+]
