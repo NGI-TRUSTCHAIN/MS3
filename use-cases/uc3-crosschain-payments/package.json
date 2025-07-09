@@ -1,8 +1,0 @@
-{
-  "name": "uc3-crosschain-thinkaloud",
-  "version": "1.0.0",
-  "type": "module",
-  "scripts": {
-    "start": "npx serve public"
-  }
-}
