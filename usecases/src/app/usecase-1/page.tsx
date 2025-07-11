@@ -24,53 +24,17 @@ export default function Usecase1Page() {
   let wallet: any = null; // M3SWallet instance
 
   const createWallet = async () => {
-    /**
-     * Imports required (ensure you have these installed):
-     *
-     * import { M3SWallet } from "@m3s/wallet";
-     * import { EthersAdapter } from "@m3s/wallet/adapters/ethers";
-     * import { Web3AuthAdapter } from "@m3s/wallet/adapters/web3auth";
-     */
-    // 👇 Choose the adapter based on selection
-    // let adapter;
-    // if (adapterType === "ethers") {
-    //   adapter = new EthersAdapter({
-    //     network: "goerli", // or sepolia
-    //     rpcUrl: "https://rpc.ankr.com/eth_goerli",
-    //   });
-    // } else {
-    //   adapter = new Web3AuthAdapter({
-    //     clientId: "YOUR_WEB3AUTH_CLIENT_ID", // ⛳ Replace with actual ID
-    //     chainConfig: {
-    //       chainNamespace: "eip155",
-    //       chainId: "0x5", // Goerli
-    //       rpcTarget: "https://rpc.ankr.com/eth_goerli",
-    //     },
-    //   });
-    // }
-    // wallet = new M3SWallet(adapter);
-    // await wallet.connect();
-    // const address = await wallet.getAddress();
-    // setWalletAddress(address);
+    //Private key example: 0x4b7c60e8658b44f23f84ce946df1a77ac8a09e5b8a3cb9fc5f979859f7315ad1
   };
 
   const signDocument = async () => {
     if (!wallet || !wallet.signMessage) return;
 
-    // const sig = await wallet.signMessage(document);
-    // setSignature(sig);
   };
 
   const verifySignature = async () => {
     if (!signature || !walletAddress) return;
 
-    /**
-     * You can use ethers.js to verify the signature:
-     *
-     * import { ethers } from "ethers";
-     */
-    // const recovered = ethers.utils.verifyMessage(document, signature);
-    // setVerificationResult(recovered.toLowerCase() === walletAddress.toLowerCase());
   };
 
   return (
