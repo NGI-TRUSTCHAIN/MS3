@@ -16,17 +16,17 @@
   },
   {
     "step": 4,
-    "title": "Deploy Smart Contract",
-    "content": "Deploy a contract using the **m3s smart contract module**, depending on the selected contract type. This can be an ERC20 or ERC721 implementation."
+    "title": "Create Smart Contract on SSR. Complete code in /api/sc/compile",
+    "content": "Generate the Solidity code dynamically based on the contract type selected (ERC20 or ERC721) and input parameters like name, symbol, and supply."
   },
   {
     "step": 5,
-    "title": "Mint Token or NFT",
-    "content": "Call the mint function to issue a token (ERC20) or NFT (ERC721) to a specific address."
+    "title": "Compile Smart Contract on SSR. Complete code in /api/sc/compile",
+    "content": "Send the Solidity code to the SSR endpoint to compile it using the **m3s smart contract module**. The compiled ABI and bytecode will be returned and stored for deployment."
   },
   {
     "step": 6,
-    "title": "Review Outputs",
-    "content": "View the deployed contract address, transaction hash, and any on-chain interaction results."
+    "title": "Deploy Smart Contract",
+    "content": "Deploy a contract using the **m3s smart contract module**, depending on the selected contract type."
   }
 ]

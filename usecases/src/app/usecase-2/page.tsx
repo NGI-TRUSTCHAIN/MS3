@@ -8,56 +8,52 @@ import DocStep from "@/components/ui/DocStep";
 import docSteps from "@/data/usecase2-doc.json";
 import { snippetERC20 } from "@/data/snippet-ERC20";
 import { snippetERC721 } from "@/data/snippet-ERC721";
+import { PRIVATE_RPCS } from "@/data/private_rcps";
+import { providerConfig } from "@/data/supportedChains";
+import axios from "axios";
 
 export default function Usecase2Page() {
+  //Wallet Module
   const [adapterType, setAdapterType] = useState<"ethers" | "web3auth">(
     "ethers"
   );
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [walletProvider, setWalletProvider] = useState<any>(null);
+
+  //Smart contract Module
   const [contractType, setContractType] = useState<"erc20" | "erc721">(
     "erc721"
   );
-
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [deployedOutput, setDeployedOutput] = useState<any>(null);
   const [contractAddress, setContractAddress] = useState<string | null>(null);
   const [mintTxHash, setMintTxHash] = useState<string | null>(null);
 
-  let wallet: any = null; // Replace with actual wallet instance
-  let smartContract: any = null; // Replace with m3s smart contract instance
+  const _createWallet = async () => {
+    try {
+      if (adapterType === "ethers") {
+        //Use createWallet fc (Provider)
+        //setWalletProvider
+        //With provider use getAccounts fc
+        //setWalletAddress
+      } else {
+      }
+    } catch (e) {
+      console.log("error", e);
+    }
+  };
 
-  const createWallet = async () => {
-    /**
-     * TODO: Import and instantiate @m3s/wallet with selected adapter:
-     * - EthersAdapter or Web3AuthAdapter
-     * - Connect and get wallet address
-     */
+  const createContract = async () => {
+    const res = await axios.post("/api/sc/generate", {
+      contractType,
+    });
+
+    setDeployedOutput(res.data.deployedOutput);
   };
 
   const deployContract = async () => {
-    /**
-     * TODO: Create contract definition before deploying
-     *
-     * Example:
-     * const contractData = {
-     *   name: "MyToken",
-     *   symbol: "MTK",
-     *   baseUri: "https://example.com/metadata/" // if ERC721
-     * };
-     *
-     * Then:
-     * - Use @m3s/smartcontract to deploy:
-     *   const contract = new SmartContract(wallet, contractType);
-     *   await contract.deploy(contractData);
-     *   const address = contract.getAddress();
-     *   setContractAddress(address);
-     */
-  };
-
-  const mintToken = async () => {
-    /**
-     * TODO: Call the smart contract's mint function:
-     * - Use a hardcoded recipient address or input
-     * - Store transaction hash or result
-     */
+    //Use wallet provider with sendTransaction fc
+    //Use waitForReceipt fc
+    //Use waitForReceipt fc
   };
 
   return (
@@ -89,7 +85,7 @@ export default function Usecase2Page() {
             Web3Auth
           </Button>
         </div>
-        <Button onClick={createWallet}>Create Wallet</Button>
+        <Button onClick={_createWallet}>Create Wallet</Button>
 
         {walletAddress && (
           <>
@@ -103,7 +99,7 @@ export default function Usecase2Page() {
       <div className="flex flex-col gap-4 mb-4 mt-8 border p-4 rounded-xl border-gray-200">
         <p>2. Fund wallet</p>
         <a
-          href="https://www.alchemy.com/faucets/ethereum-holesky"
+          href="https://holesky-faucet.pk910.de"
           target="_blank"
           rel="noopener noreferrer"
           className="text-sm underline text-blue-600"
@@ -135,17 +131,11 @@ export default function Usecase2Page() {
             <code>{snippetERC721}</code>
           )}
         </pre>
-        <Button onClick={deployContract} disabled={!walletAddress}>
-          Create Contract ({contractType.toUpperCase()})
+        <Button onClick={createContract} disabled={!walletAddress}>
+          Create and compile Contract ({contractType.toUpperCase()})
         </Button>
       </div>
 
-      <div className="flex flex-col gap-4 mb-4 mt-8 border p-4 rounded-xl border-gray-200">
-        <p>4. Compile contract</p>
-        <Button onClick={deployContract} disabled={!walletAddress}>
-          Compile Contract ({contractType.toUpperCase()})
-        </Button>
-      </div>
       <div className="flex flex-col gap-4 mb-4 mt-8 border p-4 rounded-xl border-gray-200">
         <p>5. Deploy contract</p>
         <Button onClick={deployContract} disabled={!walletAddress}>
@@ -154,19 +144,6 @@ export default function Usecase2Page() {
         {contractAddress && (
           <div className="text-sm text-green-700">
             Contract deployed at: <code>{contractAddress}</code>
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-4 mb-4 mt-8 border p-4 rounded-xl border-gray-200">
-        <p>{contractType === "erc20" ? '6. Mint token' : '6. Mint NFT'}</p>
-        <Button onClick={mintToken} disabled={!contractAddress}>
-          Mint {contractType === "erc20" ? 'token' : 'nft'}
-        </Button>
-
-        {mintTxHash && (
-          <div className="text-sm text-green-700">
-            Mint transaction: <code>{mintTxHash}</code>
           </div>
         )}
       </div>

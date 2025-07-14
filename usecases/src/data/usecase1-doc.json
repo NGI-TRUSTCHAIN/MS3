@@ -7,7 +7,7 @@
   {
     "step": 2,
     "title": "Create Wallet",
-    "content": "Click _Create Wallet_ to initialize the m3s wallet with the selected adapter. This connects to Goerli."
+    "content": "Click _Create Wallet_ to initialize the m3s wallet with the selected adapter."
   },
   {
     "step": 3,
