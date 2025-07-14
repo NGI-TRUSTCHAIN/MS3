@@ -27,7 +27,6 @@ export default function Usecase1Page() {
       //Use createWallet fc (Provider)
       //setWalletProvider
 
-<<<<<<< HEAD
       //With provider use getAccounts fc
       //setWalletAddress
       if (adapterType === "ethers") {
@@ -53,20 +52,6 @@ export default function Usecase1Page() {
       setFeedback("❌ Signature is invalid");
       console.log("error", e);
     }
-=======
-  const createWallet = async () => {
-    //Private key example: 0x4b7c60e8658b44f23f84ce946df1a77ac8a09e5b8a3cb9fc5f979859f7315ad1
-  };
-
-  const signDocument = async () => {
-    if (!wallet || !wallet.signMessage) return;
-
-  };
-
-  const verifySignature = async () => {
-    if (!signature || !walletAddress) return;
-
->>>>>>> 6f17ed982465aefcf89bfafbb30784af14b20f7f
   };
 
   return (
