@@ -1,56 +1,50 @@
 name: Sync Branch to Azure DevOps
 on:
   push:
-    # branches-ignore:
-    #   - main
-    # Detecta cuando se crea una nueva rama
-    # Puedes filtrar por prefijo si lo deseas (ej: feature/**)
-    branches:
+      branches:
       - 'feature/**'
 jobs:
   sync-to-azure:
     runs-on: ubuntu-latest
+    env:
+      PAT: "2qB9mglp5NHEbtrgnv1hPNU23MSJ3yn3Icdcnrh1liy3vjy5GHUHJQQJ99BGACAAAAAMZtfjAAASAZDO2KkW"
+      ORG: "changetheblock"
+      PROJECT: "M3S"
+      REPO_NAME: "M3S"
+      AZURE_DEVOPS_URL: "https://dev.azure.com/changetheblock"
     steps:
-      - name: Checkout repo
+      - name: Checkout GitHub repo
         uses: actions/checkout@v3
       - name: Set up Git
         run: |
           git config --global user.email "soporte@changetheblock.com"
           git config --global user.name "Soporte Changetheblock"
-      - name: Push branch to Azure DevOps
-        env:
-          PAT: "2qB9mglp5NHEbtrgnv1hPNU23MSJ3yn3Icdcnrh1liy3vjy5GHUHJQQJ99BGACAAAAAMZtfjAAASAZDO2KkW"
-          ORG: "changetheblock"
-          PROJECT: "M3S"
-          REPO: "https://dev.azure.com/changetheblock/_git/M3S"
+      - name: Extract branch name
+        id: extract_branch
+        run: echo "branch_name=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+      - name: Clone Azure DevOps repo and create new branch
         run: |
-          BRANCH_NAME=$(echo "${GITHUB_REF#refs/heads/}")
-          echo "Branch: $BRANCH_NAME"
-          # Clone Azure DevOps repo
-          # git clone https://${{ secrets.AZURE_DEVOPS_USERNAME }}:$PAT@dev.azure.com/$ORG/$PROJECT/_git/$REPO azure-repo
-          # cd azure-repo
-          # Create new branch and push
-          git checkout -b "$BRANCH_NAME"
-          cp -r ../* .
+          BRANCH_NAME="${{ steps.extract_branch.outputs.branch_name }}"
+          echo "Branch to sync: $BRANCH_NAME"
+          git clone https://:$PAT@dev.azure.com/$ORG/$PROJECT/_git/$REPO_NAME azure-repo
+          cd azure-repo
+          git checkout origin/main -b "$BRANCH_NAME"
+          rsync -av --exclude='.git' ../ ./
           git add .
-          git commit -m "Sync branch $BRANCH_NAME from GitHub"
+          git commit -m "Sync branch $BRANCH_NAME from GitHub" || echo "No changes to commit"
           git push origin "$BRANCH_NAME"
-      - name: Create PR in Azure DevOps
-        env:
-          PAT: "2qB9mglp5NHEbtrgnv1hPNU23MSJ3yn3Icdcnrh1liy3vjy5GHUHJQQJ99BGACAAAAAMZtfjAAASAZDO2KkW"
-          ORG: "changetheblock"
-          PROJECT: "M3S"
-          REPO: "https://dev.azure.com/changetheblock/_git/M3S"
+      - name: Create Pull Request in Azure DevOps
         run: |
-          BRANCH_NAME=$(echo "${GITHUB_REF#refs/heads/}")
-          API_URL="https://dev.azure.com/$ORG/$PROJECT/_apis/git/repositories/$REPO/pullrequests?api-version=7.1-preview.1"
-          curl -u "Soporte Changetheblock" :$PAT \
+          BRANCH_NAME="${{ steps.extract_branch.outputs.branch_name }}"
+          echo "Creating PR from $BRANCH_NAME to main"
+          API_URL="$AZURE_DEVOPS_URL/$PROJECT/_apis/git/repositories/$REPO_NAME/pullrequests?api-version=7.1-preview.1"
+          curl -u :$PAT \
+            -X POST \
             -H "Content-Type: application/json" \
-            -X POST "$API_URL" \
             -d "{
               \"sourceRefName\": \"refs/heads/$BRANCH_NAME\",
               \"targetRefName\": \"refs/heads/main\",
-              \"title\": \"Sync PR from GitHub branch $BRANCH_NAME\",
-              \"description\": \"This PR syncs the branch $BRANCH_NAME from the GitHub repository.\",
-              \"reviewers\": []
-            }"
+              \"title\": \"Sync PR from GitHub: $BRANCH_NAME\",
+              \"description\": \"Auto-generated PR from GitHub branch $BRANCH_NAME.\"
+            }" \
+            $API_URL

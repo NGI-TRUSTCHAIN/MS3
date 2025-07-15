@@ -6,7 +6,7 @@
 
 ## Overview
 
-MS3 is a revolutionary approach to Web3 integration, designed to make existing blockchain solutions more reusable and composable. Instead of repeatedly integrating the same tools for each project, MS3 allows you to compose and reuse pre-configured integrations through a modular adapter system.
+MS3 is a revolutionary approach to Web3 integration, designed to make existing blockchain solutions more reusable and composable. Instead of repeatedly integrating the same tools for each project, MS3 allows you to compose and reuse pre-configured integrations through a modular adapter system
 
 ## Key Benefits
 
