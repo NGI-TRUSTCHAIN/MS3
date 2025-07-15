@@ -5,8 +5,8 @@ on:
       - main
     # Detecta cuando se crea una nueva rama
     # Puedes filtrar por prefijo si lo deseas (ej: feature/**)
-    # branches:
-    #   - 'feature/**'
+    branches:
+      - 'feature/**'
 jobs:
   sync-to-azure:
     runs-on: ubuntu-latest

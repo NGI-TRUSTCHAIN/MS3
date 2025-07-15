@@ -14,7 +14,7 @@ MS3 is a revolutionary approach to Web3 integration, designed to make existing b
 - **Seamless Composability:** Mix and match different solutions that automatically work together
 - **Flexible Deployment:** Use our hosted solution or build your own solution with our modular packages
 - **Multi-Chain Support:** Built-in support for multi-chain and cross-chain operations
-- **Version Control:** Run multiple versions of the same adapter simultaneously
+- **Version Control:** Run multiple versions of the same adapter simultaneously.
 
 ## Architecture
 
