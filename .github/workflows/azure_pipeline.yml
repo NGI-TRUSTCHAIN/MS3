@@ -7,7 +7,7 @@ jobs:
   sync-to-azure:
     runs-on: ubuntu-latest
     env:
-      PAT: "2qB9mglp5NHEbtrgnv1hPNU23MSJ3yn3Icdcnrh1liy3vjy5GHUHJQQJ99BGACAAAAAMZtfjAAASAZDO2KkW"
+      PAT: "${{ secrets.AZURE_DEVOPS_M3S_TOKEN }}"
       ORG: "changetheblock"
       PROJECT: "M3S"
       REPO_NAME: "M3S"
