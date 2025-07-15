@@ -9,7 +9,6 @@ import Joi from 'joi';
 export const ethersOptionsSchema = Joi.object({
   privateKey: Joi.string()
     .pattern(/^0x[a-fA-F0-9]{64}$/)
-    .optional()
     .description("Private key for wallet (generates random if not provided)"),
 
   provider: Joi.object({

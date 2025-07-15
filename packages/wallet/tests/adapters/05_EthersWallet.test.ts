@@ -16,6 +16,42 @@ describe('EvmWalletAdapter Tests', () => {
   let sepoliaConfig: any; // Use 'any' for flexibility during loading
   const networkHelper = NetworkHelper.getInstance();
 
+  it('should throw if constructed with empty options (no privateKey)', async () => {
+    await expect(createWallet({
+      name: 'ethers',
+      version: '1.0.0',
+      options: {}
+    })).rejects.toThrow(/privateKey is required/i);
+  });
+
+  it('should initialize with a provider option and connect to the correct network', async () => {
+  // Example provider config for Sepolia (adjust values as needed)
+  const providerConfig = {
+    decimals: 18,
+    name: 'Sepolia',
+    chainId: '0xaa36a7', // Sepolia chainId (decimal or hex as your system expects)
+    rpcUrls: ['https://rpc.sepolia.org'],
+    displayName: 'Sepolia Testnet'
+  };
+
+  const wallet = await createWallet({
+    name: 'ethers',
+    version: '1.0.0',
+    options: {
+      privateKey: TEST_PRIVATE_KEY,
+      provider: providerConfig
+    }
+  });
+
+  expect(wallet).toBeDefined();
+  expect(wallet.isInitialized()).toBe(true);
+  expect(wallet.isConnected()).toBe(true);
+
+  const network = await wallet.getNetwork();
+  expect(network.chainId).toBe(providerConfig.chainId);
+  expect(network.name).toBe(providerConfig.name);
+});
+
   // Test constructor pattern
   testAdapterPattern(EvmWalletAdapter, {
     privateKey

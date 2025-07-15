@@ -329,6 +329,11 @@ export class EvmWalletAdapter implements IEVMWallet {
 
   // --- Transaction Methods ---
 
+  public async getNonce(type: 'latest' | 'pending' = 'pending'): Promise<number> {
+    const signer = await this.getSigner();
+    return signer.getNonce(type);
+  }
+
   public async sendTransaction(tx: GenericTransactionData): Promise<string> {
     if (!this.isConnected()) {
       throw new AdapterError("Wallet not connected.", { code: WalletErrorCode.WalletNotConnected, methodName: 'sendTransaction' });
@@ -354,12 +359,49 @@ export class EvmWalletAdapter implements IEVMWallet {
     return provider.getTransactionReceipt(txHash);
   }
 
-  public async callContract(to: string, data: string): Promise<string> {
-    if (!this.isConnected()) {
-      throw new AdapterError("Wallet not connected.", { code: WalletErrorCode.WalletNotConnected, methodName: 'callContract' });
-    }
+  public async callContract(options: {
+    contractAddress: string;
+    abi: any;
+    method: string;
+    args?: any[];
+  }): Promise<any> {
+    if (!this.isConnected()) throw new AdapterError("Wallet not connected.");
+
     const provider = await this.getProvider();
-    return provider.call({ to, data });
+    const iface = new ethers.Interface(options.abi);
+    const data = iface.encodeFunctionData(options.method, options.args || []);
+
+    const rawResult = await provider.call({
+      to: options.contractAddress,
+      data,
+    });
+
+    return iface.decodeFunctionResult(options.method, rawResult);
+  }
+
+  public async writeContract(options: {
+    contractAddress: string;
+    abi: any;
+    method: string;
+    args?: any[];
+    value?: string | bigint; // Optional: send ETH with call
+    overrides?: Partial<GenericTransactionData['options']>;
+  }): Promise<string> {
+    if (!this.isConnected()) {
+      throw new AdapterError("Wallet not connected.", { code: WalletErrorCode.WalletNotConnected, methodName: 'writeContract' });
+    }
+
+    const iface = new ethers.Interface(options.abi);
+    const data = iface.encodeFunctionData(options.method, options.args || []);
+
+    const tx: GenericTransactionData = {
+      to: options.contractAddress,
+      data,
+      value: options.value?.toString(),
+      options: options.overrides,
+    };
+
+    return this.sendTransaction(tx);
   }
 
   // --- Gas & Fee Methods ---

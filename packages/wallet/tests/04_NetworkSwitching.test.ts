@@ -270,6 +270,7 @@ describe('Network Switching Functionality', () => {
       // If it was connected, it should remain connected to the *previous* valid network.
       expect(wallet.isConnected()).toBe(true);
       const currentNetwork = await wallet.getNetwork();
+      console.log('NETWORK RESPONSE HERE...', currentNetwork)
       expect(currentNetwork.chainId).toBe(initialNetworkDetails.chainId);
       expect(currentNetwork.name).toBe(initialNetworkDetails.name);
     } else {
