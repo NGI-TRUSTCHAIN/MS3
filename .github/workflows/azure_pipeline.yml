@@ -1,0 +1,56 @@
+name: Sync Branch to Azure DevOps
+on:
+  push:
+    branches-ignore:
+      - main
+    # Detecta cuando se crea una nueva rama
+    # Puedes filtrar por prefijo si lo deseas (ej: feature/**)
+    # branches:
+    #   - 'feature/**'
+jobs:
+  sync-to-azure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: Set up Git
+        run: |
+          git config --global user.email "soporte@changetheblock.com"
+          git config --global user.name "Soporte Changetheblock"
+      - name: Push branch to Azure DevOps
+        env:
+          PAT: "2qB9mglp5NHEbtrgnv1hPNU23MSJ3yn3Icdcnrh1liy3vjy5GHUHJQQJ99BGACAAAAAMZtfjAAASAZDO2KkW"
+          ORG: "changetheblock"
+          PROJECT: "M3S"
+          REPO: "https://dev.azure.com/changetheblock/_git/M3S"
+        run: |
+          BRANCH_NAME=$(echo "${GITHUB_REF#refs/heads/}")
+          echo "Branch: $BRANCH_NAME"
+          # Clone Azure DevOps repo
+          # git clone https://${{ secrets.AZURE_DEVOPS_USERNAME }}:$PAT@dev.azure.com/$ORG/$PROJECT/_git/$REPO azure-repo
+          # cd azure-repo
+          # Create new branch and push
+          git checkout -b "$BRANCH_NAME"
+          cp -r ../* .
+          git add .
+          git commit -m "Sync branch $BRANCH_NAME from GitHub"
+          git push origin "$BRANCH_NAME"
+      - name: Create PR in Azure DevOps
+        env:
+          PAT: "2qB9mglp5NHEbtrgnv1hPNU23MSJ3yn3Icdcnrh1liy3vjy5GHUHJQQJ99BGACAAAAAMZtfjAAASAZDO2KkW"
+          ORG: "changetheblock"
+          PROJECT: "M3S"
+          REPO: "https://dev.azure.com/changetheblock/_git/M3S"
+        run: |
+          BRANCH_NAME=$(echo "${GITHUB_REF#refs/heads/}")
+          API_URL="https://dev.azure.com/$ORG/$PROJECT/_apis/git/repositories/$REPO/pullrequests?api-version=7.1-preview.1"
+          curl -u "Soporte Changetheblock" :$PAT \
+            -H "Content-Type: application/json" \
+            -X POST "$API_URL" \
+            -d "{
+              \"sourceRefName\": \"refs/heads/$BRANCH_NAME\",
+              \"targetRefName\": \"refs/heads/main\",
+              \"title\": \"Sync PR from GitHub branch $BRANCH_NAME\",
+              \"description\": \"This PR syncs the branch $BRANCH_NAME from the GitHub repository.\",
+              \"reviewers\": []
+            }"
