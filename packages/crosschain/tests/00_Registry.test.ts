@@ -583,8 +583,8 @@ describe('Crosschain Auto-Generation System Tests', () => {
 
   describe('Static Cross-Package Compatibility Matrix', () => {
     beforeAll(async () => {
-      await import('../../wallet/src/adapters/ethers/v1/ethersWallet.registration.js');
-      await import('../../wallet/src/adapters/web3auth/v1/web3authWallet.registration.js');
+      await import('../../wallet/src/adapters/ethers/ethersWallet.registration.js');
+      await import('../../wallet/src/adapters/web3auth/web3authWallet.registration.js');
     }, 20000);
 
     it('should test static compatibility declarations (what crosschain package controls)', async () => {
@@ -664,8 +664,8 @@ describe('Crosschain Auto-Generation System Tests', () => {
   // ✅ NEW CROSSCHAIN INTEGRATION TESTS SECTION
   describe('Cross-Package Bridge Integration Tests', () => {
     beforeAll(async () => {
-      await import('../../wallet/src/adapters/ethers/v1/ethersWallet.registration.js');
-      await import('../../wallet/src/adapters/web3auth/v1/web3authWallet.registration.js');
+      await import('../../wallet/src/adapters/ethers/ethersWallet.registration.js');
+      await import('../../wallet/src/adapters/web3auth/web3authWallet.registration.js');
     }, 20000);
 
     it('should validate bridge adapter compatibility with wallet modules', async () => {

@@ -1,9 +1,8 @@
 import { ethers, Provider, Wallet as EthersWallet, JsonRpcProvider, TransactionReceipt } from 'ethers';
 import { AdapterArguments, AdapterError, NetworkConfig, NetworkHelper, WalletErrorCode } from '@m3s/shared';
-import { IEVMWallet, WalletEvent, GenericTransactionData, AssetBalance, EIP712TypedData, EstimatedFeeData } from '../../../types/index.js';
-import { EIP712Validator } from '../../../helpers/signatures.js';
-import { toBigInt, toWei } from '../../../helpers/units.js';
-import { SimpleGasEstimator } from '../../../helpers/gas.js';
+import { IEVMWallet, WalletEvent, GenericTransactionData, AssetBalance, EIP712TypedData, EstimatedFeeData } from '../../types/index.js';
+import { EIP712Validator } from '../../helpers/signatures.js';
+import { toBigInt, toWei } from '../../helpers/units.js';
 
 /**
  * Configuration specific to the EvmWalletAdapter (Ethers).
@@ -334,16 +333,43 @@ export class EvmWalletAdapter implements IEVMWallet {
     return signer.getNonce(type);
   }
 
-  public async sendTransaction(tx: GenericTransactionData): Promise<string> {
+  public async sendTransaction(tx: GenericTransactionData, abi?: any): Promise<string> {
+    console.log('SENDING THIS TX FROM THE CLIENT ...', tx)
     if (!this.isConnected()) {
       throw new AdapterError("Wallet not connected.", { code: WalletErrorCode.WalletNotConnected, methodName: 'sendTransaction' });
     }
+
+    const signer = await this.getSigner();
+    const txRequest = await this.prepareTransactionRequest(tx);
+    console.log('SENDING THIS TX FROM prepareTransactionRequest ...', txRequest)
+
     try {
-      const signer = await this.getSigner();
-      const txRequest = await this.prepareTransactionRequest(tx);
+
       const response = await signer.sendTransaction(txRequest);
+
+      this.provider!.once(response.hash, (receipt) => {
+        this.emitEvent('txConfirmed', receipt); // or use a callback
+      });
+
       return response.hash;
     } catch (error: any) {
+
+      const senderAddress = (await this.getAccounts())[0];
+      console.log('Sender address:', senderAddress);
+
+      function decodeCustomError(abi: any, revertData: string): string | undefined {
+        const iface = new ethers.Interface(abi);
+        try {
+          const error = iface.parseError(revertData);
+          return error?.name;
+        } catch (e) {
+          return undefined;
+        }
+      }
+      const decoded = decodeCustomError(abi, error.data);
+      console.error('DECODED ERROR', decoded)
+
+      console.error('FAILED TO SEND THE TRANSACTION', error)
       const message = (error as any).shortMessage || (error as any).message || String(error);
       let code: WalletErrorCode | string = WalletErrorCode.TransactionFailed;
       if (message.toLowerCase().includes('user denied')) code = WalletErrorCode.UserRejected;
@@ -369,6 +395,7 @@ export class EvmWalletAdapter implements IEVMWallet {
 
     const provider = await this.getProvider();
     const iface = new ethers.Interface(options.abi);
+
     const data = iface.encodeFunctionData(options.method, options.args || []);
 
     const rawResult = await provider.call({
@@ -386,7 +413,7 @@ export class EvmWalletAdapter implements IEVMWallet {
     args?: any[];
     value?: string | bigint; // Optional: send ETH with call
     overrides?: Partial<GenericTransactionData['options']>;
-  }): Promise<string> {
+  }): Promise<any> {
     if (!this.isConnected()) {
       throw new AdapterError("Wallet not connected.", { code: WalletErrorCode.WalletNotConnected, methodName: 'writeContract' });
     }
@@ -401,29 +428,42 @@ export class EvmWalletAdapter implements IEVMWallet {
       options: options.overrides,
     };
 
-    return this.sendTransaction(tx);
+
+    return this.sendTransaction(tx, options.abi);
+
   }
 
   // --- Gas & Fee Methods ---
-
   public async estimateGas(tx: GenericTransactionData): Promise<EstimatedFeeData> {
     if (!this.isConnected()) {
       throw new AdapterError("Wallet not connected.", { code: WalletErrorCode.WalletNotConnected, methodName: 'estimateGas' });
     }
+    const provider = await this.getProvider();
+    const signer = await this.getSigner();
+    const fromAddress = await signer.getAddress();
 
     try {
-      const provider = await this.getProvider();
-      const signer = await this.getSigner();
-      const fromAddress = await signer.getAddress();
 
-      // ✅ CENTRALIZED: Use the same SimpleGasEstimator
-      const estimation = await SimpleGasEstimator.estimate(tx, provider, fromAddress);
+      // Build a minimal tx request for estimation
+      const txRequest: ethers.TransactionRequest = {
+        to: tx.to,
+        value: tx.value ? toWei(tx.value, this.decimals) : undefined,
+        data: tx.data ? (typeof tx.data === 'string' ? tx.data : ethers.hexlify(tx.data)) : undefined,
+        from: fromAddress,
+      };
+
+      console.log('estimateGas-txRequest', txRequest)
+      // Estimate gas limit
+      const gasLimit = await provider.estimateGas(txRequest);
+
+      // Get fee data from provider
+      const feeData = await provider.getFeeData();
 
       return {
-        gasLimit: estimation.gasLimit,
-        gasPrice: estimation.gasPrice?.toString(),
-        maxFeePerGas: estimation.maxFeePerGas?.toString(),
-        maxPriorityFeePerGas: estimation.maxPriorityFeePerGas?.toString(),
+        gasLimit,
+        gasPrice: feeData.gasPrice?.toString(),
+        maxFeePerGas: feeData.maxFeePerGas?.toString(),
+        maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString(),
       };
 
     } catch (error: any) {
@@ -442,15 +482,12 @@ export class EvmWalletAdapter implements IEVMWallet {
 
     try {
       const provider = await this.getProvider();
+      const feeData = await provider.getFeeData();
 
-      // ✅ CENTRALIZED: Use SimpleGasEstimator for fee calculation
-      const fees = await SimpleGasEstimator.estimateFees(provider);
-
-      if (fees.gasPrice) {
-        return fees.gasPrice;
-      } else if (fees.maxFeePerGas) {
-        // For EIP-1559 networks, return maxFeePerGas as legacy gasPrice
-        return fees.maxFeePerGas;
+      if (feeData.gasPrice) {
+        return feeData.gasPrice;
+      } else if (feeData.maxFeePerGas) {
+        return feeData.maxFeePerGas;
       } else {
         throw new AdapterError("Gas price not available from any source.");
       }
@@ -463,7 +500,6 @@ export class EvmWalletAdapter implements IEVMWallet {
       });
     }
   }
-
   // --- Protected Helper Methods ---
 
   protected async getProvider(): Promise<Provider> {
@@ -481,64 +517,20 @@ export class EvmWalletAdapter implements IEVMWallet {
   }
 
   public async prepareTransactionRequest(tx: GenericTransactionData): Promise<ethers.TransactionRequest> {
-
-
     const signer = await this.getSigner();
-    const provider = await this.getProvider();
+    // const provider = await this.getProvider();
 
     const txRequest: ethers.TransactionRequest = {
       to: tx.to,
       value: tx.value ? toWei(tx.value, this.decimals) : undefined,
       data: tx.data ? (typeof tx.data === 'string' ? tx.data : ethers.hexlify(tx.data)) : undefined,
       nonce: tx.options?.nonce,
-      gasLimit: tx.options?.gasLimit ? BigInt(tx.options.gasLimit) : undefined,
-      gasPrice: tx.options?.gasPrice ? BigInt(tx.options.gasPrice) : undefined,
-      maxFeePerGas: tx.options?.maxFeePerGas ? BigInt(tx.options.maxFeePerGas) : undefined,
-      maxPriorityFeePerGas: tx.options?.maxPriorityFeePerGas ? BigInt(tx.options.maxPriorityFeePerGas) : undefined,
       chainId: tx.options?.chainId ? toBigInt(tx.options.chainId) : undefined,
     };
 
-    console.log('prepareTransactionRequest-txRequest 1', txRequest)
-
+    // Set nonce if not provided
     if (txRequest.nonce === undefined) {
       txRequest.nonce = await signer.getNonce('pending');
-    }
-
-    const needsGasEstimation = !txRequest.gasLimit || (!txRequest.gasPrice && !txRequest.maxFeePerGas);
-
-
-    if (needsGasEstimation) {
-      try {
-        const fromAddress = await signer.getAddress();
-        const estimation = await SimpleGasEstimator.estimate(tx, provider, fromAddress);
-
-        if (!txRequest.gasLimit) {
-          txRequest.gasLimit = estimation.gasLimit;
-        }
-
-        if (!txRequest.gasPrice && !txRequest.maxFeePerGas) {
-          if (estimation.maxFeePerGas && estimation.maxPriorityFeePerGas) {
-            txRequest.maxFeePerGas = estimation.maxFeePerGas;
-            txRequest.maxPriorityFeePerGas = estimation.maxPriorityFeePerGas;
-          } else if (estimation.gasPrice) {
-            txRequest.gasPrice = estimation.gasPrice;
-          }
-        }
-
-        console.log(`[${this.name}] Centralized gas estimation completed:`, {
-          gasLimit: ethers.formatUnits(estimation.gasLimit, 0),
-          maxFeePerGas: estimation.maxFeePerGas ? ethers.formatUnits(estimation.maxFeePerGas, 'gwei') + ' gwei' : 'N/A',
-          gasPrice: estimation.gasPrice ? ethers.formatUnits(estimation.gasPrice, 'gwei') + ' gwei' : 'N/A'
-        });
-
-      } catch (error: any) {
-        console.error(`[${this.name}] Centralized gas estimation failed:`, error.message);
-
-        // ✅ Ultra-simple fallback (same logic as SimpleGasEstimator)
-        if (!txRequest.gasLimit) {
-          txRequest.gasLimit = tx.to ? BigInt(200000) : BigInt(3000000);
-        }
-      }
     }
 
     // Clean up undefined values

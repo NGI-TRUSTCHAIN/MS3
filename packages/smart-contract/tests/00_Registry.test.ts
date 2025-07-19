@@ -1,10 +1,12 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { registry } from '@m3s/shared';
 import { getRequirements, getEnvironments, getFeatures } from '@m3s/shared';
 import { OpenZeppelinAdapter } from '../src/adapters/openZeppelin/adapter.js';
 import { RuntimeEnvironment } from '@m3s/shared';
 import { openZeppelinOptionsSchema } from '../src/adapters/openZeppelin/openZeppelin.registration.js';
 import Joi from 'joi';
+import '../../wallet/src/adapters/ethers/ethersWallet.registration.js';
+import '../../wallet/src/adapters/web3auth/web3authWallet.registration.js';
 
 describe('Smart Contract Auto-Generation System Tests', () => {
   describe('JOI Schema Requirements Generation', () => {
@@ -371,11 +373,6 @@ describe('Smart Contract Auto-Generation System Tests', () => {
   });
 
   describe('Registry Integration', () => {
-    beforeAll(async () => {
-      // ✅ ONLY import what this package controls
-      await import('../src/adapters/openZeppelin/openZeppelin.registration.js');
-    });
-
     it('should have registered openZeppelin adapter with generated data', () => {
       const adapterInfo = registry.getAdapter('smart-contract', 'openZeppelin', '1.0.0');
 
@@ -609,11 +606,6 @@ describe('Smart Contract Auto-Generation System Tests', () => {
   });
 
   describe('Static Cross-Package Compatibility Matrix', () => {
-    beforeAll(async () => {
-      await import('../../wallet/src/adapters/ethers/v1/ethersWallet.registration.js');
-      await import('../../wallet/src/adapters/web3auth/v1/web3authWallet.registration.js');
-    }, 20000);
-
     it('should test static compatibility declarations (what smart-contract package controls)', async () => {
       // ✅ Import the static compatibility functions
       const { checkCrossPackageCompatibility } = await import('@m3s/shared');
@@ -623,12 +615,14 @@ describe('Smart Contract Auto-Generation System Tests', () => {
         'smart-contract', 'openZeppelin', '1.0.0',
         'wallet', 'ethers', '1.0.0'
       );
+
       expect(scToEthers).toBe(true);
 
       const scToWeb3Auth = checkCrossPackageCompatibility(
         'smart-contract', 'openZeppelin', '1.0.0',
         'wallet', 'web3auth', '1.0.0'
       );
+
       expect(scToWeb3Auth).toBe(false);
 
       console.log('✅ Static compatibility matrix correctly declares wallet compatibility');
@@ -681,11 +675,7 @@ describe('Smart Contract Auto-Generation System Tests', () => {
 
   // ✅ NEW SMART CONTRACT INTEGRATION TESTS SECTION
   describe('Cross-Package Contract Integration Tests', () => {
-    beforeAll(async () => {
-      await import('../../wallet/src/adapters/ethers/v1/ethersWallet.registration.js');
-      await import('../../wallet/src/adapters/web3auth/v1/web3authWallet.registration.js');
-    }, 20000);
-
+ 
     it('should validate contract adapter compatibility with wallet modules', async () => {
       const { checkCrossPackageCompatibility } = await import('@m3s/shared');
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { testAdapterPattern } from '../01_Core.test.js';
-import { Web3AuthWalletAdapter } from '../../../wallet/src/adapters/web3auth/v1/web3authWallet.js';
+import { Web3AuthWalletAdapter } from '../../../wallet/src/adapters/web3auth/web3authWallet.js';
 
 // only verify the class follows our factory pattern
 describe('Web3AuthWalletAdapter – Basic Factory & API surface', () => {

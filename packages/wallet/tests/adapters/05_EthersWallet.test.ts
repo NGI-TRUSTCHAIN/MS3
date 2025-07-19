@@ -5,7 +5,7 @@ import { TEST_PRIVATE_KEY } from '../../config.js'
 import { NetworkHelper } from '@m3s/shared';
 import { JsonRpcProvider } from 'ethers';
 import { WalletEvent, GenericTransactionData, createWallet, IEVMWallet } from '@m3s/wallet';
-import { EvmWalletAdapter } from '../../src/adapters/ethers/v1/ethersWallet.js';
+import { EvmWalletAdapter } from '../../src/adapters/ethers/ethersWallet.js';
 import { INFURA_API_KEY } from '../../../crosschain/config.js';
 
 describe('EvmWalletAdapter Tests', () => {

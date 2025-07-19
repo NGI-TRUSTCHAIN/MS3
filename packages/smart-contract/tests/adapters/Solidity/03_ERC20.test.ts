@@ -1,4 +1,4 @@
-import '../../../src/adapters/openZeppelin/openZeppelin.registration.js'
+// import '../../../src/adapters/openZeppelin/openZeppelin.registration.js'
 
 import { describe, beforeEach, it, expect, afterEach } from 'vitest';
 import { createContractHandler, GenerateContractInput, IBaseContractHandler } from '../../../src/index.js';
@@ -283,16 +283,16 @@ describe('OpenZeppelinAdapter Tests', () => {
       if (!TEST_PRIVATE_KEY) throw new Error("TEST_PRIVATE_KEY is not set.");
 
       walletAdapter = await createWallet<IEVMWallet>({
-        name: 'ethers', version: '1.0.0', options: { privateKey: TEST_PRIVATE_KEY }
+        name: 'ethers', version: '1.0.0', options: { privateKey: TEST_PRIVATE_KEY, provider: networkConfig }
       });
-      await walletAdapter.setProvider(networkConfig);
+
+      // await walletAdapter.setProvider(networkConfig);
 
       let workDirToUse: string | undefined = undefined;
       if (useTempWorkDir) {
         // Clean up previous temp dir if any, before creating a new one for this test run
         if (activeTempWorkDir) {
           try {
-            // console.log(`[Test Setup] Cleaning up previous temp dir: ${activeTempWorkDir}`);
             await fs_promises.rm(activeTempWorkDir, { recursive: true, force: true });
           } catch (err) {
             // Log error but don't fail the setup, as OS might have already cleaned it or other issues.
@@ -303,15 +303,12 @@ describe('OpenZeppelinAdapter Tests', () => {
         const os = await import('os')
         activeTempWorkDir = await fs_promises.mkdtemp(node_path.join(os.tmpdir(), `m3s_erc20_oz_test_`));
         workDirToUse = activeTempWorkDir;
-        // console.log(`[Test Setup] Using temp workDir: ${workDirToUse} for preserveOutput: ${preserveOutput}`);
       } else {
         // If not using temp, ensure activeTempWorkDir is cleared if it was set by a previous test
         if (activeTempWorkDir) {
           // This case should ideally not be hit if cleanup is managed well by afterEach
-          // console.log(`[Test Setup] Clearing activeTempWorkDir as current test does not use temp workDir.`);
           activeTempWorkDir = undefined;
         }
-        // console.log(`[Test Setup] Using default workDir for preserveOutput: ${preserveOutput}`);
       }
 
       contractHandler = await createContractHandler({
@@ -329,7 +326,6 @@ describe('OpenZeppelinAdapter Tests', () => {
       if (activeTempWorkDir) {
         try {
           await fs_promises.rm(activeTempWorkDir, { recursive: true, force: true });
-          // console.log(`🧹 Cleaned up temp work dir: ${activeTempWorkDir}`);
         } catch (err) {
           console.error(`⚠️ Error cleaning up temp work dir ${activeTempWorkDir}:`, (err as Error).message);
         }
@@ -337,51 +333,47 @@ describe('OpenZeppelinAdapter Tests', () => {
       }
     };
 
-    const waitForReceipt = async (txHash: string, maxAttempts = 20, waitTime = 6000): Promise<ethers.TransactionReceipt | null> => {
+    const waitForReceipt = async (txHash: string, timeout = 120_000): Promise<ethers.TransactionReceipt | null> => {
+      const provider = (walletAdapter as any).provider;
 
-      for (let i = 0; i < maxAttempts; i++) {
-        const receipt = await walletAdapter.getTransactionReceipt(txHash);
-        if (receipt) {
-          console.log(`Receipt found for ${txHash} (attempt ${i + 1}). Status: ${receipt.status === 1 ? 'Success' : 'Failed'}`);
+      if (!provider) throw new Error("Provider not accessible");
+
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          console.error(`⏰ Timeout waiting for tx ${txHash}`);
+          resolve(null);
+        }, timeout);
+
+        provider.once(txHash, async (receipt: ethers.TransactionReceipt) => {
+          clearTimeout(timer);
+
+          console.log(`Receipt found for ${txHash}. Status: ${receipt.status === 1 ? 'Success' : 'Failed'}`);
 
           if (receipt.status === 0) {
             console.log(`🚨 [DIAGNOSTIC] Transaction FAILED! Getting transaction details...`);
 
             try {
-              // ✅ FIX: Access provider property directly since getProvider() is protected
-              const provider = (walletAdapter as any).provider;
-
-              if (provider) {
-                const tx = await provider.getTransaction(txHash);
-                console.log(`🔍 [DIAGNOSTIC] Transaction details:`, {
-                  from: tx?.from,
-                  to: tx?.to,
-                  value: tx?.value?.toString(),
-                  gasLimit: tx?.gasLimit?.toString(),
-                  gasPrice: tx?.gasPrice?.toString(),
-                  maxFeePerGas: tx?.maxFeePerGas?.toString(),
-                  maxPriorityFeePerGas: tx?.maxPriorityFeePerGas?.toString(),
-                  data: tx?.data?.substring(0, 100) + '...'
-                });
-              } else {
-                console.log(`⚠️ [DIAGNOSTIC] Provider not accessible for transaction debug`);
-              }
-
-              console.log(`🔍 [DIAGNOSTIC] Attempting to get revert reason...`);
-
-            } catch (debugError) {
-              console.log(`⚠️ [DIAGNOSTIC] Could not get transaction debug info:`, debugError);
+              const tx = await provider.getTransaction(txHash);
+              console.log(`🔍 [DIAGNOSTIC] Transaction details:`, {
+                from: tx?.from,
+                to: tx?.to,
+                value: tx?.value?.toString(),
+                gasLimit: tx?.gasLimit?.toString(),
+                gasPrice: tx?.gasPrice?.toString(),
+                maxFeePerGas: tx?.maxFeePerGas?.toString(),
+                maxPriorityFeePerGas: tx?.maxPriorityFeePerGas?.toString(),
+                data: tx?.data?.substring(0, 100) + '...'
+              });
+            } catch (err) {
+              console.log(`⚠️ [DIAGNOSTIC] Could not get transaction debug info:`, err);
             }
           }
 
-          return receipt;
-        }
-        console.log(`Receipt not found for ${txHash} (attempt ${i + 1}). Waiting ${waitTime / 1000}s...`);
-        await new Promise(resolve => setTimeout(resolve, waitTime));
-      }
-      console.error(`Receipt not found for ${txHash} after ${maxAttempts} attempts.`);
-      return null;
+          resolve(receipt);
+        });
+      });
     };
+
 
     // Test Suite 1: Non-Proxy ERC20 Functionality
     describe('Standard ERC20 Deployment and Functionality', () => {
@@ -414,14 +406,15 @@ describe('OpenZeppelinAdapter Tests', () => {
           }
         });
 
+        console.log('SOURCE CODE, ', sourceCode)
+
         const compiled = await contractHandler.compile({
           sourceCode,
           language: 'solidity',
           contractName: 'MultiFeatureToken'
         });
-        
+
         expect(compiled.artifacts?.abi).toBeDefined();
-        // console.log('MultiFeatureToken ABI:', JSON.stringify(compiled.artifacts.abi, null, 2));
 
         // Get the required constructor args spec (for debugging or UI)
         const argSpec = compiled.getDeploymentArgsSpec();
@@ -438,42 +431,106 @@ describe('OpenZeppelinAdapter Tests', () => {
           data: deploymentData.data,
           value: deploymentData.value || '0'
         });
+
         const deployReceipt = await waitForReceipt(deployTxHash);
         expect(deployReceipt?.status).toBe(1);
         const contractAddress = deployReceipt!.contractAddress!;
         console.log(`✅ MultiFeatureToken (Regular) deployed at: ${contractAddress}`);
 
-        const iface = new ethers.Interface(compiled.artifacts.abi);
+        // const iface = new ethers.Interface(compiled.artifacts.abi);
+        // const balanceCallData = iface.encodeFunctionData('balanceOf', [deployerAddress]);
 
-        const balanceCallData = iface.encodeFunctionData('balanceOf', [deployerAddress]);
-        const initialBalanceHex = await walletAdapter.callContract(contractAddress, balanceCallData);
-        const initialBalance = ethers.AbiCoder.defaultAbiCoder().decode(['uint256'], initialBalanceHex)[0];
+        const initialBalance = await walletAdapter.callContract({
+          contractAddress,
+          abi: compiled.artifacts.abi,
+          method: 'balanceOf',
+          args: [deployerAddress]
+        });
+
+        // const initialBalance = ethers.AbiCoder.defaultAbiCoder().decode(['uint256'], initialBalanceHex)[0];
         const expectedPremint = ethers.parseUnits(premintAmountStr, 18);
-        expect(initialBalance).toEqual(expectedPremint);
-        console.log(`✅ Premint to deployer verified: ${ethers.formatUnits(initialBalance, 18)} MFT`);
+
+        expect(initialBalance[0]).toEqual(expectedPremint);
+        console.log(`✅ Premint to deployer verified: ${ethers.formatUnits(initialBalance[0], 18)} MFT`);
 
         const mintAmount = ethers.parseUnits('500', 18);
-        const recipientTwo = ethers.Wallet.createRandom().address;
-        const mintCallData = iface.encodeFunctionData('mint', [recipientTwo, mintAmount]);
-        const mintTxHash = await walletAdapter.sendTransaction({ to: contractAddress, data: mintCallData });
+        const recipientTwo = '0xd516D0139EFAf0729dD682786D5eEb705003d0F0';
+
+        // const mintCallData = iface.encodeFunctionData('mint', [recipientTwo, mintAmount]);
+        // const mintTxHash = await walletAdapter.sendTransaction({ to: contractAddress, data: mintCallData });
+
+        const owner = await walletAdapter.callContract({
+          contractAddress,
+          abi: compiled.artifacts.abi,
+          method: 'owner',
+          args: []
+        });
+
+        const paused = await walletAdapter.callContract({
+          contractAddress,
+          abi: compiled.artifacts.abi,
+          method: 'paused',
+          args: []
+        });
+
+        const feeEstimate = await walletAdapter.estimateGas({
+          to: contractAddress,
+          data: compiled.artifacts.abi.find(a => a.name === 'mint') ? new ethers.Interface(compiled.artifacts.abi).encodeFunctionData('mint', [recipientTwo, mintAmount]) : undefined,
+          value: '0'
+        });
+
+        console.log('Estimated gas/fee:', feeEstimate);
+        console.log('THE ABI ', JSON.stringify(compiled.artifacts.abi, null, 2))
+        console.log('Contract paused:', paused);
+        console.log('Contract owner:', owner[0]);
+        console.log('Deployer address:', deployerAddress);
+        console.log('Minting from:', deployerAddress, 'to:', recipientTwo, 'amount:', mintAmount.toString());
+
+        const mintTxHash = await walletAdapter.writeContract({
+          contractAddress,
+          abi: compiled.artifacts.abi,
+          method: 'mint',
+          args: [recipientTwo, mintAmount]
+        });
+
         const mintReceipt = await waitForReceipt(mintTxHash);
         expect(mintReceipt?.status).toBe(1);
 
-        const balanceRecipientTwoHex = await walletAdapter.callContract(contractAddress, iface.encodeFunctionData('balanceOf', [recipientTwo]));
-        const balanceRecipientTwo = ethers.AbiCoder.defaultAbiCoder().decode(['uint256'], balanceRecipientTwoHex)[0];
-        expect(balanceRecipientTwo).toEqual(mintAmount);
-        console.log(`✅ Mint to ${recipientTwo} verified: ${ethers.formatUnits(balanceRecipientTwo, 18)} MFT`);
+        const balanceRecipientTwo = await walletAdapter.callContract({
+          contractAddress,
+          abi: compiled.artifacts.abi,
+          method: 'balanceOf',
+          args: [recipientTwo]
+        });
 
-        const pauseCallData = iface.encodeFunctionData('pause', []);
-        const pauseTxHash = await walletAdapter.sendTransaction({ to: contractAddress, data: pauseCallData });
+        expect(balanceRecipientTwo[0]).toEqual(mintAmount);
+        console.log(`✅ Mint to ${recipientTwo} verified: ${ethers.formatUnits(balanceRecipientTwo[0], 18)} MFT`);
+
+        // const pauseCallData = iface.encodeFunctionData('pause', []);
+        // const pauseTxHash = await walletAdapter.sendTransaction({ to: contractAddress, data: pauseCallData });
+        const pauseTxHash = await walletAdapter.writeContract({
+          contractAddress,
+          abi: compiled.artifacts.abi,
+          method: 'pause',
+          args: []
+        });
+
+
         const pauseReceipt = await waitForReceipt(pauseTxHash);
         expect(pauseReceipt?.status).toBe(1);
 
         const transferAmount = ethers.parseUnits('1', 18);
-        const transferCallData = iface.encodeFunctionData('transfer', [recipientTwo, transferAmount]);
+        // const transferCallData = iface.encodeFunctionData('transfer', [recipientTwo, transferAmount]);
         let transferFailed = false;
         try {
-          const txHash = await walletAdapter.sendTransaction({ to: contractAddress, data: transferCallData });
+          // const txHash = await walletAdapter.sendTransaction({ to: contractAddress, data: transferCallData });
+          const txHash = await walletAdapter.writeContract({
+            contractAddress,
+            abi: compiled.artifacts.abi,
+            method: 'transfer',
+            args: [recipientTwo, transferAmount]
+          });
+
           const txReceipt = await waitForReceipt(txHash);
           // If receipt exists and status is 0, it means the tx reverted
           if (txReceipt && txReceipt.status === 0) {
@@ -486,27 +543,56 @@ describe('OpenZeppelinAdapter Tests', () => {
         expect(transferFailed).toBe(true);
         console.log(`✅ Pause verified (transfer failed as expected)`);
 
-        const unpauseCallData = iface.encodeFunctionData('unpause', []);
-        const unpauseTxHash = await walletAdapter.sendTransaction({ to: contractAddress, data: unpauseCallData });
+        // const unpauseCallData = iface.encodeFunctionData('unpause', []);
+        // const unpauseTxHash = await walletAdapter.sendTransaction({ to: contractAddress, data: unpauseCallData });
+
+        const unpauseTxHash = await walletAdapter.writeContract({
+          contractAddress,
+          abi: compiled.artifacts.abi,
+          method: 'unpause',
+          args: []
+        });
+
         const unpauseReceipt = await waitForReceipt(unpauseTxHash);
         expect(unpauseReceipt?.status).toBe(1);
 
-        const transferTxHash = await walletAdapter.sendTransaction({ to: contractAddress, data: transferCallData });
+        // const transferTxHash = await walletAdapter.sendTransaction({ to: contractAddress, data: transferCallData });
+        const transferTxHash = await walletAdapter.writeContract({
+          contractAddress,
+          abi: compiled.artifacts.abi,
+          method: 'transfer',
+          args: [recipientTwo, transferAmount]
+        });
+
         const transferReceipt = await waitForReceipt(transferTxHash);
         expect(transferReceipt?.status).toBe(1);
         console.log(`✅ Unpause verified (transfer succeeded)`);
 
         const burnAmount = ethers.parseUnits('100', 18);
-        const burnCallData = iface.encodeFunctionData('burn', [burnAmount]);
-        const burnTxHash = await walletAdapter.sendTransaction({ to: contractAddress, data: burnCallData });
+        // const burnCallData = iface.encodeFunctionData('burn', [burnAmount]);
+        // const burnTxHash = await walletAdapter.sendTransaction({ to: contractAddress, data: burnCallData });
+        const burnTxHash = await walletAdapter.writeContract({
+          contractAddress,
+          abi: compiled.artifacts.abi,
+          method: 'burn',
+          args: [burnAmount]
+        });
+
         const burnReceipt = await waitForReceipt(burnTxHash);
         expect(burnReceipt?.status).toBe(1);
 
-        const balanceAfterBurnHex = await walletAdapter.callContract(contractAddress, balanceCallData);
-        const balanceAfterBurn = ethers.AbiCoder.defaultAbiCoder().decode(['uint256'], balanceAfterBurnHex)[0];
+        // const balanceAfterBurnHex = await walletAdapter.callContract(contractAddress, balanceCallData);
+        // const balanceAfterBurn = ethers.AbiCoder.defaultAbiCoder().decode(['uint256'], balanceAfterBurnHex)[0];
+        const balanceAfterBurn = await walletAdapter.callContract({
+          contractAddress,
+          abi: compiled.artifacts.abi,
+          method: 'balanceOf',
+          args: [deployerAddress]
+        });
+
         const expectedBalanceAfterBurn = expectedPremint - transferAmount - burnAmount;
-        expect(balanceAfterBurn).toEqual(expectedBalanceAfterBurn);
-        console.log(`✅ Burn verified. Deployer new balance: ${ethers.formatUnits(balanceAfterBurn, 18)} MFT`);
+        expect(balanceAfterBurn[0]).toEqual(expectedBalanceAfterBurn);
+        console.log(`✅ Burn verified. Deployer new balance: ${ethers.formatUnits(balanceAfterBurn[0], 18)} MFT`);
         console.log('✅ Standard ERC20 (Non-Proxy) tests passed!');
       }, 300000);
     });
@@ -638,10 +724,18 @@ describe('OpenZeppelinAdapter Tests', () => {
         const proxyAddress = proxyReceipt!.contractAddress!;
         console.log(`✅ UUPS ERC20 Proxy deployed at: ${proxyAddress}`);
 
-        const iface = new ethers.Interface(compiled.artifacts.abi);
+        // const iface = new ethers.Interface(compiled.artifacts.abi);
         const mintAmount = ethers.parseUnits('1000', 18);
-        const mintCallData = iface.encodeFunctionData('mint', [deployerAddress, mintAmount]);
-        const mintTxHash = await walletAdapter.sendTransaction({ to: proxyAddress, data: mintCallData });
+        // const mintCallData = iface.encodeFunctionData('mint', [deployerAddress, mintAmount]);
+        // const mintTxHash = await walletAdapter.sendTransaction({ to: proxyAddress, data: mintCallData });
+
+        const mintTxHash = await walletAdapter.writeContract({
+          contractAddress: proxyAddress,
+          abi: compiled.artifacts.abi,
+          method: 'mint',
+          args: [deployerAddress, mintAmount]
+        });
+
         const mintReceipt = await waitForReceipt(mintTxHash);
         expect(mintReceipt?.status).toBe(1);
         console.log('✅ UUPS ERC20 Proxy mint functionality test passed!');
@@ -678,10 +772,18 @@ describe('OpenZeppelinAdapter Tests', () => {
         const proxyAddress = proxyReceipt!.contractAddress!;
         console.log(`✅ Transparent ERC20 Proxy deployed at: ${proxyAddress}`);
 
-        const iface = new ethers.Interface(compiled.artifacts.abi);
+        // const iface = new ethers.Interface(compiled.artifacts.abi);
         const mintAmount = ethers.parseUnits('500', 18);
-        const mintCallData = iface.encodeFunctionData('mint', [deployerAddress, mintAmount]);
-        const mintTxHash = await walletAdapter.sendTransaction({ to: proxyAddress, data: mintCallData });
+        // const mintCallData = iface.encodeFunctionData('mint', [deployerAddress, mintAmount]);
+        // const mintTxHash = await walletAdapter.sendTransaction({ to: proxyAddress, data: mintCallData });
+
+        const mintTxHash = await walletAdapter.writeContract({
+          contractAddress: proxyAddress,
+          abi: compiled.artifacts.abi,
+          method: 'mint',
+          args: [deployerAddress, mintAmount]
+        });
+
         const mintReceipt = await waitForReceipt(mintTxHash);
         expect(mintReceipt?.status).toBe(1);
         console.log('✅ Transparent (ERC1967) ERC20 Proxy mint functionality test passed!');

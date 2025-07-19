@@ -14,7 +14,6 @@
     "build:crosschain": "node --loader ts-node/esm scripts/build.ts crosschain",
     "build:smart-contract": "node --loader ts-node/esm scripts/build.ts smart-contract",
     "publish": "node --loader ts-node/esm scripts/publish.ts",
-    "publish:shared": "node --loader ts-node/esm scripts/publish.ts shared",
     "publish:wallet": "node --loader ts-node/esm scripts/publish.ts wallet",
     "publish:crosschain": "node --loader ts-node/esm scripts/publish.ts crosschain",
     "publish:smart-contract": "node --loader ts-node/esm scripts/publish.ts smart-contract",
@@ -26,6 +25,7 @@
     "test:smart-contract": "cd packages/smart-contract && npm run test"
   },
   "dependencies": {
+    "@vitest/ui": "^3.2.4",
     "dotenv": "^16.4.7"
   },
   "devDependencies": {

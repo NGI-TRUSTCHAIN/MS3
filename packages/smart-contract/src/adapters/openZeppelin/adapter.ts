@@ -26,6 +26,7 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
     public readonly version: string;
 
     protected initialized: boolean = false;
+
     private workDir: string;
     private preserveOutput: boolean;
     private providerConfig?: NetworkConfig;
@@ -72,7 +73,6 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
         await adapter.initialize();
         return adapter;
     }
-
 
     async initialize(): Promise<void> {
         if (this.initialized) return;
@@ -124,67 +124,94 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
         return this.initialized;
     }
 
-    // // --- Delegate to Internal Helpers ---
-    // async generateContract(input: GenerateContractInput): Promise<string> {
-    //     if (!this.initialized) {
-    //         throw new AdapterError("Adapter not initialized", {
-    //             code: SmartContractErrorCode.AdapterNotInitialized,
-    //             methodName: 'generateContract'
-    //         });
-    //     }
-    //     try {
-    //         return await this.generator.generate(input);
-    //     } catch (error: any) {
-    //         if (error instanceof AdapterError) throw error;
-    //         throw new AdapterError(`Contract generation failed: ${error.message}`, {
-    //             cause: error,
-    //             code: SmartContractErrorCode.MethodCallFailed, // Or a more specific SC_GENERATION_FAILED if added
-    //             methodName: 'generateContract',
-    //             details: { input }
-    //         });
-    //     }
-    // }
+    normalizeOzOptions(template: string, options: any): any {
+        // Clone to avoid mutating original
+        const opts = { ...options };
+
+        // --- Required fields ---
+        if (template === 'openzeppelin_erc20' || template === 'openzeppelin_erc721') {
+            if (!opts.name) throw new AdapterError("Missing required option: 'name'.", {
+                code: SmartContractErrorCode.InvalidInput,
+                methodName: 'generateContract'
+            });
+            if (!opts.symbol) throw new AdapterError("Missing required option: 'symbol'.", {
+                code: SmartContractErrorCode.InvalidInput,
+                methodName: 'generateContract'
+            });
+        }
+        if (template === 'openzeppelin_erc1155') {
+            if (!opts.name) throw new AdapterError("Missing required option: 'name'.", {
+                code: SmartContractErrorCode.InvalidInput,
+                methodName: 'generateContract'
+            });
+            if (!('uri' in opts)) throw new AdapterError("Missing required option: 'uri'.", {
+                code: SmartContractErrorCode.InvalidInput,
+                methodName: 'generateContract'
+            });
+            // If user sets uri to empty string, that's fine (OZ accepts "")
+        }
+
+        // --- Optional fields ---
+        // Only set upgradeable if missing, and only to "" (none)
+        const supportsUpgradeable = [
+            'openzeppelin_erc20',
+            'openzeppelin_erc721',
+            'openzeppelin_erc1155'
+        ].includes(template);
+
+        if (supportsUpgradeable) {
+            const allowed = ["transparent", "uups"];
+            if (!('upgradeable' in opts) || opts.upgradeable == null) {
+                opts["upgradeable"] = false; // Explicitly none
+            } else if (!allowed.includes(opts.upgradeable)) {
+                opts["upgradeable"] = false; // Fallback to none if invalid
+            }
+        }
+
+        // Do NOT set optional features like pausable, burnable, etc.
+        // Only forward what the user provides.
+
+        return opts;
+    }
 
     async generateContract(input: GenerateContractInput): Promise<string> {
         if (!this.initialized) {
             throw new AdapterError("Adapter not initialized", {
                 code: SmartContractErrorCode.AdapterNotInitialized,
-                methodName: 'generateContract'
+                methodName: ''
             });
         }
 
-        // ✅ FIX: Template-specific validation
-        const { template, options } = input;
-
-        if (template?.includes('erc20') || template?.includes('erc721')) {
-            // ERC20 and ERC721 require both name and symbol
-            if (!options?.name || !options?.symbol) {
-                throw new AdapterError("Contract 'name' and 'symbol' are required for ERC20/ERC721 templates", {
-                    code: SmartContractErrorCode.InvalidInput,
-                    methodName: 'generateContract',
-                    details: { template, providedOptions: options }
-                });
-            }
-        } else if (template?.includes('erc1155')) {
-            // ERC1155 requires name and uri, but NOT symbol
-            if (!options?.name || !options?.uri) {
-                throw new AdapterError("Contract 'name' and 'uri' are required for ERC1155 templates", {
-                    code: SmartContractErrorCode.InvalidInput,
-                    methodName: 'generateContract',
-                    details: { template, providedOptions: options }
-                });
-            }
-        }
+        // Normalize options for OZ Wizard
+        const normalizedOptions = this.normalizeOzOptions(input.template, input.options);
+        const normalizedInput = { ...input, options: normalizedOptions };
 
         try {
-            const code = await this.generator.generate(input);
-            console.log('GENERATED CODE --- generateContract', code)
-            return code
+            const code = await this.generator.generate(normalizedInput);
+            return code;
         } catch (error: any) {
-            if (error instanceof AdapterError) throw error;
-            throw new AdapterError(`Contract generation failed: ${error.message}`, {
+            // Bubble up OZ errors, but wrap in AdapterError for client clarity
+            let message = error?.message || "Unknown error during contract generation";
+            let code = SmartContractErrorCode.MethodCallFailed;
+
+            // If OZ error message indicates missing/invalid option, make it actionable
+            if (message.includes("Unknown value for `upgradeable`")) {
+                message = "Missing or invalid value for 'upgradeable'. Please provide a valid option (\"\", \"transparent\", \"uups\").";
+                code = SmartContractErrorCode.InvalidInput;
+            }
+            if (message.includes("must have name")) {
+                message = "Missing required option: 'name'.";
+                code = SmartContractErrorCode.InvalidInput;
+            }
+            if (message.includes("must have symbol")) {
+                message = "Missing required option: 'symbol'.";
+                code = SmartContractErrorCode.InvalidInput;
+            }
+            // Add more mappings if OZ error messages are predictable
+
+            throw new AdapterError(`Contract generation failed: ${message}`, {
                 cause: error,
-                code: SmartContractErrorCode.MethodCallFailed,
+                code,
                 methodName: 'generateContract',
                 details: { input }
             });

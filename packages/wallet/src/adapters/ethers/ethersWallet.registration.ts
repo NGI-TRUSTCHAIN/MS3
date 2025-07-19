@@ -1,7 +1,7 @@
 import { AdapterMetadata, Capability, registry } from '@m3s/shared';
 import { getRequirements, getEnvironments, getFeatures, getStaticCompatibilityMatrix } from '@m3s/shared';
 import { EvmWalletAdapter } from './ethersWallet.js';
-import { WalletType } from '../../../types/index.js';
+import { WalletType } from '../../types/index.js';
 import { RuntimeEnvironment } from '@m3s/shared';
 import Joi from 'joi';
 
@@ -74,11 +74,11 @@ const adapterMetadata: AdapterMetadata = {
     Capability.CoreWallet,
     Capability.EventEmitter,
     Capability.MessageSigner,
-    Capability.TransactionHandler,
+    Capability.TransactionHandler,   
+    Capability.RPCHandler,
     Capability.TypedDataSigner,
     Capability.GasEstimation,
     Capability.TokenOperations,
-    Capability.RPCHandler,
     Capability.TransactionStatus,
     Capability.AdapterLifecycle
   ],

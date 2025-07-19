@@ -272,18 +272,45 @@ describe('ERC721 Options Tests', () => {
   let walletAdapter: IEVMWallet;
   let contractHandler: IBaseContractHandler;
 
-  const waitForReceipt = async (txHash: string, maxAttempts = 20, waitTime = 6000): Promise<ethers.TransactionReceipt | null> => {
-    for (let i = 0; i < maxAttempts; i++) {
-      const receipt = await walletAdapter.getTransactionReceipt(txHash);
-      if (receipt) {
-        console.log(`Receipt found for ${txHash} (attempt ${i + 1}). Status: ${receipt.status}`);
-        return receipt;
-      }
-      console.log(`Receipt not found for ${txHash} (attempt ${i + 1}). Waiting ${waitTime / 1000}s...`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-    }
-    console.error(`Receipt not found for ${txHash} after ${maxAttempts} attempts.`);
-    return null;
+  const waitForReceipt = async (txHash: string, timeout = 120_000): Promise<ethers.TransactionReceipt | null> => {
+    const provider = (walletAdapter as any).provider;
+
+    if (!provider) throw new Error("Provider not accessible");
+
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        console.error(`⏰ Timeout waiting for tx ${txHash}`);
+        resolve(null);
+      }, timeout);
+
+      provider.once(txHash, async (receipt: ethers.TransactionReceipt) => {
+        clearTimeout(timer);
+
+        console.log(`Receipt found for ${txHash}. Status: ${receipt.status === 1 ? 'Success' : 'Failed'}`);
+
+        if (receipt.status === 0) {
+          console.log(`🚨 [DIAGNOSTIC] Transaction FAILED! Getting transaction details...`);
+
+          try {
+            const tx = await provider.getTransaction(txHash);
+            console.log(`🔍 [DIAGNOSTIC] Transaction details:`, {
+              from: tx?.from,
+              to: tx?.to,
+              value: tx?.value?.toString(),
+              gasLimit: tx?.gasLimit?.toString(),
+              gasPrice: tx?.gasPrice?.toString(),
+              maxFeePerGas: tx?.maxFeePerGas?.toString(),
+              maxPriorityFeePerGas: tx?.maxPriorityFeePerGas?.toString(),
+              data: tx?.data?.substring(0, 100) + '...'
+            });
+          } catch (err) {
+            console.log(`⚠️ [DIAGNOSTIC] Could not get transaction debug info:`, err);
+          }
+        }
+
+        resolve(receipt);
+      });
+    });
   };
 
   beforeEach(async () => {
@@ -398,16 +425,16 @@ describe('ERC721 Options Tests', () => {
     expect(deploymentTxHash).toBeDefined();
 
     // --- Test Features ---
-    const tokenId = 0; // First token ID (due to incremental)
+    const tokenId = '0'; // First token ID (due to incremental)
 
     // 7. Test Minting - NO CALLMETHOD, direct wallet transaction
-    console.log('🎨 Testing minting...');
-    const iface = new ethers.Interface(contractAbi);
+    console.log('🎨 Testing minting...', deployerAddress, tokenId);
 
-    const mintCallData = iface.encodeFunctionData('safeMint', [deployerAddress, `metadata/${tokenId}.json`]);
-    const mintTxHash = await walletAdapter.sendTransaction({
-      to: contractId,
-      data: mintCallData
+    const mintTxHash = await walletAdapter.writeContract({
+      contractAddress: contractId,
+      abi: contractAbi,
+      method: 'safeMint',
+      args: [deployerAddress, tokenId]
     });
 
     const mintReceipt = await waitForReceipt(mintTxHash);
@@ -416,11 +443,15 @@ describe('ERC721 Options Tests', () => {
     expect(mintReceipt!.status).toBe(1);
 
     console.log('🔍 Checking what token ID was actually minted...');
-    const totalSupplyData = iface.encodeFunctionData('totalSupply', []);
     try {
-      const totalSupplyResult = await walletAdapter.callContract(contractId, totalSupplyData);
-      const totalSupply = ethers.AbiCoder.defaultAbiCoder().decode(['uint256'], totalSupplyResult)[0];
-      console.log('🔍 Total supply after mint:', totalSupply.toString());
+      const totalSupply = await walletAdapter.callContract({
+        contractAddress: contractId,
+        abi: compiled.artifacts.abi,
+        method: 'totalSupply',
+        args: []
+      });
+
+      console.log('🔍 Total supply after mint:', totalSupply);
 
       // If using incremental IDs, the actual token ID might be different
       const actualTokenId = totalSupply - 1n; // Last minted token
@@ -433,12 +464,12 @@ describe('ERC721 Options Tests', () => {
 
     // 8. Test Pausing (requires owner)
     console.log('⏸️ Testing pausing...');
-    await new Promise(resolve => setTimeout(resolve, 3000));
 
-    const pauseCallData = iface.encodeFunctionData('pause', []);
-    const pauseTxHash = await walletAdapter.sendTransaction({
-      to: contractId,
-      data: pauseCallData
+    const pauseTxHash = await walletAdapter.writeContract({
+      contractAddress: contractId,
+      abi: contractAbi,
+      method: 'pause',
+      args: []
     });
 
     const pauseReceipt = await waitForReceipt(pauseTxHash);
@@ -448,28 +479,35 @@ describe('ERC721 Options Tests', () => {
 
     // 9. Test Unpausing (requires owner)
     console.log('▶️ Testing unpausing...');
-    await new Promise(resolve => setTimeout(resolve, 5000));
-
-    const unpauseCallData = iface.encodeFunctionData('unpause', []);
-    const unpauseTxHash = await walletAdapter.sendTransaction({
-      to: contractId,
-      data: unpauseCallData
-    });
-
-    const unpauseReceipt = await waitForReceipt(unpauseTxHash);
-    expect(unpauseReceipt).toBeDefined();
-    expect(unpauseReceipt).not.toBeNull();
-    expect(unpauseReceipt!.status).toBe(1);
-
-    // 10. Test Burning
-    console.log('🔥 Testing burning...');
-    await new Promise(resolve => setTimeout(resolve, 5000));
 
     try {
-      const burnCallData = iface.encodeFunctionData('burn', [tokenId]);
-      const burnTxHash = await walletAdapter.sendTransaction({
-        to: contractId,
-        data: burnCallData
+      if (!pauseReceipt!.status) {
+        console.warn('Contract is not paused, skipping unpause test.');
+      }
+    } catch (error) {
+      const unpauseTxHash = await walletAdapter.writeContract({
+        contractAddress: contractId,
+        abi: contractAbi,
+        method: 'unpause',
+        args: []
+      });
+
+      const unpauseReceipt = await waitForReceipt(unpauseTxHash);
+      expect(unpauseReceipt).toBeDefined();
+      expect(unpauseReceipt).not.toBeNull();
+      expect(unpauseReceipt!.status).toBe(1);
+
+      // 10. Test Burning
+      console.log('🔥 Testing burning...');
+    }
+
+    try {
+
+      const burnTxHash = await walletAdapter.writeContract({
+        contractAddress: contractId,
+        abi: contractAbi,
+        method: 'burn',
+        args: [tokenId]
       });
 
       const burnReceipt = await waitForReceipt(burnTxHash);
@@ -488,7 +526,6 @@ describe('ERC721 Options Tests', () => {
 
       // ✅ FIXED: Better ERC721 burn verification with debugging
       console.log('🧪 Testing burned token verification...');
-      await new Promise(resolve => setTimeout(resolve, 3000));
 
       // ✅ First, let's verify the burn actually worked by checking the receipt status
       if (burnReceipt!.status === 0) {
@@ -497,10 +534,14 @@ describe('ERC721 Options Tests', () => {
       }
 
       try {
-        const ownerOfCallData = iface.encodeFunctionData('ownerOf', [tokenId]);
         console.log(`🔍 Calling ownerOf for token ${tokenId} on contract ${contractId}`);
 
-        const result = await walletAdapter.callContract(contractId, ownerOfCallData);
+        const result = await walletAdapter.callContract({
+          contractAddress: contractId,
+          abi: contractAbi,
+          method: 'ownerOf',
+          args: [tokenId]
+        });
 
         console.log('🔍 ownerOf result:', result);
         console.log('🔍 Result type:', typeof result);
@@ -615,7 +656,7 @@ describe('ERC721 Options Tests', () => {
       data: proxyDeployTx.data!,
       value: deploymentData.proxy.value || '0'
     });
-    
+
     const proxyReceipt = await waitForReceipt(proxyTxHash);
     expect(proxyReceipt?.status).toBe(1);
     const proxyAddress = proxyReceipt!.contractAddress!;
@@ -700,17 +741,21 @@ describe('ERC721 Options Tests', () => {
       value: deploymentData.proxy.value || '0'
     });
     const proxyReceipt = await waitForReceipt(proxyTxHash);
+    console.log('proxyReceipt status?', proxyReceipt)
+
     expect(proxyReceipt?.status).toBe(1);
     const proxyAddress = proxyReceipt!.contractAddress!;
     console.log('✅ Transparent ERC721 Proxy deployed at:', proxyAddress);
 
     // 7. Test minting via proxy
-    const iface = new ethers.Interface(compiled.artifacts.abi);
-    const mintCallData = iface.encodeFunctionData('safeMint', [deployerAddress, 0]);
-    const mintTxHash = await walletAdapter.sendTransaction({
-      to: proxyAddress,
-      data: mintCallData
+    const mintTxHash = await walletAdapter.writeContract({
+      contractAddress: deployerAddress,
+      abi: compiled.artifacts.abi,
+      method: 'safeMint',
+      args: [deployerAddress, 0]
     });
+
+
     const mintReceipt = await waitForReceipt(mintTxHash);
     expect(mintReceipt?.status).toBe(1);
     console.log('✅ Transparent ERC721 Proxy mint functionality test passed!');

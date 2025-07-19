@@ -20,8 +20,7 @@ export enum Capability {
 
     // --- Cross-Chain Capabilities ---
     QuoteProvider = 'IQuoteProvider',
-    OperationExecutor = 'IOperationExecutor',
-    OperationMonitor = 'IOperationMonitor',
+    OperationHandler = 'IOperationHandler',
     ChainDiscovery = 'IChainDiscovery',
     GasEstimator = 'IGasEstimator',
     OperationMaintenance = 'IOperationMaintenance',
@@ -64,15 +63,12 @@ export const MethodToCapabilityMap: Record<string, Capability> = {
     'emit': Capability.EventEmitter,
 
     // --- ITokenOperations ---
-    'getTokenBalance': Capability.TokenOperations,
-    'addToken': Capability.TokenOperations,
-    'watchToken': Capability.TokenOperations,
+    'callContract': Capability.TokenOperations,
 
     // --- IRPCHandler ---
     'getChainId': Capability.RPCHandler,
     'getGasPrice': Capability.RPCHandler,
     'getBlockNumber': Capability.RPCHandler,
-    'callContract': Capability.RPCHandler,
 
     // --- ITransactionStatus ---
     'getTransaction': Capability.TransactionStatus,
@@ -87,13 +83,12 @@ export const MethodToCapabilityMap: Record<string, Capability> = {
     // --- IQuoteProvider ---
     'getOperationQuote': Capability.QuoteProvider,
 
-    // --- IOperationExecutor ---
-    'executeOperation': Capability.OperationExecutor,
 
-    // --- IOperationMonitor ---
-    'getOperationStatus': Capability.OperationMonitor,
-    'cancelOperation': Capability.OperationMonitor,
-    'resumeOperation': Capability.OperationMonitor,
+    // --- IOperations ---
+    'executeOperation': Capability.OperationHandler,
+    'getOperationStatus': Capability.OperationHandler,
+    'cancelOperation': Capability.OperationHandler,
+    'resumeOperation': Capability.OperationHandler,
 
     // --- IChainDiscovery ---
     'getSupportedChains': Capability.ChainDiscovery,

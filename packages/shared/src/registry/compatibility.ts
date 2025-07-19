@@ -24,7 +24,7 @@ export const WALLET_COMPATIBILITY: Record<string, CompatibilityMatrix> = {
       {
         moduleName: 'crosschain',
         // ✅ This wallet can work with any crosschain adapter that can execute operations.
-        requiresCapabilities: [Capability.OperationExecutor]
+        requiresCapabilities: [Capability.OperationHandler]
       }
     ]
   },
@@ -42,7 +42,7 @@ export const WALLET_COMPATIBILITY: Record<string, CompatibilityMatrix> = {
       {
         moduleName: 'crosschain',
         // ✅ This wallet can work with any crosschain adapter that can execute operations.
-        requiresCapabilities: [Capability.OperationExecutor]
+        requiresCapabilities: [Capability.OperationHandler]
       }
     ]
   }

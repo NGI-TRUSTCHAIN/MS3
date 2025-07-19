@@ -9,14 +9,13 @@ registry.registerModule({ name: Ms3Modules.crosschain, version: pkgJson.version 
 import './adapters/index.js';
 
 export * from './types/index.js';
-export * from './helpers/index.js'
 export type { ILiFiAdapterOptionsV1 } from './adapters/index.js';
 
 export interface ICrossChainOptions extends ModuleArguments< ILiFiAdapterOptionsV1> { }
 
 registry.registerInterfaceShape('ICrossChain', [
   Capability.AdapterIdentity, Capability.AdapterLifecycle, Capability.QuoteProvider,
-  Capability.OperationExecutor, Capability.OperationMonitor, Capability.ChainDiscovery,
+  Capability.OperationHandler, Capability.ChainDiscovery,
   Capability.GasEstimator, Capability.OperationMaintenance
 ]);
 

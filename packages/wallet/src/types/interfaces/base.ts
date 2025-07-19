@@ -44,6 +44,8 @@ export interface IMessageSigner {
  * Transaction signing and sending capabilities
  */
 export interface GenericTransactionData {
+  from?: string;
+  
   to?: string;
   /** Amount of the native asset to send (e.g., "0.01" for ETH, "1000000" for lamports). Adapter handles conversion. */
   value?: string;

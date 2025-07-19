@@ -1,6 +1,6 @@
 import { AdapterMetadata, getStaticCompatibilityMatrix, getEnvironments, getFeatures, getRequirements, registry, RuntimeEnvironment, Capability } from '@m3s/shared';
 import { Web3AuthWalletAdapter } from './web3authWallet.js';
-import { WalletType } from '../../../types/index.js';
+import { WalletType } from '../../types/index.js';
 import Joi from 'joi';
 
 // ✅ PROFESSIONAL: Define explicit JOI schema

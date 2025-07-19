@@ -24,7 +24,6 @@ import {
   RouteExtended,
   stopRouteExecution, // Keep for basic cancel
   LiFiStep,
-  FeeCost,
   Execution,
   resumeRoute,
   ExtendedChain
@@ -52,6 +51,7 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
   private initialized: boolean = false;
   private args: args;
   private activeOperations: Map<string, Promise<OperationResult>> = new Map();
+  private operationStatusMap: Map<string, OperationResult> = new Map(); // <-- ADD THIS
 
 
   /**
@@ -179,7 +179,7 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
       receivedAmount = (lastStep.execution as Execution)?.toAmount || safeRoute.toAmount;
     }
 
-  // ✅ CRITICAL FIX: Better completion detection
+    // ✅ CRITICAL FIX: Better completion detection
     // If we have transaction hash AND received amount, operation likely completed
     if (sourceTxHash && receivedAmount && parseFloat(receivedAmount) > 0) {
       // Check if this is likely a completed same-chain swap
@@ -211,8 +211,8 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
     // ✅ ENHANCED: Check for explicit completion markers in LiFi response
     const hasCompletionMarkers = safeRoute.steps.every(step => {
       if (!step.execution) return false;
-      return step.execution.status === 'DONE' || 
-             (step.execution.process && step.execution.process.some(p => p.status === 'DONE'));
+      return step.execution.status === 'DONE' ||
+        (step.execution.process && step.execution.process.some(p => p.status === 'DONE'));
     });
 
     if (hasCompletionMarkers && receivedAmount) {
@@ -249,7 +249,7 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
     } else if (overallStatus === 'COMPLETED') {
       statusMessage = 'Operation completed successfully.';
     } else if (overallStatus === 'ACTION_REQUIRED') {
-      statusMessage = 'Action required by user (check wallet).';
+      statusMessage = 'Action required by user (using m3s wallet...)';
     } else if (overallStatus === 'PENDING') {
       // More specific pending messages
       const executingSteps = safeRoute.steps.filter(s =>
@@ -503,9 +503,12 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
         return [];
       }
 
-      const feeUSD = quoteStep.estimate.feeCosts?.reduce((sum, fee: FeeCost) => sum + parseFloat(fee.amountUSD || '0'), 0).toString() || '0';
+      const feeUSD = quoteStep.estimate.feeCosts
+        ? quoteStep.estimate.feeCosts.reduce((sum, fee) => sum + parseFloat(fee.amountUSD || '0'), 0).toString()
+        : '0';
+
       const firstGasCost = quoteStep.estimate.gasCosts?.[0];
-      const gasCostsEstimate = firstGasCost ? {
+      const gasCosts = firstGasCost ? {
         limit: firstGasCost.limit || '',
         amount: firstGasCost.amount || '',
         amountUSD: firstGasCost.amountUSD || '0'
@@ -514,15 +517,8 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
       const operationQuote: OperationQuote = {
         id: quoteStep.id,
         intent: intent,
-        estimate: {
-          fromAmount: quoteStep.action.fromAmount,
-          toAmount: quoteStep.estimate.toAmount,
-          toAmountMin: quoteStep.estimate.toAmountMin,
-          routeDescription: `${quoteStep.toolDetails.name} via LI.FI`,
-          executionDuration: quoteStep.estimate.executionDuration,
-          feeUSD: feeUSD,
-          gasCosts: gasCostsEstimate,
-        },
+        gasCosts,
+        feeUSD,
         adapter: {
           name: this.name,
           version: this.version
@@ -696,6 +692,9 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
       destinationTx: { chainId: quote.intent.destinationAsset.chainId },
     };
 
+    this.operationStatusMap.set(quote.id, pending);
+
+
     try {
       const rawRoute = await convertQuoteToRoute(quote.adapterQuote as LiFiStep);
       const route = sanitizeBigInts(rawRoute);
@@ -722,11 +721,12 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
 
                 console.log(`🔥 [LI.FI HOOK] Status: ${statusUpdate.status}`);
 
-                // ✅ Always emit AND store last status
+                // Always emit AND store last status
                 lastStatus = statusUpdate;
+                this.operationStatusMap.set(quote.id, statusUpdate); // <-- STORE LATEST STATUS
                 this.emit('status', statusUpdate);
 
-                // ✅ Resolve promise on terminal status
+                // Resolve promise on terminal status
                 if (statusUpdate.status === 'COMPLETED' || statusUpdate.status === 'FAILED') {
                   console.log(`🎉 [LI.FI HOOK] Terminal status: ${statusUpdate.status} - resolving!`);
                   resolve(statusUpdate);
@@ -736,22 +736,21 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
 
             console.log('🎯 [LI.FI ADAPTER] executeRoute completed');
 
-            // ✅ If we reach here without terminal status, something's wrong
             if (!['COMPLETED', 'FAILED'].includes(lastStatus.status)) {
               console.warn('🚨 [LI.FI ADAPTER] executeRoute completed but no terminal status received');
-              // Try to get final status one more time
               const finalCheck = getActiveRoute(route.id);
               if (finalCheck) {
                 const finalStatus = this.translateRouteToStatus(sanitizeBigInts(finalCheck));
+                this.operationStatusMap.set(quote.id, finalStatus); // <-- STORE FINAL STATUS
                 this.emit('status', finalStatus);
                 resolve(finalStatus);
               } else {
-                // Assume completion if executeRoute finished without error
                 const completedStatus: OperationResult = {
                   ...lastStatus,
                   status: ExecutionStatusEnum.COMPLETED,
                   statusMessage: 'Operation completed (inferred from successful execution)'
                 };
+                this.operationStatusMap.set(quote.id, completedStatus); // <-- STORE FINAL STATUS
                 this.emit('status', completedStatus);
                 resolve(completedStatus);
               }
@@ -763,6 +762,7 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
               error: error.message,
               statusMessage: `Operation failed: ${error.message}`
             };
+            this.operationStatusMap.set(quote.id, failedStatus); // <-- STORE FAILED STATUS
             this.emit('status', failedStatus);
             reject(failedStatus);
           }
@@ -773,7 +773,7 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
 
       finalStatusPromise = completionPromise;
 
-      // ✅ Store the promise for getOperationStatus to use
+      // Store the promise for getOperationStatus to use
       this.activeOperations.set(quote.id, finalStatusPromise);
 
       return pending;
@@ -788,6 +788,7 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
         destinationTx: { chainId: quote.intent.destinationAsset.chainId },
         error: err.message,
       };
+      this.operationStatusMap.set(quote.id, failed); // <-- STORE FAILED STATUS
       this.emit('status', failed);
       return failed;
     }
@@ -801,30 +802,25 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
       });
     }
 
-    // ✅ First, check if we have a tracked operation
-    const operationPromise = this.activeOperations.get(operationId);
-    if (operationPromise) {
-      try {
-        // Return the final status if available
-        const finalStatus = await operationPromise;
-        return finalStatus;
-      } catch (error) {
-        // Operation failed, return the error status
-        return error as OperationResult;
-      }
+// Return latest status from map if available
+    const latestStatus = this.operationStatusMap.get(operationId);
+    if (latestStatus) {
+      return latestStatus;
     }
 
-    // ✅ Fallback: Check LI.FI's active routes
+    // Fallback: Check LI.FI's active routes
     try {
       const activeRoute = getActiveRoute(operationId);
       if (activeRoute) {
-        return this.translateRouteToStatus(sanitizeBigInts(activeRoute));
+        const status = this.translateRouteToStatus(sanitizeBigInts(activeRoute));
+        this.operationStatusMap.set(operationId, status); // <-- STORE STATUS
+        return status;
       }
     } catch (error) {
       console.warn(`[MinimalLiFiAdapter] Error checking active route for ${operationId}:`, error);
     }
 
-    // ✅ Operation not found anywhere
+    // Operation not found anywhere
     return {
       operationId,
       status: ExecutionStatusEnum.UNKNOWN,
@@ -833,6 +829,7 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
       adapter: { name: this.name, version: this.version },
     };
   }
+  
 
   async cancelOperation(
     operationId: string,

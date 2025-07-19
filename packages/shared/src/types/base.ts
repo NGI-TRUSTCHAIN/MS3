@@ -73,4 +73,3 @@ export interface NetworkConfig {
   shortName?: string;
   chainSlug?: string;
 }
-

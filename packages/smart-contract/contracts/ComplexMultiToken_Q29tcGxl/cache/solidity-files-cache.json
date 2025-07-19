@@ -2,7 +2,7 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\packages\\smart-contract\\contracts\\ComplexMultiToken_Q29tcGxl\\contracts\\ComplexMultiToken.sol": {
-      "lastModificationDate": 1751959438363,
+      "lastModificationDate": 1752845478681,
       "contentHash": "fe12fed20369cc351c22e8a49d682735",
       "sourceName": "contracts/ComplexMultiToken.sol",
       "solcConfig": {
@@ -41,44 +41,6 @@
       ],
       "artifacts": [
         "ComplexMultiToken"
-      ]
-    },
-    "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\node_modules\\@openzeppelin\\contracts\\access\\Ownable.sol": {
-      "lastModificationDate": 1751624963496,
-      "contentHash": "d3c790edc9ccf808a17c5a6cd13614fd",
-      "sourceName": "@openzeppelin/contracts/access/Ownable.sol",
-      "solcConfig": {
-        "version": "0.8.27",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 200
-          },
-          "evmVersion": "paris",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "../utils/Context.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.20"
-      ],
-      "artifacts": [
-        "Ownable"
       ]
     },
     "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\node_modules\\@openzeppelin\\contracts\\token\\ERC1155\\ERC1155.sol": {
@@ -125,10 +87,10 @@
         "ERC1155"
       ]
     },
-    "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\node_modules\\@openzeppelin\\contracts\\token\\ERC1155\\extensions\\ERC1155Pausable.sol": {
-      "lastModificationDate": 1751624957738,
-      "contentHash": "345c6caa432eab723a0386a8ac829db1",
-      "sourceName": "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Pausable.sol",
+    "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\node_modules\\@openzeppelin\\contracts\\access\\Ownable.sol": {
+      "lastModificationDate": 1751624963496,
+      "contentHash": "d3c790edc9ccf808a17c5a6cd13614fd",
+      "sourceName": "@openzeppelin/contracts/access/Ownable.sol",
       "solcConfig": {
         "version": "0.8.27",
         "settings": {
@@ -154,14 +116,51 @@
         }
       },
       "imports": [
-        "../ERC1155.sol",
-        "../../../utils/Pausable.sol"
+        "../utils/Context.sol"
       ],
       "versionPragmas": [
         "^0.8.20"
       ],
       "artifacts": [
-        "ERC1155Pausable"
+        "Ownable"
+      ]
+    },
+    "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\node_modules\\@openzeppelin\\contracts\\token\\ERC1155\\extensions\\ERC1155Burnable.sol": {
+      "lastModificationDate": 1751624957354,
+      "contentHash": "b0e85a62dd2562811ca4c7aa2d36f95c",
+      "sourceName": "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol",
+      "solcConfig": {
+        "version": "0.8.27",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../ERC1155.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "ERC1155Burnable"
       ]
     },
     "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\node_modules\\@openzeppelin\\contracts\\token\\ERC1155\\extensions\\ERC1155Supply.sol": {
@@ -203,10 +202,10 @@
         "ERC1155Supply"
       ]
     },
-    "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\node_modules\\@openzeppelin\\contracts\\token\\ERC1155\\extensions\\ERC1155Burnable.sol": {
-      "lastModificationDate": 1751624957354,
-      "contentHash": "b0e85a62dd2562811ca4c7aa2d36f95c",
-      "sourceName": "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol",
+    "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\node_modules\\@openzeppelin\\contracts\\token\\ERC1155\\extensions\\ERC1155Pausable.sol": {
+      "lastModificationDate": 1751624957738,
+      "contentHash": "345c6caa432eab723a0386a8ac829db1",
+      "sourceName": "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Pausable.sol",
       "solcConfig": {
         "version": "0.8.27",
         "settings": {
@@ -232,87 +231,14 @@
         }
       },
       "imports": [
-        "../ERC1155.sol"
+        "../ERC1155.sol",
+        "../../../utils/Pausable.sol"
       ],
       "versionPragmas": [
         "^0.8.20"
       ],
       "artifacts": [
-        "ERC1155Burnable"
-      ]
-    },
-    "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\node_modules\\@openzeppelin\\contracts\\utils\\Context.sol": {
-      "lastModificationDate": 1751624955769,
-      "contentHash": "67bfbc07588eb8683b3fd8f6f909563e",
-      "sourceName": "@openzeppelin/contracts/utils/Context.sol",
-      "solcConfig": {
-        "version": "0.8.27",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 200
-          },
-          "evmVersion": "paris",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [],
-      "versionPragmas": [
-        "^0.8.20"
-      ],
-      "artifacts": [
-        "Context"
-      ]
-    },
-    "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\node_modules\\@openzeppelin\\contracts\\interfaces\\draft-IERC6093.sol": {
-      "lastModificationDate": 1751624956816,
-      "contentHash": "267d92fe4de67b1bdb3302c08f387dbf",
-      "sourceName": "@openzeppelin/contracts/interfaces/draft-IERC6093.sol",
-      "solcConfig": {
-        "version": "0.8.27",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 200
-          },
-          "evmVersion": "paris",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [],
-      "versionPragmas": [
-        "^0.8.20"
-      ],
-      "artifacts": [
-        "IERC1155Errors",
-        "IERC20Errors",
-        "IERC721Errors"
+        "ERC1155Pausable"
       ]
     },
     "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\node_modules\\@openzeppelin\\contracts\\utils\\Arrays.sol": {
@@ -354,6 +280,42 @@
       ],
       "artifacts": [
         "Arrays"
+      ]
+    },
+    "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\node_modules\\@openzeppelin\\contracts\\utils\\Context.sol": {
+      "lastModificationDate": 1751624955769,
+      "contentHash": "67bfbc07588eb8683b3fd8f6f909563e",
+      "sourceName": "@openzeppelin/contracts/utils/Context.sol",
+      "solcConfig": {
+        "version": "0.8.27",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "Context"
       ]
     },
     "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\node_modules\\@openzeppelin\\contracts\\token\\ERC1155\\IERC1155.sol": {
@@ -430,6 +392,44 @@
       ],
       "artifacts": [
         "ERC165"
+      ]
+    },
+    "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\node_modules\\@openzeppelin\\contracts\\interfaces\\draft-IERC6093.sol": {
+      "lastModificationDate": 1751624956816,
+      "contentHash": "267d92fe4de67b1bdb3302c08f387dbf",
+      "sourceName": "@openzeppelin/contracts/interfaces/draft-IERC6093.sol",
+      "solcConfig": {
+        "version": "0.8.27",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "IERC1155Errors",
+        "IERC20Errors",
+        "IERC721Errors"
       ]
     },
     "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\node_modules\\@openzeppelin\\contracts\\token\\ERC1155\\extensions\\IERC1155MetadataURI.sol": {
@@ -656,42 +656,6 @@
         "Math"
       ]
     },
-    "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\node_modules\\@openzeppelin\\contracts\\utils\\math\\SafeCast.sol": {
-      "lastModificationDate": 1751624964902,
-      "contentHash": "2adca1150f58fc6f3d1f0a0f22ee7cca",
-      "sourceName": "@openzeppelin/contracts/utils/math/SafeCast.sol",
-      "solcConfig": {
-        "version": "0.8.27",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 200
-          },
-          "evmVersion": "paris",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [],
-      "versionPragmas": [
-        "^0.8.20"
-      ],
-      "artifacts": [
-        "SafeCast"
-      ]
-    },
     "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\node_modules\\@openzeppelin\\contracts\\utils\\Panic.sol": {
       "lastModificationDate": 1751624963864,
       "contentHash": "2133dc13536b4a6a98131e431fac59e1",
@@ -726,6 +690,42 @@
       ],
       "artifacts": [
         "Panic"
+      ]
+    },
+    "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\node_modules\\@openzeppelin\\contracts\\utils\\math\\SafeCast.sol": {
+      "lastModificationDate": 1751624964902,
+      "contentHash": "2adca1150f58fc6f3d1f0a0f22ee7cca",
+      "sourceName": "@openzeppelin/contracts/utils/math/SafeCast.sol",
+      "solcConfig": {
+        "version": "0.8.27",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "SafeCast"
       ]
     },
     "C:\\Users\\gunne\\Desktop\\CTB\\M3S\\ms3-package\\node_modules\\@openzeppelin\\contracts\\utils\\introspection\\IERC165.sol": {
