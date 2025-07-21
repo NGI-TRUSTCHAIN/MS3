@@ -1,12 +1,12 @@
 ![MS3 Banner](./banner.png)
 
-# MS3 - Modular Web3 Suite
+# M3S - Modular Web3 Suite
 
 > **IMPORTANT NOTE:** This project is under development and subject to changes over time.
 
 ## Overview
 
-MS3 is a revolutionary approach to Web3 integration, designed to make existing blockchain solutions more reusable and composable. Instead of repeatedly integrating the same tools for each project, MS3 allows you to compose and reuse pre-configured integrations through a modular adapter system.
+M3S is a revolutionary approach to Web3 integration, designed to make existing blockchain solutions more reusable and composable. Instead of repeatedly integrating the same tools for each project, MS3 allows you to compose and reuse pre-configured integrations through a modular adapter system.
 
 ## Key Benefits
 
@@ -20,7 +20,7 @@ MS3 is a revolutionary approach to Web3 integration, designed to make existing b
 
 ### Module System
 
-MS3 is built around three core modules, each supporting multiple adapters:
+M3S is built around three core modules, each supporting multiple adapters:
 
 #### 1. Wallet Module
 - Handles wallet connectivity and management
