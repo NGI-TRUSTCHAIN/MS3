@@ -9,6 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@m3s/crosschain": "^2.0.7",
+    "@m3s/smart-contract": "^2.3.3",
+    "@m3s/wallet": "^2.2.6",
+    "@web3auth/auth-adapter": "^9.7.0",
+    "@web3auth/base": "^9.7.0",
+    "@web3auth/ethereum-provider": "^9.7.0",
+    "@web3auth/no-modal": "^9.7.0",
     "axios": "^1.10.0",
     "clsx": "^2.1.1",
     "next": "15.3.5",

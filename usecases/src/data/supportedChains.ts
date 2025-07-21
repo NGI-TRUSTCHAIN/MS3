@@ -13,21 +13,21 @@ export const supportedChains = [
   { chainId: 42220, name: "Celo", symbol: "CELO" },
 ];
 
-export const providerConfig = {
-  decimals: 18,
-  name: "Sepolia",
-  chainId: "11155111",
-  rpcUrls: ["https://rpc.sepolia.org", "https://sepolia.infura.io/v3/5791a18dd1ee45af8ac3d79b549d54f1"],
-  displayName: "Sepolia Testnet",
-};
-
 // export const providerConfig = {
 //   decimals: 18,
-//   name: "Holesky",
-//   chainId: "17000",
-//   rpcUrls: [
-//     "https://ethereum-holesky.publicnode.com",
-//     "https://holesky.infura.io/v3/5791a18dd1ee45af8ac3d79b549d54f1"
-//   ],
-//   displayName: "Holesky Testnet",
+//   name: "Sepolia",
+//   chainId: "11155111",
+//   rpcUrls: ["https://rpc.sepolia.org", "https://sepolia.infura.io/v3/5791a18dd1ee45af8ac3d79b549d54f1"],
+//   displayName: "Sepolia Testnet",
 // };
+
+export const providerConfig = {
+  decimals: 18,
+  name: "Holesky",
+  chainId: "17000",
+  rpcUrls: [
+    "https://ethereum-holesky.publicnode.com",
+    "https://holesky.infura.io/v3/5791a18dd1ee45af8ac3d79b549d54f1"
+  ],
+  displayName: "Holesky Testnet",
+};

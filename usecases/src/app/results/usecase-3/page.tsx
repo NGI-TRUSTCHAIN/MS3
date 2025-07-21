@@ -26,7 +26,6 @@ export default function Usecase3Page() {
   const [refundTx, setRefundTx] = useState<string | null>(null);
   const [amount, setAmount] = useState("0.1");
 
-  // 2. Create wallet
   const _createWallet = async () => {
     try {
       if (adapterType === "ethers") {
@@ -107,12 +106,12 @@ export default function Usecase3Page() {
 
       const networkHelper = NetworkHelper.getInstance();
       await networkHelper.ensureInitialized();
-      console.log("networkHelper", networkHelper);
+      console.log('networkHelper', networkHelper);
 
       const polygonConfig = await networkHelper.getNetworkConfig("matic", [
         polygonPreferredRpc,
       ]);
-      console.log("polygonConfig", polygonConfig);
+      console.log('polygonConfig', polygonConfig)
       setPolygonConfig(polygonConfig);
     };
     onInit();
@@ -143,21 +142,56 @@ export default function Usecase3Page() {
   };
 
   const checkBalance = async () => {
-    // 3. Check Incoming Balance
-    // - Create a cross-chain provider using the createCrossChain function with: Adapter name "lifi", Version "1.0.0", an apiKey and multiChainRpcs configuration.
-    // - Set the provider using setCrosschainProvider.
-    // - Define a swapIntent object with: sourceAsset: the token to send, destinationAsset: the token to receive, amount: the amount to swap, userAddress: the wallet address, slippageBps: allowed slippage in basis points.
-    // - Call getOperationQuote from the crossChain provider to get possible swap routes.
-    // - Select the first quote and store it using setQuote.
-    // - Optionally, extract and store the feeUSD using setComision.
+    const crosschain = await createCrossChain({
+      name: "lifi",
+      version: "1.0.0",
+      options: {
+        apiKey:
+          "5914aec1-53de-4147-b701-f2751beb4432.47b2600f-bf0e-428b-a9e5-1737f8cc97d4",
+        multiChainRpcs: {
+          "137": [
+            `https://polygon-mainnet.infura.io/v3/5791a18dd1ee45af8ac3d79b549d54f1`,
+          ],
+          "10": [
+            `https://optimism-mainnet.infura.io/v3/5791a18dd1ee45af8ac3d79b549d54f1`,
+          ],
+          "0x89": [
+            `https://polygon-mainnet.infura.io/v3/5791a18dd1ee45af8ac3d79b549d54f1`,
+          ],
+          "0xa": [
+            `https://optimism-mainnet.infura.io/v3/5791a18dd1ee45af8ac3d79b549d54f1`,
+          ],
+        },
+      },
+    });
+
+    setCrosschainProvider(crosschain);
+
+    const swapIntent = {
+      sourceAsset: USDC_POLYGON,
+      destinationAsset: USDC_OPTIMISM,
+      amount: amount,
+      userAddress: walletAddress as string,
+      slippageBps: 100,
+    };
+
+    const quotes = await crosschain.getOperationQuote(swapIntent);
+    const quote = quotes[0];
+    console.log("quotes", quotes);
+
+    setComision(quote.feeUSD);
+    setQuote(quote);
   };
 
   const makeTx = async () => {
-    // 4. Execute the Swap Transaction
-    // - Call the executeOperation method from the crosschainProvider, passing: the quote obtained from getOperationQuote, the wallet inside the options object (i.e., walletProvider).
-    // 5. View Transaction Details
-    // - Log the initial result to confirm the swap execution has started.
-    // - Set up a listener with crosschainProvider.on("status") to track status updates during the transaction process.
+    const initialResult = await crosschainProvider.executeOperation(quote, {
+      wallet: walletProvider,
+    });
+    console.log("🚀 Swap execution initiated:", initialResult);
+
+    crosschainProvider.on("status", (stat: any) =>
+      console.log("NEW STATUS", stat)
+    );
   };
 
   return (

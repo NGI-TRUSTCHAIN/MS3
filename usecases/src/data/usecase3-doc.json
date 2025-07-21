@@ -16,8 +16,8 @@
   },
   {
     "step": 4,
-    "title": "Return Funds and Selected Currency",
-    "content": "Send back the funds in the selected currency using the m3s crosschain module."
+    "title": "Execute the Swap Transaction",
+    "content": "Initiate the cross-chain swap by executing the selected quote with the connected wallet. Monitor transaction status in real-time."
   },
   {
     "step": 5,

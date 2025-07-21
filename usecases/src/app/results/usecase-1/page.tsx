@@ -8,6 +8,7 @@ import DocStep from "@/components/ui/DocStep";
 import docSteps from "@/data/usecase1-doc.json";
 import { PRIVATE_RPCS } from "@/data/private_rcps";
 import { providerConfig } from "@/data/supportedChains";
+import { createWallet } from "@m3s/wallet";
 
 // Simulated document to sign
 const DEFAULT_DOCUMENT = "This is a sample document to be signed.";
@@ -24,13 +25,64 @@ export default function Usecase1Page() {
 
   const _createWallet = async () => {
     try {
-      // 1. Create Wallet
-      // Use the createWallet function.
-      // Set the returned provider using setWalletProvider.
-      // Use the getAccounts method from the provider to retrieve the wallet address.
-      // The result is an array: set the first position ([0]) using setWalletAddress.
       if (adapterType === "ethers") {
+        const wallet = await createWallet({
+          name: "ethers",
+          version: "1.0.0",
+          expectedInterface: "IEVMWallet",
+          options: {
+            privateKey:
+              "0x4b7c60e8658b44f23f84ce946df1a77ac8a09e5b8a3cb9fc5f979859f7315ad1",
+            provider: providerConfig,
+          },
+        });
+        setWalletProvider(wallet);
+        const accounts = await wallet.getAccounts();
+        setWalletAddress(accounts[0]);
       } else {
+        const wallet = await createWallet({
+          name: "web3auth",
+          version: "1.0.0",
+          expectedInterface: "IEVMWallet",
+          options: {
+            web3authConfig: {
+              clientId: "BLgyMSY64LJfOo-6dEPmsFs51oVZJafLC6l5S4NjxsMUrlj9c-_5B0BV9VlOwgU8R7LfkKwImDYIMVPdHCIoHI8",
+              web3AuthNetwork: "sapphire_devnet",
+              chainConfig: {
+                chainNamespace: "eip155",
+                chainId: "0xaa36a7",
+                rpcTarget: providerConfig.rpcUrls[1],
+                displayName: "Sepolia Testnet",
+                blockExplorerUrl: "https://sepolia.etherscan.io",
+                ticker: "ETH",
+                tickerName: "Ethereum",
+              },
+              loginConfig: {
+                google: {
+                  verifier: 'm3s-google-client',
+                  typeOfLogin: "google",
+                  clientId: '279202560930-jfr3a5htp9b720mhh3t7v1j5ntsjm7k1.apps.googleusercontent.com'
+                },
+              },
+            },
+            multiChainRpcs: {
+              "1": PRIVATE_RPCS.ethereum,
+              "137": PRIVATE_RPCS.matic,
+              "42161": PRIVATE_RPCS.arbitrum,
+              "10": PRIVATE_RPCS.optimism,
+              "11155111": PRIVATE_RPCS.sepolia,
+              "0x1": PRIVATE_RPCS.ethereum,
+              "0x89": PRIVATE_RPCS.matic,
+              "0xa4b1": PRIVATE_RPCS.arbitrum,
+              "0xa": PRIVATE_RPCS.optimism,
+              "0xaa36a7": PRIVATE_RPCS.sepolia,
+            }
+          },
+        });
+        console.log("walletProvider", wallet);
+        setWalletProvider(wallet);
+        const accounts = await wallet.getAccounts();
+        setWalletAddress(accounts[0]);
       }
     } catch (e) {
       console.log("error", e);
@@ -39,9 +91,8 @@ export default function Usecase1Page() {
 
   const signDocument = async () => {
     try {
-      // 2. Sign the Document
-      // Use the signMessage method from the provider to sign the document.
-      // Copy the generated signature.
+      const sig = await walletProvider.signMessage(document);
+      setSignature(sig);
     } catch (e) {
       console.log("error", e);
     }
@@ -49,11 +100,16 @@ export default function Usecase1Page() {
 
   const verifySignature = async () => {
     try {
-      // 3. Verify the Document Signature
-      // Paste the signature into the input field.
-      // Use the verifySignature method from the provider to check if the signature is valid.
+      const recovered = await walletProvider.verifySignature(
+        document,
+        signature,
+        walletAddress
+      );
+      recovered === true
+        ? setFeedback(":white_check_mark: Signature is valid")
+        : setFeedback(":x: Signature is invalid");
     } catch (e) {
-      setFeedback("❌ Signature is invalid");
+      setFeedback(":x: Signature is invalid");
       console.log("error", e);
     }
   };

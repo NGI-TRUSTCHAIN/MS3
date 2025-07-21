@@ -27,9 +27,7 @@ export default function Usecase2Page() {
   );
   const [deployedOutput, setDeployedOutput] = useState<any>(null);
   const [contractAddress, setContractAddress] = useState<string | null>(null);
-  const [mintTxHash, setMintTxHash] = useState<string | null>(null);
 
-  // 2. Create wallet
   const _createWallet = async () => {
     try {
       if (adapterType === "ethers") {
@@ -99,17 +97,49 @@ export default function Usecase2Page() {
   };
 
   const createContract = async () => {
-    const res = await axios.post("/api/sc/generate", {
+    const res = await axios.post("/api/results/sc/generate", {
       contractType,
     });
 
+    console.log("sourceCode", res.data.deployedOutput);
     setDeployedOutput(res.data.deployedOutput);
   };
 
   const deployContract = async () => {
-    // 6. Deploy the Contract
-    // - Use the wallet provider to deploy the contract via the sendTransaction function.
-    // - After sending the transaction, use the waitForReceipt function to wait for the deployment to be confirmed.
+    const deployTxHash = await walletProvider.sendTransaction({
+      data: deployedOutput.data,
+      value: deployedOutput.value || "0",
+    });
+    const waitForReceipt = async (
+      txHash: string,
+      maxAttempts = 20,
+      waitTime = 6000
+    ) => {
+      for (let i = 0; i < maxAttempts; i++) {
+        const receipt = await walletProvider.getTransactionReceipt(txHash);
+        if (receipt) {
+          console.log(
+            `Receipt found for ${txHash} (attempt ${i + 1}). Status: ${
+              receipt.status
+            }`
+          );
+          return receipt;
+        }
+        console.log(
+          `Receipt not found for ${txHash} (attempt ${i + 1}). Waiting ${
+            waitTime / 1000
+          }s...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+      }
+      console.error(
+        `Receipt not found for ${txHash} after ${maxAttempts} attempts.`
+      );
+      return null;
+    };
+
+    const deploymentReceipt = await waitForReceipt(deployTxHash);
+    console.log('deploymentReceipt', deploymentReceipt);
   };
 
   return (

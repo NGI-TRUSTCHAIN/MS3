@@ -2,21 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   const { contractType } = await req.json();
-  
+
   try {
-    // Create contract with createContractHandler
-    // Configure input according to the type of contract
+    // 4. Create the Contract
+    // - Use the createContractHandler function.
+    // - Configure the input object based on the selected contract type.
+    // - Generate the contract's source code using the generateContract function.
     let generationInput;
 
-    if (contractType === "erc20") {
-    } else {
-    }
-
-    // Generate source code with generateContract fc
-    // Create compilationInput with sourceCode, language ("solidity") and contractName. Use that params in compile fc
-    // Deploy contract with getRegularDeploymentData fc 
-
-    //Return contractHandler, sourceCode, compiledOutput, deployedOutput
+    // 5. Compile and Deploy the Contract
+    // - Create a compilationInput object using: the sourceCode generated, the language set to "solidity", and the contractName.
+    // - Pass this object to the compile function.
+    // - Obtain the deployment data using getRegularDeploymentData.
+    // - Return the following: contractHandler, sourceCode, compiledOutput. and deployedOutput.
     return NextResponse.json({});
   } catch (error) {
     console.error("Error generating contract:", error);
