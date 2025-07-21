@@ -1,4 +1,4 @@
-![MS3 Banner](./logo.png)
+<img src="./logo.png" alt="MS3 Banner" width="300"/>
 
 # M3S - Modular Web3 Suite
 
