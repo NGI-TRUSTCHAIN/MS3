@@ -1,4 +1,6 @@
-<img src="./logo.png" alt="MS3 Banner" width="300"/>
+<div align="center">
+  <img src="./logo.png" alt="MS3 Banner" width="300"/>
+</div>
 
 # M3S - Modular Web3 Suite
 
