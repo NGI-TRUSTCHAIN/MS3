@@ -3,6 +3,10 @@ on:
   issues:
     types:
       - closed
+  push:
+      branches:
+      - 'adapter/**'
+      - 'interface/**'
 jobs:
   validate-closure:
     runs-on: ubuntu-latest

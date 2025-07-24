@@ -1,6 +1,6 @@
 name: Change Proposal
 description: Create a formal proposal for a technical change
-title: "[Proposal]: "
+title: "adapter/"
 labels: [Pending]
 assignees: []
 body:
