@@ -4,9 +4,30 @@ on:
     types:
       - closed
 jobs:
+  validate-closure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check authorized user and label
+        uses: actions/github-script@v7
+        id: check
+        with:
+          script: |
+            const authorizedUsers = ['AngelaKP3012', 'Gunner Andersen Gil'];
+            const actor = context.actor;
+            const labels = context.payload.issue.labels.map(l => l.name);
+            const hasLabel = labels.includes('In proccess');
+
+            if (!authorizedUsers.includes(actor)) {
+              core.setFailed(`❌ @${actor} no está autorizado para cerrar issues.`);
+            }
+
+            if (!hasLabel) {
+              core.setFailed(`❌ La issue debe tener la etiqueta 'In proccess'.`);
+            }
+
   handle-closed-issue:
-    if: |
-      contains(github.event.issue.labels.*.name, 'In proccess')
+    needs: validate-closure
+    if: success()
     runs-on: ubuntu-latest
     env:
       PAT: ${{ secrets.AZURE_DEVOPS_M3S_TOKEN }}
@@ -19,8 +40,6 @@ jobs:
         run: |
           echo "La issue '${{ github.event.issue.title }}' fue cerrada por ${{ github.actor }}"
           echo "ID de issue: "${{ github.event.issue.number }}"
-          echo "Puedes activar aquí una pipeline personalizada."
-          sync-to-azure:
       - name: Checkout GitHub repo
         uses: actions/checkout@v3
       - name: Set up Git
