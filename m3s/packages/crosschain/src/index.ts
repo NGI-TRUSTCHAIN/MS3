@@ -15,6 +15,7 @@ export type { ILiFiAdapterOptionsV1 } from './adapters/index.js';
 export interface ICrossChainOptions extends ModuleArguments<string, ILiFiAdapterOptionsV1> { }
 
 /**
+ * TEST PIPELINE 1
  * Creates a CrossChain module instance with the specified adapter.
  * 
  * @param params - Configuration parameters for the CrossChain module
