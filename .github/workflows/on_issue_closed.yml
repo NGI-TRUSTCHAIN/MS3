@@ -15,7 +15,7 @@ jobs:
             const authorizedUsers = ['AngelaKP3012', 'Gunner Andersen Gil'];
             const actor = context.actor;
             const labels = context.payload.issue.labels.map(l => l.name);
-            const hasLabel = labels.includes('In proccess');
+            const hasLabel = labels.includes('Approved');
 
             if (!authorizedUsers.includes(actor)) {
               core.setFailed(`❌ @${actor} no está autorizado para cerrar issues.`);
