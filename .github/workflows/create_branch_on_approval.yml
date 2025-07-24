@@ -5,7 +5,7 @@ on:
       - labeled
 jobs:
   create-branch:
-    if: github.event.label.name == 'Approved'
+    if: github.event.label.name == 'In proccess'
     runs-on: ubuntu-latest
     permissions:
       contents: write

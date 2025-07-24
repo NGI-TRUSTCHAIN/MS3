@@ -29,13 +29,6 @@ jobs:
     needs: validate-closure
     if: success()
     runs-on: ubuntu-latest
-    steps:
-      - name: Log info
-        run: |
-          echo "La issue '${{ github.event.issue.title }}' fue cerrada por ${{ github.actor }}"
-      
-  sync-to-azure:
-    runs-on: ubuntu-latest
     env:
       PAT: ${{ secrets.AZURE_DEVOPS_M3S_TOKEN }}
       ORG: "changetheblock"
@@ -43,6 +36,9 @@ jobs:
       REPO_NAME: "M3S"
       AZURE_DEVOPS_URL: ${{ secrets.AZURE_DEVOPS_M3S_URL }}
     steps:
+      - name: Log info
+        run: |
+          echo "La issue '${{ github.event.issue.title }}' fue cerrada por ${{ github.actor }}"
       - name: Checkout GitHub repo
         uses: actions/checkout@v3
       - name: Set up Git
@@ -78,3 +74,4 @@ jobs:
               \"description\": \"Auto-generated PR from GitHub branch $BRANCH_NAME.\"
             }" \
             $API_URL
+      
