@@ -1,0 +1,30 @@
+name: Create Branch from Approved Issue
+on:
+  issues:
+    types:
+      - labeled
+jobs:
+  create-branch:
+    if: github.event.label.name == 'Approved'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Extract branch name from issue
+        id: extract
+        run: |
+          ISSUE_NUMBER=${{ github.event.issue.number }}
+          ISSUE_TITLE="${{ github.event.issue.title }}"
+          SAFE_TITLE=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -dc 'a-z0-9\-')
+          BRANCH_NAME="issue-${ISSUE_NUMBER}-${SAFE_TITLE}"
+          echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
+      - name: Create and push branch
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout -b ${{ steps.extract.outputs.branch_name }} origin/main
+          git push origin ${{ steps.extract.outputs.branch_name }}
