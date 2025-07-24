@@ -1,12 +1,14 @@
 name: Run on Issue Closed
 on:
+  push:
+    branches:
+      - 'adapter/**'
+      - 'interface/**'
+    branches-ignore: 
+      - main
   issues:
     types:
       - closed
-  push:
-      branches:
-      - 'adapter/**'
-      - 'interface/**'
 jobs:
   validate-closure:
     runs-on: ubuntu-latest
@@ -26,7 +28,7 @@ jobs:
             }
 
             if (!hasLabel) {
-              core.setFailed(`❌ La issue debe tener la etiqueta 'In proccess'.`);
+              core.setFailed(`❌ La issue debe tener la etiqueta 'Approved'.`);
             }
 
   handle-closed-issue:
