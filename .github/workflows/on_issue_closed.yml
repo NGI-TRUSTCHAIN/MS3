@@ -54,7 +54,7 @@ jobs:
         run: echo "branch_name=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
       - name: Clone Azure DevOps repo and create new branch
         run: |
-          BRANCH_NAME="${{ steps.extract_branch.outputs.branch_name }}"
+          BRANCH_NAME=$(echo "${{ github.event.issue.title }}" | sed -n 's/Sync: //p')
           echo "Branch to sync: $BRANCH_NAME"
           git clone https://:$PAT@dev.azure.com/$ORG/$PROJECT/_git/$REPO_NAME azure-repo
           cd azure-repo
@@ -65,7 +65,7 @@ jobs:
           git push origin "$BRANCH_NAME"
       - name: Create Pull Request in Azure DevOps
         run: |
-          BRANCH_NAME="${{ steps.extract_branch.outputs.branch_name }}"
+          BRANCH_NAME=$(echo "${{ github.event.issue.title }}" | sed -n 's/Sync: //p')
           echo "Creating PR from $BRANCH_NAME to main"
           API_URL="$AZURE_DEVOPS_URL/$PROJECT/_apis/git/repositories/$REPO_NAME/pullrequests?api-version=7.1-preview.1"
           curl -u :$PAT \
