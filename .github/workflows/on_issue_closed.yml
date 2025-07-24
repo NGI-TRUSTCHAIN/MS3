@@ -38,7 +38,7 @@ jobs:
       ORG: "changetheblock"
       PROJECT: "M3S"
       REPO_NAME: "M3S"
-      AZURE_DEVOPS_URL: ${{ secrets.AZURE_DEVOPS_M3S_URL }}
+      AZURE_DEVOPS_URL: "https://dev.azure.com/changetheblock"
     steps:
       - name: Log info
         run: |
