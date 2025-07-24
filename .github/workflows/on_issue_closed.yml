@@ -39,7 +39,6 @@ jobs:
       - name: Log info
         run: |
           echo "La issue '${{ github.event.issue.title }}' fue cerrada por ${{ github.actor }}"
-          echo "ID de issue: "${{ github.event.issue.number }}"
           echo "Puedes activar aquí una pipeline personalizada."
           sync-to-azure:
       - name: Checkout GitHub repo
