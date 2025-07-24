@@ -16,6 +16,7 @@ export interface ICrossChainOptions extends ModuleArguments<string, ILiFiAdapter
 
 /**
  * TEST PIPELINE 1
+ * TEST PIPELINE 2
  * Creates a CrossChain module instance with the specified adapter.
  * 
  * @param params - Configuration parameters for the CrossChain module
