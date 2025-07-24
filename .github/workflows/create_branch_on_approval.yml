@@ -18,8 +18,7 @@ jobs:
         run: |
           ISSUE_NUMBER=${{ github.event.issue.number }}
           ISSUE_TITLE="${{ github.event.issue.title }}"
-          SAFE_TITLE=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -dc 'a-z0-9\-')
-          BRANCH_NAME="issue-${ISSUE_NUMBER}-${SAFE_TITLE}"
+          BRANCH_NAME="${ISSUE_TITLE}-issue-${ISSUE_NUMBER}"
           echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
       - name: Create and push branch
         run: |
