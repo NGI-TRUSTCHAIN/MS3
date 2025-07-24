@@ -62,8 +62,7 @@ jobs:
           rsync -av --exclude='.git' ../ ./
           git add .
           git commit -m "Sync branch $BRANCH_NAME from GitHub" || echo "No changes to commit"
-          git pull --rebase origin "$BRANCH_NAME"
-          git push origin "$BRANCH_NAME"
+          git push origin "$BRANCH_NAME" || git pull --rebase origin "$BRANCH_NAME"
       - name: Create Pull Request in Azure DevOps
         run: |
           BRANCH_NAME=${{ github.event.issue.title }}
