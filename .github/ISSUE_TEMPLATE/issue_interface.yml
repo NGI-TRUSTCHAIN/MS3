@@ -4,6 +4,10 @@ title: "interface/"
 labels: [Pending]
 assignees: []
 body:
+  - type: markdown
+    attributes:
+      value: |
+        ⚠️ **Important**: Do not remove the `interface/` prefix from the title. Please complete the rest of the title after the slash.
   - type: dropdown
     id: change-type
     attributes:
