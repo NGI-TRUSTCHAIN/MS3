@@ -18,7 +18,7 @@ export default class CodeGenerator {
                         case 'ERC20': return wizard.erc20.print(options as ozERC20Options);
                         case 'ERC721': return wizard.erc721.print(options as ozERC721Options);
                         case 'ERC1155': return wizard.erc1155.print(options as ozERC1155Options);
-                        // Add other Solidity templates if OZ Wizard supports them
+                        // Add other Solidity templates if OZ Wizard supports them 1..0
                         default: throw new Error(`Unsupported Solidity template via OZ Wizard: ${template}`);
                     }
                 case 'cairo':
