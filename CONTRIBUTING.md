@@ -1,82 +1,55 @@
-# Contributing to MS3
+# Contribution Guide for M3S
 
-First off, thank you for considering contributing to MS3! It's people like you that make MS3 such a great tool.
+Thank you for your interest in contributing to the M3S ecosystem. This project follows a hybrid collaboration model: open on GitHub for community proposals and discussion, with internal validation on Azure DevOps to ensure production stability.
 
-## Code of Conduct
+## General Requirements
 
-By participating in this project, you are expected to uphold our Code of Conduct. Please report unacceptable behavior to ms3@changetheblock.com.
+- All contributions must start by opening an Issue using the **official templates**.
+- Direct Pull Requests to the `/main` branch of the public repository are not allowed.
+- Each proposal must focus on **a single contribution**: either an *adapter* or an *interface*.
+- Only approved and published interfaces may be used.
 
-## How Can I Contribute?
+## Collaboration Workflow
 
-### Reporting Bugs
+1. **Issue Creation**
+   - Choose one of the available templates:
+     - `Adapter Proposal`  
+     - `Interface Proposal`
+   - ⚠️ **IMPORTANT!** The title must begin with the corresponding prefix (`adapter/` or `interface/`).  
+   - The issue will be automatically labeled as `In process`, and a linked branch will be generated.
 
-Before creating bug reports, please check the issue list as you might find out that you don't need to create one. When you are creating a bug report, please include as many details as possible:
+2. **Development**
+   - Work on the branch linked to the issue.
+   - Once the contribution is ready, manually update the issue label to `Complete Issue`.
 
-* Use a clear and descriptive title
-* Describe the exact steps which reproduce the problem
-* Provide specific examples to demonstrate the steps
-* Describe the behavior you observed after following the steps
-* Explain which behavior you expected to see instead and why
-* Include screenshots if possible
+3. **Maintainer Review**
+   - A member of the M3S team will review your contribution:
+     - If **approved**, the label is changed to `Approved` and the issue is closed as `Closed`. This triggers a pipeline that creates a Pull Request in the private Azure DevOps repository.
+     - If **rejected**, the label is changed to `Denied` and the issue is closed as `Closed as not planned`, with a comment explaining the reason. You may reopen the issue and resubmit your proposal.
 
-### Suggesting Enhancements
+4. **Internal Validation**
+   - In Azure DevOps:
+     - The full test suite is executed automatically.
+     - If successful, the code is merged into the main branch.
+     - Updates are manually synchronized with the public GitHub repository.
 
-If you have a suggestion for the project, we want to hear it! Just follow these steps:
+## Key Rules
 
-* Use a clear and descriptive title
-* Provide a step-by-step description of the suggested enhancement
-* Provide specific examples to demonstrate the steps
-* Describe the current behavior and explain which behavior you expected to see instead
+- Simultaneous changes to multiple adapters or interfaces are not allowed.
+- System evolution follows a **sequential**, **community-driven consensus** process.
+- **Branch Protection Rules** have been applied to prevent unauthorized edits to critical files and maintain the integrity of the automation workflow.
 
-### Pull Requests
+## Branch and PR Naming
 
-* Fill in the required template
-* Do not include issue numbers in the PR title
-* Include screenshots and animated GIFs in your pull request whenever possible
-* Follow our coding standards
-* End all files with a newline
-* Avoid platform-dependent code
+- Branches are automatically created when opening an issue.
+- Do not rename the branch or open PRs outside the automated flow.
+- PR names in Azure DevOps must follow the format:  
+  `adapter/<name>` or `interface/<name>`, as appropriate.
 
-## Development Process
+## Automated Validations
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Development Setup
-
-1. Install dependencies:
-```bash
-npm install
-```
-
-2. Run tests:
-```bash
-npm test
-```
-
-3. Start development server:
-```bash
-npm run dev
-```
-
-## Coding Standards
-
-* Use TypeScript
-* Follow the existing code style
-* Write meaningful commit messages
-* Comment your code when necessary
-* Write tests for your features
-
-## Documentation
-
-* Keep README.md updated
-* Document new features
-* Update API documentation when necessary
-* Use clear and consistent terminology
-
-## Questions?
-
-If you have any questions, please feel free to contact the project maintainers.
+- Every commit and every production release trigger a CI/CD pipeline that runs:
+  - Code linting
+  - Build verification
+  - Functional tests
+- Only contributions that pass all validations will be accepted.
