@@ -1,6 +1,8 @@
-![MS3 Banner](./banner.png)
+<div align="center">
+  <img src="./logo.png" alt="MS3 Banner" width="300"/>
+</div>
 
-# MS3 - Modular Web3 Suite
+# M3S - Modular Web3 Suite
 
 > **IMPORTANT NOTE:** This project is under development and subject to changes over time.
 
@@ -20,7 +22,7 @@ MS3 is a revolutionary approach to Web3 integration, designed to make existing b
 
 ### Module System
 
-MS3 is built around three core modules, each supporting multiple adapters:
+M3S is built around three core modules, each supporting multiple adapters:
 
 #### 1. Wallet Module
 - Handles wallet connectivity and management

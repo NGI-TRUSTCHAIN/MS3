@@ -62,7 +62,7 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
             preserveOutput: this.preserveOutput,
         };
 
-        // Create helper instances
+        // Create helper instances 1.0
         this.generator = new CodeGenerator();
         this.solidityCompiler = new SolidityCompiler(this.solidityCompilerConfig);
 

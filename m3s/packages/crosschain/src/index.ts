@@ -20,6 +20,9 @@ registry.registerInterfaceShape('ICrossChain', [
 ]);
 
 /**
+ * TEST PIPELINE 1
+ * TEST PIPELINE 2
+ * TEST PIPELINE 3
  * Creates a CrossChain module instance with the specified adapter.
  * 
  * @param params - Configuration parameters for the CrossChain module
