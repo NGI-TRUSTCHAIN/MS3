@@ -1,7 +1,7 @@
 import { describe, beforeEach, it, expect, beforeAll } from 'vitest';
 import { createWallet, EIP712TypedData, IEVMWallet } from '@m3s/wallet';
 import { EIP712Validator } from '../src/helpers/signatures.js';
-import { NetworkHelper, PrivateKeyHelper } from '@m3s/common';
+import { NetworkHelper, PrivateKeyHelper } from '@m3s/shared';
 import { ethers } from 'ethers';
 import { TEST_PRIVATE_KEY } from '../config.js';
 

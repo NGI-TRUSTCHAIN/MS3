@@ -173,7 +173,6 @@ export function testEVMWalletInterface(wallet: IEVMWallet, skipConnectivity: boo
           if (testTokenAddress) {
             console.log(`Attempting to get balance for configured TEST_TOKEN_ADDRESS: ${testTokenAddress}`);
             try {
-              // const balance = await wallet.getTokenBalance(testTokenAddress, accounts[0]);
               const balance = await wallet.callContract(testTokenAddress, accounts[0]);
 
               expect(typeof balance).toBe('string');
@@ -187,7 +186,6 @@ export function testEVMWalletInterface(wallet: IEVMWallet, skipConnectivity: boo
             console.warn('TEST_TOKEN_ADDRESS not set in env. Testing with a deliberately invalid token address.');
             const invalidTokenAddress = `0x${'1'.repeat(40)}`; // An address that's unlikely to be a token
             try {
-              //const balance = await wallet.getTokenBalance(invalidTokenAddress, accounts[0]);
               const balance = await wallet.callContract(invalidTokenAddress, accounts[0]);
 
               expect(typeof balance).toBe('string');

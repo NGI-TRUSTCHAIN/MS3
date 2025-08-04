@@ -1,5 +1,5 @@
 import { MinimalLiFiAdapter } from './LI.FI.Adapter.js';
-import { AdapterMetadata, getEnvironments, getFeatures, getRequirements, registry, RuntimeEnvironment, getStaticCompatibilityMatrix } from '@m3s/common';
+import { AdapterMetadata, getEnvironments, getFeatures, getRequirements, registry, RuntimeEnvironment, getStaticCompatibilityMatrix, Capability } from '@m3s/shared';
 import Joi from 'joi';
 import { CrossChainAdapterType } from '../types/index.js';
 
@@ -23,40 +23,12 @@ export const lifiOptionsSchema = Joi.object({
 });
 
 
-// const lifiRequirments: Requirement[] = [
-//  {
-//     path: 'config.apiKey', // Path within the object passed to createCrossChain
-//     type: 'string',
-//     message: 'LI.FI Adapter requires config.apiKey for most operations.',
-//     allowUndefined: true, // If some read-only operations can work without it, or make false if always needed
-//   },
-//   {
-//     path: 'config.provider', // Path to the LiFiExecutionProvider
-//     type: 'object', // Assuming LiFiExecutionProvider is an object
-//     message: 'LI.FI Adapter requires config.provider (LiFiExecutionProvider) for transaction execution.',
-//     allowUndefined: true, // True if the adapter can be initialized for read-only quotes without a provider
-//   }
-//   // Note: RPC_URL is implicitly handled by the EXECUTION_PROVIDER requirement.
-//   // The LiFiExecutionProvider, when created from an M3S wallet, will use the wallet's RPC configuration.
-// ]
+
 const lifiRequirements = getRequirements(lifiOptionsSchema, 'lifi');
 
 
-// const lifiEnvironment: EnvironmentRequirements = {
-//   supportedEnvironments: [RuntimeEnvironment.SERVER, RuntimeEnvironment.BROWSER],
-//   securityNotes: [
-//     'Requires a compatible M3S wallet adapter for transaction execution',
-//     'API key provides enhanced rate limits and features',
-//     'Browser usage requires wallet with secure key management (e.g., Web3Auth, hardware wallets)'
-//   ],
-//   limitations: [
-//     'Transaction execution requires a wallet adapter (ethers for server, web3auth for browser)',
-//     'Some LiFi features may have different availability across environments',
-//     'Browser environments should use wallets with OAuth-based authentication for production'
-//   ]
-// };
 const lifiEnvironment = getEnvironments(
-    'lifi',
+  'lifi',
   [RuntimeEnvironment.SERVER, RuntimeEnvironment.BROWSER],
   [
     'Requires network connectivity for bridge/swap operations',
@@ -79,6 +51,16 @@ const adapterMetadata: AdapterMetadata = {
   module: 'crosschain',
   adapterType: CrossChainAdapterType.aggregator,
   adapterClass: MinimalLiFiAdapter,
+  capabilities: [
+    Capability.AdapterIdentity,
+    Capability.AdapterLifecycle,
+    Capability.QuoteProvider,
+    Capability.OperationHandler,
+    Capability.ChainDiscovery,
+    Capability.GasEstimator,
+    Capability.OperationMaintenance,
+    Capability.EventEmitter
+  ],
   requirements: lifiRequirements,
   environment: lifiEnvironment,
   features: lifiFeatures

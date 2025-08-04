@@ -1,6 +1,6 @@
-import { AdapterMetadata, registry } from '@m3s/common';
-import { getRequirements, getEnvironments, getFeatures, getStaticCompatibilityMatrix } from '@m3s/common';
-import { RuntimeEnvironment } from '@m3s/common';
+import { AdapterMetadata, registry } from '@m3s/shared';
+import { getRequirements, getEnvironments, getFeatures, getStaticCompatibilityMatrix } from '@m3s/shared';
+import { RuntimeEnvironment } from '@m3s/shared';
 import Joi from 'joi';
 import { ContractTemplateAdapter } from './contract.js';
 import { ContractHandlerType } from '../../index.js';
@@ -36,6 +36,7 @@ const adapterMetadata: AdapterMetadata = {
   module: 'smart-contract',
   adapterType: ContractHandlerType.openZeppelin,
   adapterClass: ContractTemplateAdapter,
+  capabilities: [],
   requirements: contractRequirements,
   environment: contractEnvironment,
   features: contractFeatures

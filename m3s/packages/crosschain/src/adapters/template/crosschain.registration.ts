@@ -1,5 +1,5 @@
 import { CrosschainTemplateAdapter } from './crosschain.js';
-import { AdapterMetadata, getEnvironments, getFeatures, getRequirements, registry, RuntimeEnvironment, getStaticCompatibilityMatrix } from '@m3s/common';
+import { AdapterMetadata, getEnvironments, getFeatures, getRequirements, registry, RuntimeEnvironment, getStaticCompatibilityMatrix } from '@m3s/shared';
 import Joi from 'joi';
 import { CrossChainAdapterType } from '../../types/index.js';
 
@@ -33,6 +33,7 @@ const adapterMetadata: AdapterMetadata = {
   module: 'crosschain',
   adapterType: CrossChainAdapterType.bridge,
   adapterClass: CrosschainTemplateAdapter,
+  capabilities: [],
   requirements: crosschainRequirements,
   environment: crosschainEnvironment,
   features: crosschainFeatures

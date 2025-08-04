@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AdapterArguments } from '@m3s/common';
+import { AdapterArguments } from '@m3s/shared';
 import { IOpenZeppelinAdapterOptionsV1 } from '../src/adapters/index.js';
 
 /**

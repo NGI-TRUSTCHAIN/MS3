@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { registry } from '@m3s/common';
-import { getRequirements, getEnvironments, getFeatures } from '@m3s/common';
-import { RuntimeEnvironment } from '@m3s/common';
+import { registry } from '@m3s/shared';
+import { getRequirements, getEnvironments, getFeatures } from '@m3s/shared';
+import { RuntimeEnvironment } from '@m3s/shared';
 import Joi from 'joi';
-import { EvmWalletAdapter } from '../src/adapters/ethers/v1/ethersWallet.js';
-import { ethersOptionsSchema } from '../src/adapters/ethers/v1/ethersWallet.registration.js';
-import { web3AuthOptionsSchema } from '../src/adapters/web3auth/v1/web3authWallet.registration.js';
+import { EvmWalletAdapter } from '../src/adapters/ethers/ethersWallet.js';
+import { ethersOptionsSchema } from '../src/adapters/ethers/ethersWallet.registration.js';
+import { web3AuthOptionsSchema } from '../src/adapters/web3auth/web3authWallet.registration.js';
 import '@m3s/wallet'
 
 describe('Auto-Generation System Tests (JOI-Based)', () => {
@@ -371,8 +371,8 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
   describe('Registry Integration', () => {
     beforeAll(async () => {
       // Import registrations to ensure adapters are registered
-      await import('../src/adapters/ethers/v1/ethersWallet.registration.js');
-      await import('../src/adapters/web3auth/v1/web3authWallet.js')
+      await import('../src/adapters/ethers/ethersWallet.registration.js');
+      await import('../src/adapters/web3auth/web3authWallet.js')
     });
 
     it('should have registered web3auth adapter with JOI-generated data', () => {
@@ -565,8 +565,13 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
 
   // ✅ NEW INTEGRATION TESTS SECTION
   describe('Cross-Package Integration Tests', () => {
+    beforeAll(async () => {
+      await import('../../smart-contract/src/adapters/openZeppelin/openZeppelin.registration.js');
+      await import('../../crosschain/src/adapters/LI.FI.registration.js');
+    });
+
     it('should validate wallet adapter compatibility with smart-contract module', async () => {
-      const { checkCrossPackageCompatibility } = await import('@m3s/common');
+      const { checkCrossPackageCompatibility } = await import('@m3s/shared');
       
       // Test ethers wallet compatibility with smart contract module
       const ethersToSC = checkCrossPackageCompatibility(
@@ -580,11 +585,11 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
         'wallet', 'web3auth', '1.0.0',
         'smart-contract', 'openZeppelin', '1.0.0'
       );
-      expect(web3authToSC).toBe(true);
+      expect(web3authToSC).toBe(false);
     });
 
     it('should validate wallet adapter compatibility with crosschain module', async () => {
-      const { checkCrossPackageCompatibility } = await import('@m3s/common');
+      const { checkCrossPackageCompatibility } = await import('@m3s/shared');
       
       // Test ethers wallet compatibility with crosschain module
       const ethersToCrosschain = checkCrossPackageCompatibility(

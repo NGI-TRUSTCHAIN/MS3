@@ -2,10 +2,10 @@ import { describe, beforeEach, it, expect, vi, beforeAll } from 'vitest';
 import { testAdapterPattern } from '../01_Core.test.js';
 import { testEVMWalletInterface } from '../03_IEVMWallet.test.js';
 import { TEST_PRIVATE_KEY } from '../../config.js'
-import { NetworkHelper } from '@m3s/common';
+import { NetworkHelper } from '@m3s/shared';
 import { JsonRpcProvider } from 'ethers';
 import { WalletEvent, GenericTransactionData, createWallet, IEVMWallet } from '@m3s/wallet';
-import { EvmWalletAdapter } from '../../src/adapters/ethers/v1/ethersWallet.js';
+import { EvmWalletAdapter } from '../../src/adapters/ethers/ethersWallet.js';
 import { INFURA_API_KEY } from '../../../crosschain/config.js';
 
 describe('EvmWalletAdapter Tests', () => {
@@ -15,6 +15,42 @@ describe('EvmWalletAdapter Tests', () => {
 
   let sepoliaConfig: any; // Use 'any' for flexibility during loading
   const networkHelper = NetworkHelper.getInstance();
+
+  it('should throw if constructed with empty options (no privateKey)', async () => {
+    await expect(createWallet({
+      name: 'ethers',
+      version: '1.0.0',
+      options: {}
+    })).rejects.toThrow(/privateKey is required/i);
+  });
+
+  it('should initialize with a provider option and connect to the correct network', async () => {
+  // Example provider config for Sepolia (adjust values as needed)
+  const providerConfig = {
+    decimals: 18,
+    name: 'Sepolia',
+    chainId: '0xaa36a7', // Sepolia chainId (decimal or hex as your system expects)
+    rpcUrls: ['https://rpc.sepolia.org'],
+    displayName: 'Sepolia Testnet'
+  };
+
+  const wallet = await createWallet({
+    name: 'ethers',
+    version: '1.0.0',
+    options: {
+      privateKey: TEST_PRIVATE_KEY,
+      provider: providerConfig
+    }
+  });
+
+  expect(wallet).toBeDefined();
+  expect(wallet.isInitialized()).toBe(true);
+  expect(wallet.isConnected()).toBe(true);
+
+  const network = await wallet.getNetwork();
+  expect(network.chainId).toBe(providerConfig.chainId);
+  expect(network.name).toBe(providerConfig.name);
+});
 
   // Test constructor pattern
   testAdapterPattern(EvmWalletAdapter, {

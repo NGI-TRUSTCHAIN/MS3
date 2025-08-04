@@ -12,7 +12,7 @@ export enum ExecutionStatusEnum {
 }
 
 export enum CrossChainAdapterType {
-  'aggregator' = 'aggregator',
-  'bridge' = 'bridge',
-  'core' = 'core'
+  aggregator = 'aggregator',
+  bridge = 'bridge',
+  core = 'core'
 }

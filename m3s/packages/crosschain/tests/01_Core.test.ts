@@ -1,4 +1,4 @@
-import { AdapterArguments } from '@m3s/common/index.js';
+import { AdapterArguments } from '@m3s/shared/index.js';
 import { describe, it, expect } from 'vitest';
 import { ILiFiAdapterOptionsV1 } from '../src/adapters/LI.FI.Adapter.js';
 

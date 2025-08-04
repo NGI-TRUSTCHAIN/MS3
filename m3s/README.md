@@ -9,7 +9,7 @@ Universal adapter system for blockchain development with standardized interfaces
 | [`@m3s/wallet`](packages/wallet/) | Universal wallet interface with centralized gas estimation | ✅ Active Development |
 | [`@m3s/smart-contract`](packages/smart-contract/) | Contract generation & deployment | ✅ Beta |
 | [`@m3s/crosschain`](packages/crosschain/) | Cross-chain transfers & swaps | 🚧 In Development |
-| [`@m3s/common`](packages/common/) | Shared utilities, registry & network helpers | ✅ Stable |
+
 
 ## 🚀 Quick Start
 

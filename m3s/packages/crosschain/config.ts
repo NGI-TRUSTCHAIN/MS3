@@ -25,7 +25,7 @@ export const TEST_MATIC_AMOUNT = '0.01'; // Example amount.
 export const DEFAULT_TEST_TIMEOUT = 30000; // 30 seconds, increased from previous.
 export const QUOTE_TEST_TIMEOUT = 90 * 1000; // 90 seconds for potentially slow quote APIs.
 export const SWAP_EXECUTION_TIMEOUT = 600 * 1000; // 10 minutes for same-chain swaps.
-export const BRIDGE_TIMEOUT = 1500 * 1000; // 25 minutes for cross-chain bridge operations.
+export const BRIDGE_TIMEOUT = 1800 * 1000; // 30 minutes for cross-chain bridge operations.
 
 // Test function to verify if .env is loading correctly
 export function verifyDotEnvLoading() {

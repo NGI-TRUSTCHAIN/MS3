@@ -3,7 +3,7 @@ import { promisify } from "util";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { ethers, ContractFactory } from "ethers";
-import { CompileInput, CompiledOutput } from "../../../types/index.js";
+import { CompileInput, CompiledOutput, DeploymentDataType } from "../../../types/index.js";
 
 const execAsync = promisify(exec);
 
@@ -345,7 +345,7 @@ module.exports = {
                 const abiInputs = getAbiInputs(artifacts.abi, 'constructor');
                 validateArgs(constructorArgs || [], abiInputs);
                 const deployTx = await factory.getDeployTransaction(...(constructorArgs || []));
-                return { type: 'regular', data: deployTx.data!, value: deployTx.value?.toString() || "0" };
+                return { type: DeploymentDataType.regular, data: deployTx.data!, value: deployTx.value?.toString() || "0" };
             },
             getProxyDeploymentData: async (initializeArgs?: any[]) => {
                 const abiInputs = getAbiInputs(artifacts.abi, 'function', 'initialize');
@@ -355,7 +355,7 @@ module.exports = {
                 const initDataForLogic = logicInterface.encodeFunctionData('initialize', initializeArgs || []);
                 const proxyArtifacts = await this.getStandardProxyArtifacts();
                 return {
-                    type: 'proxy',
+                    type: DeploymentDataType.proxy,
                     implementation: { data: implDeployTx.data!, value: implDeployTx.value?.toString() || "0" },
                     proxy: {
                         bytecode: proxyArtifacts.bytecode,

@@ -17,7 +17,7 @@ import {
 import * as viemChains from 'viem/chains';
 import { EIP712TypedData, GenericTransactionData, IEVMWallet, NetworkConfig } from '@m3s/wallet';
 
-import { NetworkHelper } from '@m3s/common';
+import { NetworkHelper } from '@m3s/shared';
 import { ethers } from 'ethers';
 /** Recursively turn every bigint into a string. */
 export function sanitizeBigInts<T>(obj: T): T {

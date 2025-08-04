@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { AdapterArguments, detectRuntimeEnvironment, RuntimeEnvironment, registry } from '@m3s/common';
+import { AdapterArguments, detectRuntimeEnvironment, RuntimeEnvironment, registry } from '@m3s/shared';
 import { IEthersWalletOptionsV1 } from '../src/adapters/index.js';
 
 /**
@@ -115,8 +115,8 @@ describe('Core Wallet Tests', () => {
   });
 });
 
-import '../src/adapters/ethers/v1/ethersWallet.registration.js';
-import '../src/adapters/web3auth/v1/web3authWallet.registration.js';
+import '../src/adapters/ethers/ethersWallet.registration.js';
+import '../src/adapters/web3auth/web3authWallet.registration.js';
 
 describe('Core Wallet Tests', () => {
   it('should export testAdapterPattern function', () => {

@@ -15,6 +15,6 @@
     "tests" // Explicitly exclude tests from this build config
   ],
   "references": [
-    { "path": "../common" } // If common is a build dependency
+    { "path": "../shared" } // If shared is a build dependency
   ]
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { ethers } from 'ethers';
-import { NetworkConfig, NetworkHelper } from '@m3s/common';
+import { NetworkConfig, NetworkHelper } from '@m3s/shared';
 import { WalletEvent, AssetBalance, GenericTransactionData } from '@m3s/wallet';
 
 
