@@ -115,6 +115,11 @@ async function runBuildProcess() {
       if (pkgJson.peerDependencies) {
         externalDependencies.push(...Object.keys(pkgJson.peerDependencies));
       }
+      
+      if (pkgJson.peerDependenciesMeta) {
+        externalDependencies.push(...Object.keys(pkgJson.peerDependenciesMeta));
+      }
+
       externalDependencies = externalDependencies.filter(dep => dep !== '@m3s/shared');
 
       const externalArgs = externalDependencies.map(dep => `--external:${dep}`).join(' ');

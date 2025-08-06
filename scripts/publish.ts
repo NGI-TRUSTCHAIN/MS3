@@ -28,12 +28,11 @@ async function runPublishProcess() {
   function updateDependentPackages(packageName: string, version: string) {
     console.log(`Publish.ts: updateDependentPackages for published package ${packageName}@${version} started.`);
     const packagesDir = join(rootDir, 'packages');
-    // The full name of the package that was just published (e.g., @m3s/wallet)
     const publishedScopedPackageName = `@m3s/${packageName}`;
 
     try {
       const allPackageDirs = fs.readdirSync(packagesDir)
-        .filter(dir => dir !== 'shared' && dir !== packageName); // Exclude shared and the package itself
+        .filter(dir => dir !== 'shared' && dir !== packageName);
 
       allPackageDirs.forEach(pkgDir => {
         const dependentPkgJsonPath = join(packagesDir, pkgDir, 'package.json');
@@ -41,7 +40,6 @@ async function runPublishProcess() {
           const dependentPkgJson = JSON.parse(fs.readFileSync(dependentPkgJsonPath, 'utf8'));
 
           let updated = false;
-          // Check if this package (dependentPkgJson) depends on the publishedScopedPackageName
           if (dependentPkgJson.dependencies && dependentPkgJson.dependencies[publishedScopedPackageName]) {
             dependentPkgJson.dependencies[publishedScopedPackageName] = `^${version}`;
             updated = true;
@@ -64,6 +62,32 @@ async function runPublishProcess() {
 
   async function publishPackage(packageName: string, options: { otp?: string } = {}) {
     console.log(`Publish.ts: publishPackage('${packageName}') started.`);
+    
+    // ✅ NEW: Check for version bump flags
+    const args = process.argv.slice(2);
+    const shouldBumpMajor = args.includes('--major');
+    const shouldBumpMinor = args.includes('--minor');
+    const shouldBumpPatch = args.includes('--patch');
+    
+    // ✅ NEW: Run bump script if flags provided
+    if (shouldBumpMajor || shouldBumpMinor || shouldBumpPatch) {
+      console.log(`Publish.ts: Version bump requested for ${packageName}`);
+      
+      const bumpType = shouldBumpMajor ? '--major' : shouldBumpMinor ? '--minor' : '--patch';
+      const versionScriptPath = join(rootDir, 'scripts', 'version.ts');
+      
+      try {
+        execSync(`node --loader ts-node/esm "${versionScriptPath}" ${packageName} ${bumpType}`, { 
+          stdio: 'inherit', 
+          cwd: rootDir 
+        });
+        console.log(`Publish.ts: Version bump completed for ${packageName}`);
+      } catch (bumpError) {
+        console.error(`Publish.ts: Failed to bump version for ${packageName}. Error: ${bumpError}`);
+        process.exit(1);
+      }
+    }
+
     const packagePath = join(rootDir, 'packages', packageName);
     const packageJsonPath = join(packagePath, 'package.json');
 
@@ -72,6 +96,7 @@ async function runPublishProcess() {
       process.exit(1);
     }
 
+    // ✅ UPDATED: Read current version (after potential bump)
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
     const currentVersion = packageJson.version;
     const fullPackageName = packageJson.name;
@@ -98,56 +123,37 @@ async function runPublishProcess() {
       process.exit(1);
     }
 
-    // 2. Bump version
-    const versionParts = currentVersion.split('.').map(Number);
-    versionParts[2]++; // Increment patch
-    if (versionParts[2] > 9 && versionParts.length > 1) {
-      versionParts[2] = 0;
-      versionParts[1]++;
-      if (versionParts[1] > 9 && versionParts.length > 0) {
-        versionParts[1] = 0;
-        versionParts[0]++;
-      }
-    }
-    const newVersion = versionParts.join('.');
-    packageJson.version = newVersion;
-    fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
-    console.log(`[${packageName}] Version bumped to ${newVersion} for ${fullPackageName}`);
+    // ✅ REMOVED: Old hardcoded version bump logic (lines 97-109)
+    // Version is now handled by the bump script above
 
     // 3. Publish to NPM
     const publishCmd = `npm publish --access public${options.otp ? ` --otp=${options.otp}` : ''}`;
-    console.log(`[${packageName}] Publishing ${fullPackageName}@${newVersion} with command: ${publishCmd}`);
+    console.log(`[${packageName}] Publishing ${fullPackageName}@${currentVersion} with command: ${publishCmd}`);
     try {
       execSync(publishCmd, { cwd: packagePath, stdio: 'inherit' });
-      console.log(`[${packageName}] Successfully published ${fullPackageName}@${newVersion}`);
+      console.log(`[${packageName}] Successfully published ${fullPackageName}@${currentVersion}`);
     } catch (error: any) {
-      console.error(`[${packageName}] Failed to publish ${fullPackageName}@${newVersion}. Error: ${error.message}`);
-      // Revert version bump on failure
-      packageJson.version = currentVersion;
-      fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
-      console.log(`[${packageName}] Reverted package.json to version ${currentVersion} for ${fullPackageName} due to publish error.`);
+      console.error(`[${packageName}] Failed to publish ${fullPackageName}@${currentVersion}. Error: ${error.message}`);
       if (error.stdout) console.error("Stdout:", error.stdout.toString());
       if (error.stderr) console.error("Stderr:", error.stderr.toString());
       process.exit(1);
     }
-    // 4. Update dependent packages in the monorepo
-    // Pass the simple name (e.g., "wallet") not "@m3s/wallet" to updateDependentPackages
-    updateDependentPackages(packageName, newVersion);
 
+    // 4. Update dependent packages in the monorepo
+    updateDependentPackages(packageName, currentVersion);
 
     // 5. Commit and tag
-    console.log(`[${packageName}] Committing and tagging version ${newVersion} for ${fullPackageName}...`);
+    console.log(`[${packageName}] Committing and tagging version ${currentVersion} for ${fullPackageName}...`);
     try {
       execSync(`git add "${packageJsonPath}"`, { cwd: rootDir, stdio: 'inherit' });
-      // Also add package-lock.json if dependencies were updated
       execSync(`git add "${join(rootDir, 'package-lock.json')}"`, { cwd: rootDir, stdio: 'inherit' });
-      execSync(`git commit -m "Publish ${fullPackageName}@${newVersion}"`, { cwd: rootDir, stdio: 'inherit' });
-      execSync(`git tag ${fullPackageName}@${newVersion}`, { cwd: rootDir, stdio: 'inherit' });
-      console.log(`[${packageName}] Git commit and tag created for ${fullPackageName}@${newVersion}`);
+      execSync(`git commit -m "Publish ${fullPackageName}@${currentVersion}"`, { cwd: rootDir, stdio: 'inherit' });
+      execSync(`git tag ${fullPackageName}@${currentVersion}`, { cwd: rootDir, stdio: 'inherit' });
+      console.log(`[${packageName}] Git commit and tag created for ${fullPackageName}@${currentVersion}`);
     } catch (error: any) {
       console.warn(`[${packageName}] Failed to commit or tag version for ${fullPackageName}. This might be okay if not in a git repo or if there are no changes. Error: ${error.message}`);
     }
-    return newVersion; // Return the new version
+    return currentVersion;
   }
 
   function getPublishablePackages() {
@@ -165,9 +171,7 @@ async function runPublishProcess() {
   async function publishAllPackages(options: { otp?: string } = {}) {
     console.log("Publish.ts: publishAllPackages() started.");
 
-    // ✅ ENHANCED: Always publish shared first, then dependents
     const orderedPackagesToPublish = ['shared', 'wallet', 'smart-contract', 'crosschain'];
-
     const allAllowedToPublish = getPublishablePackages();
     const packagesToActuallyPublish = orderedPackagesToPublish.filter(pkgName => allAllowedToPublish.includes(pkgName));
 
@@ -185,15 +189,19 @@ async function runPublishProcess() {
     console.log("\n✅ All selected packages processed for publishing with fresh types.");
   }
 
-  // Main module execution logic
+  // ✅ UPDATED: Clean argument parsing
   console.log("Publish.ts: Checking main module condition.");
   if (process.argv[1] === scriptPath) {
     console.log("Publish.ts: Script is main module.");
-    const packageNameArg = process.argv[2];
-    const otpArg = process.env.NPM_OTP || process.argv[3]; // Allow OTP from env or arg
+    
+    // ✅ NEW: Clean argument parsing using slice(2)
+    const args = process.argv.slice(2);
+    const packageNameArg = args.find(arg => !arg.startsWith('--'));
+    const otpArg = process.env.NPM_OTP || args.find(arg => arg.startsWith('--otp='))?.split('=')[1];
+    
+    console.log("Publish.ts: All arguments:", args);
     console.log("Publish.ts: Package name argument:", packageNameArg);
     console.log("Publish.ts: OTP argument (from env or CLI):", otpArg ? "Provided" : "Not provided");
-
 
     if (packageNameArg) {
       console.log(`Publish.ts: Proceeding to publish single package: ${packageNameArg}`);
@@ -203,7 +211,6 @@ async function runPublishProcess() {
       await publishAllPackages({ otp: otpArg });
     }
     console.log("Publish.ts: Script operations finished successfully.");
-
   } else {
     console.log("Publish.ts: Script is NOT main module.");
   }
