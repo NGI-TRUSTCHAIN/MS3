@@ -14,7 +14,9 @@ jobs:
     steps:
       - script: echo Test suit started!
         displayName: 'Starting tests...'
-      - script: npm install && npm run test
+      - script: npm install --legacy-peer-deps 
+        displayName: 'Installing dependencies...'
+      - script:  npm run test
         displayName: 'Running tests...'
 
   - job: version_control
