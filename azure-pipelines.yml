@@ -32,6 +32,8 @@ jobs:
         displayName: 'Starting tests...'
       - script: npm install --legacy-peer-deps 
         displayName: 'Installing dependencies...'
+      - script: npm run build 
+        displayName: 'Building internal dependencies...'
       - script:  npm run test
         displayName: 'Running tests...'
 
