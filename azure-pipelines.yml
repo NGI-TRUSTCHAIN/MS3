@@ -56,5 +56,5 @@ jobs:
     dependsOn: tests
     steps:
       - script: npm run version -- wallet --minor
-        displayName: 'Starting tests...'
+        displayName: 'Version Updated.'
         
