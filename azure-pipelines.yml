@@ -55,4 +55,6 @@ jobs:
   - job: version_control
     dependsOn: tests
     steps:
-      - script: echo Version updated!
+      - script: npm run version -- wallet --minor
+        displayName: 'Starting tests...'
+        
