@@ -1,7 +1,6 @@
 import { describe, it, expect, expectTypeOf } from "vitest";
 
 describe('Mocked Tests', () => {
-    // Commit del test?
     describe('Mocked Tests for pipeline implementation.', () => {
         it('should Pass the test A', () => {
             const a = 1;
