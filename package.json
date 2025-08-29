@@ -23,7 +23,7 @@
     "test:wallet": "cd packages/wallet && npm run test",
     "test:crosschain": "cd packages/crosschain && npm run test",
     "test:smart-contract": "cd packages/smart-contract && npm run test",
-    "test:mocked": "cd packages/smart-contract && npm run test:mocked",
+    "test:mocked": "cd m3s/packages/smart-contract && npm run test:mocked",
     "version": "node --loader ts-node/esm scripts/version.ts"
   },
   "dependencies": {
