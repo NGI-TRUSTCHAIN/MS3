@@ -368,7 +368,6 @@ describe('OpenZeppelinAdapter Tests', () => {
       });
     };
 
-
     // Test Suite 1: Non-Proxy ERC20 Functionality
     describe('Standard ERC20 Deployment and Functionality', () => {
       beforeEach(async () => {
