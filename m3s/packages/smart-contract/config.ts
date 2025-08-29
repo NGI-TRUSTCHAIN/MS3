@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
 // Load .env from the root directory
-dotenv.config({ path: path.resolve(rootDir, '../.env') });
+dotenv.config({ path: path.resolve(rootDir, '../../.env') });
 
 // Export environment variables
 export const LIFI_API_KEY = process.env.LIFI_API_KEY

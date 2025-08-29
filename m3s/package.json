@@ -22,6 +22,7 @@
     "release": "npm run build && npm run publish",
     "test": "node --loader ts-node/esm scripts/tests.ts",
     "test:wallet": "cd packages/wallet && npm run test",
+    "test:wallet-mocked": "cd packages/wallet && npm run test:mocked",
     "test:crosschain": "cd packages/crosschain && npm run test",
     "test:smart-contract": "cd packages/smart-contract && npm run test",
     "version": "node --loader ts-node/esm scripts/version.ts"

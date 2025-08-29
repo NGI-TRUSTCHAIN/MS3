@@ -8,7 +8,7 @@ if (isServer) {
     // Dynamically import server-side modules
     const dotenv = require('dotenv');
     const path = require('path');
-    const _path = path.resolve(process.cwd(), '../../', '.env');
+    const _path = path.resolve(process.cwd(), '../../../', '.env');
     console.log('DIR FOR .ENV', _path)
     dotenv.config({ path: _path });
     currentLevel = process.env.LOG_LVL as string

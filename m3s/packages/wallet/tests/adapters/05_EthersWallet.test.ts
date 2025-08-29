@@ -13,6 +13,7 @@ describe('EvmWalletAdapter Tests', () => {
   // For tests requiring a specific, potentially pre-funded key.
   const privateKey = TEST_PRIVATE_KEY
   if (!privateKey) throw new Error('Private Key required.');
+  if (typeof privateKey !== 'string') throw new Error('Private Key must be a string.');
 
   let sepoliaConfig: any; // Use 'any' for flexibility during loading
   const networkHelper = NetworkHelper.getInstance();
@@ -21,7 +22,7 @@ describe('EvmWalletAdapter Tests', () => {
     await expect(createWallet({
       name: 'ethers',
       version: '1.0.0',
-      options: {}
+      options: {} as any
     })).rejects.toThrow(/privateKey is required/i);
   });
 
@@ -39,7 +40,7 @@ describe('EvmWalletAdapter Tests', () => {
     name: 'ethers',
     version: '1.0.0',
     options: {
-      privateKey: TEST_PRIVATE_KEY,
+      privateKey: TEST_PRIVATE_KEY as string,
       provider: providerConfig
     }
   });
@@ -111,7 +112,7 @@ describe('EvmWalletAdapter Tests', () => {
         name: 'ethers',
         version: '1.0.0',
         options: {
-          privateKey: TEST_PRIVATE_KEY,
+          privateKey: TEST_PRIVATE_KEY as string,
           multiChainRpcs: {
             '1': [`https://mainnet.infura.io/v3/${INFURA_API_KEY || 'test'}`],
             '137': [`https://polygon-mainnet.infura.io/v3/${INFURA_API_KEY || 'test'}`]

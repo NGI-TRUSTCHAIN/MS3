@@ -32,7 +32,8 @@
   "scripts": {
     "build": "tsc -b",
     "prepublishOnly": "npm run build",
-    "test": "vitest run --sequence.sequential"
+    "test": "vitest run --sequence.sequential",
+    "test:mocked": "vitest run mocked.test.ts"
   },
   "dependencies": {
     "ethers": "^6.13.5",

@@ -11,7 +11,6 @@ const __dirname = path.dirname(__filename);
 const envPath = path.resolve(__dirname, '../../.env');
 dotenv.config({ path: envPath });
 
-
 // API Keys and Configuration
 export const LIFI_API_KEY = process.env.LIFI_API_KEY || '';
 export const TEST_PRIVATE_KEY = process.env.TEST_PRIVATE_KEY || '';
