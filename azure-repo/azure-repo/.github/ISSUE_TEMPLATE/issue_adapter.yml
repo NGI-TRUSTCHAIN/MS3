@@ -1,0 +1,42 @@
+name: Adapter Proposal
+description: Create a formal proposal for a technical change
+title: "adapter/"
+labels: [In proccess]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ⚠️ **Important**: Do not remove the `adapter/` prefix from the title. Please complete the rest of the title after the slash.
+  - type: dropdown
+    id: change-type
+    attributes:
+      label: Type of change
+      description: Select the proposed type of change
+      options:
+        - New adapter
+        - Improvement of existing adapter
+      multiple: false
+    validations:
+      required: true
+  - type: textarea
+    id: technical-description
+    attributes:
+      label: Technical description
+      description: Explain the proposed changes in detail
+    validations:
+      required: true
+  - type: textarea
+    id: justification
+    attributes:
+      label: Functional justification or added value
+      description: Indicate the functional value of the change (e.g. industry standard, improved interoperability, etc.)
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Existing proposal verification
+      description: Explain how you verified that there is no equivalent existing proposal
+    validations:
+      required: false
