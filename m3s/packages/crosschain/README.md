@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="./logo.png" alt="MS3 Banner" width="300"/>
+</div>
+
 # @m3s/crosschain
 
 Cross-chain token transfers and swaps across 20+ blockchains. Built on LI.FI with a minimal adapter exposing a standardized API for quoting, executing and monitoring cross-chain operations.

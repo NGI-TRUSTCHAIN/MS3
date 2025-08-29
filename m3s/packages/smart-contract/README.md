@@ -1,3 +1,8 @@
+<div align="center">
+  <img src="./logo.png" alt="MS3 Banner" width="300"/>
+</div>
+
+
 # @m3s/smart-contract
 
 Generate, compile, prepare deployment payloads and interact with smart contracts using OpenZeppelin templates (Solidity). This package produces source → compiled artifacts → deployment calldata. Signing/sending and RPC management are delegated to a wallet adapter (see examples).

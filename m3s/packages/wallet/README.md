@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="./logo.png" alt="MS3 Banner" width="300"/>
+</div>
+
 # @m3s/wallet
 
 Universal wallet interface supporting multiple blockchain wallet types with a consistent API across EVM wallets and Web3Auth integration.
