@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { AdapterArguments } from '@m3s/shared';
 import { IOpenZeppelinAdapterOptionsV1 } from '../src/adapters/index.js';
+import {logger} from '../../../logger.js';
 
 /**
  * Tests the adapter design pattern to ensure it follows factory pattern requirements
@@ -45,7 +46,7 @@ export function testAdapterPattern(AdapterClass: any, mockArgs: any = {}) {
         const instance = await AdapterClass.create(completeMockArgsForCreate);
         expect(instance).toBeInstanceOf(AdapterClass);
       } catch (error: any) {
-        console.warn(`Creation failed in test: ${error.message}`);
+        logger.warning(`Creation failed in test: ${error.message}`);
       }
     });
 
@@ -60,7 +61,7 @@ export function testAdapterPattern(AdapterClass: any, mockArgs: any = {}) {
         expect(instance.version).toBe(adapterVersionForTest);
         
       } catch (error: any) {
-        console.warn(`Property test failed: ${error.message}`);
+        logger.warning(`Property test failed: ${error.message}`);
       }
     });
   });

@@ -1,8 +1,16 @@
 import { AdapterError } from '../errors/AdapterError.js';
 import { AdapterMetadata } from '../types/registry.js';
 import { ModuleArguments } from '../types/base.js';
-import { getPropertyByPath, UniversalRegistry } from '../registry/registry.js';
+import {  UniversalRegistry } from '../registry/registry.js';
 
+// Helper function to get a value from a nested path
+function getPropertyByPath(obj: any, path: string): any {
+  return path.split('.').reduce((currentObject, key) => {
+    return (currentObject && typeof currentObject === 'object' && Object.prototype.hasOwnProperty.call(currentObject, key))
+      ? currentObject[key]
+      : undefined;
+  }, obj);
+}
 
 export interface ValidatorArguments {
   moduleName: string,
@@ -18,8 +26,6 @@ export function validateAdapterParameters(args: ValidatorArguments
 ): void {
   const { name, version, params, adapterInfo, registry, factoryMethodName } = args
   const { expectedInterface } = params;
-
-  console.log('Validator - arguments, ', args)
 
   // ✅ NEW: Implement the "Promise & Verify" check from our blueprint.
   if (expectedInterface) {
@@ -44,7 +50,6 @@ export function validateAdapterParameters(args: ValidatorArguments
 
   // Check requirements from adapter metadata (adapterInfo.requirements is Requirement[])
   if (adapterInfo.requirements && adapterInfo.requirements.length > 0) {
-    console.log('Validator - adapterInfo, ', adapterInfo)
 
     for (const req of adapterInfo.requirements) {
       const value = getPropertyByPath(params, req.path); // req.path like "options.privateKey"
@@ -60,6 +65,11 @@ export function validateAdapterParameters(args: ValidatorArguments
       }
 
       if (req.type && value !== undefined) {
+        if (req.type === 'any') {
+          // runtime objects (wallets, transports, etc.) are allowed here
+          continue;
+        }
+
         const valueType = Array.isArray(value) ? 'array' : typeof value;
         if (valueType !== req.type) {
           const errorMessage =

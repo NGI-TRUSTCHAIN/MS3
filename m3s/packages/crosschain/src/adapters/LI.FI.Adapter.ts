@@ -90,7 +90,6 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
       ];
     }
 
-    console.log('CALLING createConfig WITH: ', sdkConfig)
     createConfig(sdkConfig);
   }
 
@@ -184,7 +183,6 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
     if (sourceTxHash && receivedAmount && parseFloat(receivedAmount) > 0) {
       // Check if this is likely a completed same-chain swap
       if (safeRoute.fromChainId === safeRoute.toChainId) {
-        console.log('[LiFi Adapter] 🎉 Same-chain swap detected with tx hash and received amount - marking as COMPLETED');
         return {
           operationId: safeRoute.id,
           status: ExecutionStatusEnum.COMPLETED,
@@ -216,7 +214,6 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
     });
 
     if (hasCompletionMarkers && receivedAmount) {
-      console.log('[LiFi Adapter] 🎉 All steps marked as DONE with received amount - marking as COMPLETED');
       return {
         operationId: safeRoute.id,
         status: ExecutionStatusEnum.COMPLETED,
@@ -453,8 +450,6 @@ export class MinimalLiFiAdapter extends EventEmitter implements ICrossChain {
 
     // Reconfigure SDK with updated settings
     this._updateLifiSdkConfig();
-
-    console.log(`[MinimalLiFiAdapter] Configuration updated. API Key: ${this.args.options?.apiKey ? 'Set' : 'Not Set'}`);
   }
 
   isInitialized(): boolean {

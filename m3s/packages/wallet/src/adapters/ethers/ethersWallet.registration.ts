@@ -1,5 +1,5 @@
-import { AdapterMetadata, Capability, registry } from '@m3s/shared';
-import { getRequirements, getEnvironments, getFeatures, getStaticCompatibilityMatrix } from '@m3s/shared';
+import { AdapterMetadata, Capability, Ms3Modules, registry } from '@m3s/shared';
+import { getRequirements, getEnvironments, getStaticCompatibilityMatrix } from '@m3s/shared';
 import { EvmWalletAdapter } from './ethersWallet.js';
 import { WalletType } from '../../types/index.js';
 import { RuntimeEnvironment } from '@m3s/shared';
@@ -9,8 +9,8 @@ import Joi from 'joi';
 export const ethersOptionsSchema = Joi.object({
   privateKey: Joi.string()
     .pattern(/^0x[a-fA-F0-9]{64}$/)
+    .required()
     .description("Private key for wallet (generates random if not provided)"),
-
   provider: Joi.object({
     name: Joi.string().required().description("Real Chain name"),
     chainId: Joi.string()
@@ -62,12 +62,10 @@ const ethersEnvironment = getEnvironments(
   ]
 );
 
-const ethersFeatures = getFeatures(EvmWalletAdapter);
-
 const adapterMetadata: AdapterMetadata = {
   name: 'ethers',
   version: '1.0.0',
-  module: 'wallet',
+  module: Ms3Modules.wallet,
   adapterType: WalletType.evm,
   adapterClass: EvmWalletAdapter,
   capabilities: [
@@ -84,18 +82,17 @@ const adapterMetadata: AdapterMetadata = {
   ],
   requirements: ethersRequirements,
   environment: ethersEnvironment,
-  features: ethersFeatures
 };
 
-registry.registerAdapter('wallet', adapterMetadata);
+registry.registerAdapter(Ms3Modules.wallet, adapterMetadata);
 
 // ✅ REPLACE: Use static compatibility matrix
-const compatibilityMatrix = getStaticCompatibilityMatrix('wallet', 'ethers', '1.0.0');
+const compatibilityMatrix = getStaticCompatibilityMatrix(Ms3Modules.wallet, 'ethers', '1.0.0');
 if (compatibilityMatrix) {
-  registry.registerCompatibilityMatrix('wallet', compatibilityMatrix);
+  registry.registerCompatibilityMatrix(Ms3Modules.wallet, compatibilityMatrix);
 }
 
-console.log('✅ Ethers wallet adapter registered with static compatibility matrix');
-console.log('📋 Generated requirements:', ethersRequirements);
-console.log('🌍 Generated environment:', ethersEnvironment);
-console.log('🔧 Generated features:', ethersFeatures.map(f => f.name));
+console.debug('✅ Ethers wallet adapter registered with static compatibility matrix');
+console.debug('📋 Generated requirements:', ethersRequirements);
+console.debug('🌍 Generated environment:', ethersEnvironment);
+console.debug('🔧 Generated capabilities:', adapterMetadata.capabilities.map(c => JSON.parse(JSON.stringify(c))));

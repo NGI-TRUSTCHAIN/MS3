@@ -2,10 +2,10 @@ import { describe, beforeEach, it, expect } from 'vitest';
 import { createContractHandler } from '../../../src/index.js';
 import { CompiledOutput, GenerateContractInput, IBaseContractHandler } from '../../../src/types/index.js';
 import { ethers } from 'ethers';
-import { TEST_PRIVATE_KEY, RUN_INTEGRATION_TESTS, INFURA_API_KEY, ALCHEMY_API_KEY } from '../../../config.js';
+import { TEST_PRIVATE_KEY, RUN_INTEGRATION, INFURA_API_KEY, ALCHEMY_API_KEY } from '../../../config.js';
 import { createWallet, IEVMWallet } from '@m3s/wallet';
 import { NetworkHelper } from '@m3s/shared';
-
+import {logger} from '../../../../../logger.js';
 
 describe('ERC721 Options Tests', () => {
   let contractHandler: IBaseContractHandler;
@@ -268,7 +268,7 @@ describe('ERC721 Options Tests', () => {
   });
 });
 
-(RUN_INTEGRATION_TESTS ? describe : describe.skip)('Full ERC721 Integration Tests', () => {
+(RUN_INTEGRATION ? describe : describe.skip)('Full ERC721 Integration Tests', () => {
   let walletAdapter: IEVMWallet;
   let contractHandler: IBaseContractHandler;
 
@@ -279,21 +279,21 @@ describe('ERC721 Options Tests', () => {
 
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
-        console.error(`⏰ Timeout waiting for tx ${txHash}`);
+        logger.error(`⏰ Timeout waiting for tx ${txHash}`);
         resolve(null);
       }, timeout);
 
       provider.once(txHash, async (receipt: ethers.TransactionReceipt) => {
         clearTimeout(timer);
 
-        console.log(`Receipt found for ${txHash}. Status: ${receipt.status === 1 ? 'Success' : 'Failed'}`);
+        logger.info(`Receipt found for ${txHash}. Status: ${receipt.status === 1 ? 'Success' : 'Failed'}`);
 
         if (receipt.status === 0) {
-          console.log(`🚨 [DIAGNOSTIC] Transaction FAILED! Getting transaction details...`);
+          logger.info(`🚨 [DIAGNOSTIC] Transaction FAILED! Getting transaction details...`);
 
           try {
             const tx = await provider.getTransaction(txHash);
-            console.log(`🔍 [DIAGNOSTIC] Transaction details:`, {
+            logger.info(`🔍 [DIAGNOSTIC] Transaction details:`, {
               from: tx?.from,
               to: tx?.to,
               value: tx?.value?.toString(),
@@ -304,7 +304,7 @@ describe('ERC721 Options Tests', () => {
               data: tx?.data?.substring(0, 100) + '...'
             });
           } catch (err) {
-            console.log(`⚠️ [DIAGNOSTIC] Could not get transaction debug info:`, err);
+            logger.info(`⚠️ [DIAGNOSTIC] Could not get transaction debug info:`, err);
           }
         }
 
@@ -345,7 +345,7 @@ describe('ERC721 Options Tests', () => {
     try {
       await walletAdapter.setProvider(networkConfig);
     } catch (error) {
-      console.error(`[Test Setup] setProvider FAILED:`, error);
+      logger.error(`[Test Setup] setProvider FAILED:`, error);
       throw error;
     }
 
@@ -428,7 +428,7 @@ describe('ERC721 Options Tests', () => {
     const tokenId = '0'; // First token ID (due to incremental)
 
     // 7. Test Minting - NO CALLMETHOD, direct wallet transaction
-    console.log('🎨 Testing minting...', deployerAddress, tokenId);
+    logger.info('🎨 Testing minting...', deployerAddress, tokenId);
 
     const mintTxHash = await walletAdapter.writeContract({
       contractAddress: contractId,
@@ -442,7 +442,7 @@ describe('ERC721 Options Tests', () => {
     expect(mintReceipt).not.toBeNull();
     expect(mintReceipt!.status).toBe(1);
 
-    console.log('🔍 Checking what token ID was actually minted...');
+    logger.info('🔍 Checking what token ID was actually minted...');
     try {
       const totalSupply = await walletAdapter.callContract({
         contractAddress: contractId,
@@ -451,19 +451,19 @@ describe('ERC721 Options Tests', () => {
         args: []
       });
 
-      console.log('🔍 Total supply after mint:', totalSupply);
+      logger.info('🔍 Total supply after mint:', totalSupply);
 
       // If using incremental IDs, the actual token ID might be different
       const actualTokenId = totalSupply - 1n; // Last minted token
-      console.log('🔍 Likely token ID to burn:', actualTokenId.toString());
+      logger.info('🔍 Likely token ID to burn:', actualTokenId.toString());
 
       // Use actualTokenId instead of hardcoded tokenId for burn test
     } catch (e) {
-      console.warn('Could not check total supply, continuing with original tokenId');
+      logger.warning('Could not check total supply, continuing with original tokenId');
     }
 
     // 8. Test Pausing (requires owner)
-    console.log('⏸️ Testing pausing...');
+    logger.info('⏸️ Testing pausing...');
 
     const pauseTxHash = await walletAdapter.writeContract({
       contractAddress: contractId,
@@ -478,11 +478,11 @@ describe('ERC721 Options Tests', () => {
     expect(pauseReceipt!.status).toBe(1);
 
     // 9. Test Unpausing (requires owner)
-    console.log('▶️ Testing unpausing...');
+    logger.info('▶️ Testing unpausing...');
 
     try {
       if (!pauseReceipt!.status) {
-        console.warn('Contract is not paused, skipping unpause test.');
+        logger.warning('Contract is not paused, skipping unpause test.');
       }
     } catch (error) {
       const unpauseTxHash = await walletAdapter.writeContract({
@@ -498,7 +498,7 @@ describe('ERC721 Options Tests', () => {
       expect(unpauseReceipt!.status).toBe(1);
 
       // 10. Test Burning
-      console.log('🔥 Testing burning...');
+      logger.info('🔥 Testing burning...');
     }
 
     try {
@@ -516,25 +516,25 @@ describe('ERC721 Options Tests', () => {
 
       // ✅ FIXED: Better error handling for burn
       if (burnReceipt!.status === 0) {
-        console.error('❌ Burn transaction failed. This might be expected if the token doesn\'t exist or caller lacks permission.');
+        logger.error('❌ Burn transaction failed. This might be expected if the token doesn\'t exist or caller lacks permission.');
         // Let's check if we can still continue the test
-        console.log('⚠️ Continuing test despite burn failure...');
+        logger.info('⚠️ Continuing test despite burn failure...');
       } else {
         expect(burnReceipt!.status).toBe(1);
-        console.log('✅ Burn transaction succeeded');
+        logger.info('✅ Burn transaction succeeded');
       }
 
       // ✅ FIXED: Better ERC721 burn verification with debugging
-      console.log('🧪 Testing burned token verification...');
+      logger.info('🧪 Testing burned token verification...');
 
       // ✅ First, let's verify the burn actually worked by checking the receipt status
       if (burnReceipt!.status === 0) {
-        console.warn('⚠️ Burn transaction failed (status 0), token might still exist');
+        logger.warning('⚠️ Burn transaction failed (status 0), token might still exist');
         // Continue anyway to test the verification logic
       }
 
       try {
-        console.log(`🔍 Calling ownerOf for token ${tokenId} on contract ${contractId}`);
+        logger.info(`🔍 Calling ownerOf for token ${tokenId} on contract ${contractId}`);
 
         const result = await walletAdapter.callContract({
           contractAddress: contractId,
@@ -543,32 +543,32 @@ describe('ERC721 Options Tests', () => {
           args: [tokenId]
         });
 
-        console.log('🔍 ownerOf result:', result);
-        console.log('🔍 Result type:', typeof result);
-        console.log('🔍 Result length:', result?.length);
+        logger.info('🔍 ownerOf result:', result);
+        logger.info('🔍 Result type:', typeof result);
+        logger.info('🔍 Result length:', result?.length);
 
         // ✅ FIXED: Better zero address checking
         const decodedResult = ethers.AbiCoder.defaultAbiCoder().decode(['address'], result)[0];
-        console.log('🔍 Decoded owner address:', decodedResult);
+        logger.info('🔍 Decoded owner address:', decodedResult);
 
         // ✅ Check for actual zero address (all zeros)
         if (decodedResult === ethers.ZeroAddress || decodedResult === '0x0000000000000000000000000000000000000000') {
-          console.log('✅ ownerOf returned zero address - token was burned');
+          logger.info('✅ ownerOf returned zero address - token was burned');
           return; // Test passes
         }
 
         // ✅ Check if result is the same as burner (might indicate burn failed)
         if (decodedResult.toLowerCase() === deployerAddress.toLowerCase()) {
-          console.error('❌ Token still owned by the same address - burn likely failed');
-          console.error('❌ Token owner is still:', decodedResult);
+          logger.error('❌ Token still owned by the same address - burn likely failed');
+          logger.error('❌ Token owner is still:', decodedResult);
           expect(true).toBe(false); // Force failure
         } else {
-          console.error('❌ Token has a different owner - this should not happen after burn');
-          console.error('❌ Token owner:', decodedResult);
+          logger.error('❌ Token has a different owner - this should not happen after burn');
+          logger.error('❌ Token owner:', decodedResult);
           expect(true).toBe(false); // Force failure
         }
       } catch (error: any) {
-        console.log('✅ ownerOf correctly reverted for burned token:', error.message);
+        logger.info('✅ ownerOf correctly reverted for burned token:', error.message);
         expect(error.message).toMatch(
           /ERC721NonexistentToken|execution reverted|NonexistentToken|ContractCallFailed|revert/i
         );
@@ -576,18 +576,18 @@ describe('ERC721 Options Tests', () => {
 
 
     } catch (burnError: any) {
-      console.error('❌ Burn transaction failed with error:', burnError.message);
+      logger.error('❌ Burn transaction failed with error:', burnError.message);
       // Continue with the test anyway
-      console.log('⚠️ Continuing test despite burn error...');
+      logger.info('⚠️ Continuing test despite burn error...');
     }
 
 
-    console.log('✅ All NFT tests completed successfully!');
+    logger.info('✅ All NFT tests completed successfully!');
 
   }, 300000); // Longer timeout for blockchain interaction
 
   it('should deploy UUPS ERC721 proxy and verify functionality', async () => {
-    console.log('🚀 Testing UUPS ERC721 Proxy Deployment...');
+    logger.info('🚀 Testing UUPS ERC721 Proxy Deployment...');
     // 1. Generate upgradeable ERC721
     const contractSource = await contractHandler.generateContract({
       language: 'solidity',
@@ -660,7 +660,7 @@ describe('ERC721 Options Tests', () => {
     const proxyReceipt = await waitForReceipt(proxyTxHash);
     expect(proxyReceipt?.status).toBe(1);
     const proxyAddress = proxyReceipt!.contractAddress!;
-    console.log('✅ UUPS ERC721 Proxy deployed at:', proxyAddress);
+    logger.info('✅ UUPS ERC721 Proxy deployed at:', proxyAddress);
 
     // 7. Test minting via proxy
     const iface = new ethers.Interface(compiled.artifacts.abi);
@@ -671,11 +671,11 @@ describe('ERC721 Options Tests', () => {
     });
     const mintReceipt = await waitForReceipt(mintTxHash);
     expect(mintReceipt?.status).toBe(1);
-    console.log('✅ UUPS ERC721 Proxy mint functionality test passed!');
+    logger.info('✅ UUPS ERC721 Proxy mint functionality test passed!');
   }, 300000);
 
   it('should deploy Transparent ERC721 proxy and verify functionality', async () => {
-    console.log('🚀 Testing Transparent ERC721 Proxy Deployment...');
+    logger.info('🚀 Testing Transparent ERC721 Proxy Deployment...');
     // 1. Generate upgradeable ERC721 (transparent)
     const contractSource = await contractHandler.generateContract({
       language: 'solidity',
@@ -741,11 +741,11 @@ describe('ERC721 Options Tests', () => {
       value: deploymentData.proxy.value || '0'
     });
     const proxyReceipt = await waitForReceipt(proxyTxHash);
-    console.log('proxyReceipt status?', proxyReceipt)
+    logger.info('proxyReceipt status?', proxyReceipt)
 
     expect(proxyReceipt?.status).toBe(1);
     const proxyAddress = proxyReceipt!.contractAddress!;
-    console.log('✅ Transparent ERC721 Proxy deployed at:', proxyAddress);
+    logger.info('✅ Transparent ERC721 Proxy deployed at:', proxyAddress);
 
     // 7. Test minting via proxy
     const mintTxHash = await walletAdapter.writeContract({
@@ -758,6 +758,6 @@ describe('ERC721 Options Tests', () => {
 
     const mintReceipt = await waitForReceipt(mintTxHash);
     expect(mintReceipt?.status).toBe(1);
-    console.log('✅ Transparent ERC721 Proxy mint functionality test passed!');
+    logger.info('✅ Transparent ERC721 Proxy mint functionality test passed!');
   }, 300000);
 });

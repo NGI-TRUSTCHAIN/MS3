@@ -3,6 +3,7 @@ import { NetworkConfig } from '../types/base.js';
 import { AdapterError } from '../errors/AdapterError.js';
 import { WalletErrorCode } from '../types/error.js';
 
+
 // A curated list of shared chains to serve as a reliable fallback.
 const staticChainList = [
     {
@@ -254,13 +255,13 @@ export class NetworkHelper {
             });
 
             if (!response.ok) {
-                // console.warn(`[testRpcConnection] RPC ${url} returned non-ok status: ${response.status}`);
+                console.warn(`[testRpcConnection] RPC ${url} returned non-ok status: ${response.status}`);
                 return false;
             }
 
             const data = await response.json();
             if (data.error) {
-                // console.warn(`[testRpcConnection] RPC ${url} returned error: ${data.error.message}`);
+                console.warn(`[testRpcConnection] RPC ${url} returned error: ${data.error.message}`);
                 return false;
             }
 
@@ -275,9 +276,9 @@ export class NetworkHelper {
             return true;
         } catch (error: any) {
             if (error.name === 'AbortError') {
-                // console.warn(`[testRpcConnection] Connection timed out for ${url} after ${timeoutMs}ms`);
+                console.error(`[testRpcConnection] Connection timed out for ${url} after ${timeoutMs}ms`);
             } else {
-                // console.warn(`[testRpcConnection] Connection failed for ${url}: ${error.message}`);
+                console.error(`[testRpcConnection] Connection failed for ${url}: ${error.message}`);
             }
             return false;
         } finally {

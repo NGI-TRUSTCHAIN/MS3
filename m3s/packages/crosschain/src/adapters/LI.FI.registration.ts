@@ -1,12 +1,12 @@
 import { MinimalLiFiAdapter } from './LI.FI.Adapter.js';
-import { AdapterMetadata, getEnvironments, getFeatures, getRequirements, registry, RuntimeEnvironment, getStaticCompatibilityMatrix, Capability } from '@m3s/shared';
+import { AdapterMetadata, getEnvironments, getRequirements, registry, RuntimeEnvironment, getStaticCompatibilityMatrix, Capability, Ms3Modules } from '@m3s/shared';
 import Joi from 'joi';
 import { CrossChainAdapterType } from '../types/index.js';
 
 // ✅ JOI schema for LiFi adapter
 export const lifiOptionsSchema = Joi.object({
   apiKey: Joi.string().optional().description('Optional LiFi API key for enhanced rate limits'),
-  timeout: Joi.number().min(5000).max(60000).default(30000).description('Request timeout in milliseconds'),
+  timeout: Joi.number().min(5000).max(100000).default(60000).description('Request timeout in milliseconds'),
   retries: Joi.number().integer().min(0).max(5).default(2).description('Number of retry attempts for failed requests'),
   supportedChains: Joi.array().items(
     Joi.object({
@@ -21,7 +21,6 @@ export const lifiOptionsSchema = Joi.object({
   wallet: Joi.any().optional().description('Wallet adapter instance for transaction execution'),
   rpcOverrides: Joi.any().optional().description('rpcOverrides')
 });
-
 
 
 const lifiRequirements = getRequirements(lifiOptionsSchema, 'lifi');
@@ -43,12 +42,10 @@ const lifiEnvironment = getEnvironments(
   ]
 );
 
-const lifiFeatures = getFeatures(MinimalLiFiAdapter);
-
 const adapterMetadata: AdapterMetadata = {
   name: 'lifi',
   version: '1.0.0',
-  module: 'crosschain',
+  module: Ms3Modules.crosschain,
   adapterType: CrossChainAdapterType.aggregator,
   adapterClass: MinimalLiFiAdapter,
   capabilities: [
@@ -63,17 +60,16 @@ const adapterMetadata: AdapterMetadata = {
   ],
   requirements: lifiRequirements,
   environment: lifiEnvironment,
-  features: lifiFeatures
 };
 
-registry.registerAdapter('crosschain', adapterMetadata);
+registry.registerAdapter(Ms3Modules.crosschain, adapterMetadata);
 
 // ✅ REPLACE: Use static compatibility matrix
-const compatibilityMatrix = getStaticCompatibilityMatrix('crosschain', 'lifi', '1.0.0');
+const compatibilityMatrix = getStaticCompatibilityMatrix(Ms3Modules.crosschain, 'lifi', '1.0.0');
 if (compatibilityMatrix) {
-  registry.registerCompatibilityMatrix('crosschain', compatibilityMatrix);
+  registry.registerCompatibilityMatrix(Ms3Modules.crosschain, compatibilityMatrix);
 }
 
-console.log('✅ LiFi adapter registered with static compatibility matrix');
-console.log('📋 Generated requirements:', lifiRequirements);
-console.log('🔧 Generated features:', lifiFeatures.map(f => f.name));
+console.debug('✅ LiFi adapter registered with static compatibility matrix');
+console.debug('📋 Generated requirements:', lifiRequirements);
+console.debug('🔧 Generated capabilities:', adapterMetadata.capabilities.map(c => JSON.parse(JSON.stringify(c))));

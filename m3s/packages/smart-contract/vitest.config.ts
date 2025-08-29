@@ -18,7 +18,9 @@ export default defineConfig({
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
-      '**/contracts/**', // ✅ Ignore contract compilation directories
+      '**\/artifacts/**', // ✅ Ignore contract compilation directories,
+      '**\/cache/**',     // ✅ Ignore cache directories
+      '**\/logs/**',      // ✅ Ignore log files
       '**/tmp/**',       // ✅ Ignore temp directories
       '**/temp/**'       // ✅ Ignore temp directories
     ]

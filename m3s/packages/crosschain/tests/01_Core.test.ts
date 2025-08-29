@@ -1,6 +1,7 @@
-import { AdapterArguments } from '@m3s/shared/index.js';
+import { AdapterArguments } from '@m3s/shared';
 import { describe, it, expect } from 'vitest';
 import { ILiFiAdapterOptionsV1 } from '../src/adapters/LI.FI.Adapter.js';
+import {logger} from '../../../logger.js';
 
 /**
  * Tests the adapter design pattern to ensure it follows factory pattern requirements
@@ -43,7 +44,7 @@ export function testAdapterPattern(AdapterClass: any, mockArgs: any = {}) {
         const result = AdapterClass.create(completeMockArgsForCreate);
         expect(result).toBeInstanceOf(Promise);
       } catch (e: any) {
-        console.error(`[testAdapterPattern] Error in "create method should return a promise" for ${AdapterClass.name} with args ${JSON.stringify(completeMockArgsForCreate)}: ${e.message}`);
+        logger.error(`[testAdapterPattern] Error in "create method should return a promise" for ${AdapterClass.name} with args ${JSON.stringify(completeMockArgsForCreate)}: ${e.message}`);
         // Fail the test if create itself throws, indicating mockArgs are insufficient
         throw e;
       }
@@ -55,9 +56,7 @@ export function testAdapterPattern(AdapterClass: any, mockArgs: any = {}) {
         const instance = await AdapterClass.create(completeMockArgsForCreate);
         expect(instance).toBeInstanceOf(AdapterClass);
       } catch (error: any) {
-        console.warn(`Creation failed in test: ${error.message}`);
-        // Still pass the test in test environment
-        // expect(true).toBe(true);
+        logger.warning(`Creation failed in test: ${error.message}`);
       }
     });
 
@@ -77,7 +76,7 @@ export function testAdapterPattern(AdapterClass: any, mockArgs: any = {}) {
         expect(instance.version).toBe(adapterVersionForTest);
         
       } catch (error: any) {
-        console.warn(`Property test failed: ${error.message}`);
+        logger.warning(`Property test failed: ${error.message}`);
         // Allow test to pass if adapter creation fails (covered by other tests)
       }
     });
@@ -92,11 +91,11 @@ export function testAdapterPattern(AdapterClass: any, mockArgs: any = {}) {
           expect(typeof adapterName).toBe('string');
           expect(adapterName).toBe(adapterNameForTest);
         } else {
-          console.warn(`${AdapterClass.name} does not have getAdapterName method`);
+          logger.warning(`${AdapterClass.name} does not have getAdapterName method`);
         }
         
       } catch (error: any) {
-        console.warn(`getAdapterName test failed: ${error.message}`);
+        logger.warning(`getAdapterName test failed: ${error.message}`);
       }
     });
   });

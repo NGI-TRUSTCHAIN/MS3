@@ -1,3 +1,4 @@
+import { Capability } from "../registry/capability.js";
 import { WalletErrorCode } from "./error.js"; // Assuming WalletErrorCode is in error.ts
 
 export interface ModuleMetadata {
@@ -6,6 +7,7 @@ export interface ModuleMetadata {
 }
 
 export enum Ms3Modules {
+  'shared' = 'shared',
   'wallet' = 'wallet',
   'smartcontract' = 'smart-contract',
   'crosschain' = 'crosschain'
@@ -18,7 +20,7 @@ export interface Requirement {
    */
   path: string;
   /** Optional: Expected type of the value at the path. */
-  type?: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'function';
+  type?: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'function' | 'any';
   /** Optional: Custom error message if this requirement is not met. */
   message?: string;
   /** Optional: If true, the path must exist but its value can be undefined. Defaults to false (value must be defined). */
@@ -55,11 +57,9 @@ export interface AdapterMetadata {
   module: string;
   adapterType: string | number;
   adapterClass: any; // Constructor type for the adapter (typically with a static `create` method)
-  capabilities: string[]; // ✅ ADD: The definitive list of implemented capability interfaces.
+  capabilities: Capability[]; // ✅ ADD: The definitive list of implemented capability interfaces.
   requirements?: Requirement[];
   errorMap?: Record<string, WalletErrorCode | string>;
-  /** @deprecated The `capabilities` array is now the source of truth for adapter features. This may be removed in a future version. */
-  features?: MethodSignature[];
   environment?: EnvironmentRequirements;
 }
 
@@ -100,6 +100,6 @@ export interface CompatibilityMatrix {
   }[];
   crossModuleCompatibility: {
     moduleName: string;
-    requiresCapabilities: string[];
+    requiresCapabilities: Capability[];
   }[];
 }

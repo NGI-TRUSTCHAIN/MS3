@@ -1,5 +1,5 @@
 import { CrosschainTemplateAdapter } from './crosschain.js';
-import { AdapterMetadata, getEnvironments, getFeatures, getRequirements, registry, RuntimeEnvironment, getStaticCompatibilityMatrix } from '@m3s/shared';
+import { AdapterMetadata, getEnvironments, getRequirements, registry, RuntimeEnvironment, getStaticCompatibilityMatrix, Ms3Modules } from '@m3s/shared';
 import Joi from 'joi';
 import { CrossChainAdapterType } from '../../types/index.js';
 
@@ -25,28 +25,25 @@ const crosschainEnvironment = getEnvironments(
   ]
 );
 
-const crosschainFeatures = getFeatures(CrosschainTemplateAdapter);
-
 const adapterMetadata: AdapterMetadata = {
   name: 'crosschain-template',
   version: '1.0.0',
-  module: 'crosschain',
+  module: Ms3Modules.crosschain,
   adapterType: CrossChainAdapterType.bridge,
   adapterClass: CrosschainTemplateAdapter,
   capabilities: [],
   requirements: crosschainRequirements,
   environment: crosschainEnvironment,
-  features: crosschainFeatures
 };
 
-registry.registerAdapter('crosschain', adapterMetadata);
+registry.registerAdapter(Ms3Modules.crosschain, adapterMetadata);
 
-const compatibilityMatrix = getStaticCompatibilityMatrix('crosschain', 'crosschain-template', '1.0.0');
+const compatibilityMatrix = getStaticCompatibilityMatrix(Ms3Modules.crosschain, 'crosschain-template', '1.0.0');
 if (compatibilityMatrix) {
-  registry.registerCompatibilityMatrix('crosschain', compatibilityMatrix);
+  registry.registerCompatibilityMatrix(Ms3Modules.crosschain, compatibilityMatrix);
 }
 
-console.log('✅ Template crosschain adapter registered with static compatibility matrix');
-console.log('📋 Generated requirements:', crosschainRequirements);
-console.log('🌍 Generated environment:', crosschainEnvironment);
-console.log('🔧 Generated features:', crosschainFeatures.map(f => f.name));
+console.debug('✅ Template crosschain adapter registered with static compatibility matrix');
+console.debug('📋 Generated requirements:', crosschainRequirements);
+console.debug('🌍 Generated environment:', crosschainEnvironment);
+console.debug('🔧 Generated capabilities:', adapterMetadata.capabilities.map(c => JSON.parse(JSON.stringify(c))));

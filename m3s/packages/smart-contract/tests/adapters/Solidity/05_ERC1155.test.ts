@@ -2,9 +2,10 @@ import { describe, beforeEach, it, expect } from 'vitest';
 import { createContractHandler } from '../../../src/index.js';
 import { CompiledOutput, GenerateContractInput, IBaseContractHandler } from '../../../src/types/index.js';
 import { ethers } from 'ethers';
-import { TEST_PRIVATE_KEY, RUN_INTEGRATION_TESTS, INFURA_API_KEY, ALCHEMY_API_KEY } from '../../../config.js';
+import { TEST_PRIVATE_KEY, RUN_INTEGRATION, INFURA_API_KEY, ALCHEMY_API_KEY } from '../../../config.js';
 import { createWallet, IEVMWallet } from '@m3s/wallet';
 import { NetworkHelper } from '@m3s/shared';
+import {logger} from '../../../../../logger.js';
 
 // Test ERC1155 options
 describe('ERC1155 Options Tests', () => {
@@ -203,7 +204,7 @@ describe('ERC1155 Options Tests', () => {
 });
 
 // Full integration tests for real blockchain deployment
-(RUN_INTEGRATION_TESTS ? describe : describe.skip)('Full ERC1155 Integration Tests', () => {
+(RUN_INTEGRATION ? describe : describe.skip)('Full ERC1155 Integration Tests', () => {
   let walletAdapter: IEVMWallet;
   let contractHandler: IBaseContractHandler;
 
@@ -214,21 +215,21 @@ describe('ERC1155 Options Tests', () => {
 
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
-        console.error(`⏰ Timeout waiting for tx ${txHash}`);
+        logger.error(`⏰ Timeout waiting for tx ${txHash}`);
         resolve(null);
       }, timeout);
 
       provider.once(txHash, async (receipt: ethers.TransactionReceipt) => {
         clearTimeout(timer);
 
-        console.log(`Receipt found for ${txHash}. Status: ${receipt.status === 1 ? 'Success' : 'Failed'}`);
+        logger.info(`Receipt found for ${txHash}. Status: ${receipt.status === 1 ? 'Success' : 'Failed'}`);
 
         if (receipt.status === 0) {
-          console.log(`🚨 [DIAGNOSTIC] Transaction FAILED! Getting transaction details...`);
+          logger.info(`🚨 [DIAGNOSTIC] Transaction FAILED! Getting transaction details...`);
 
           try {
             const tx = await provider.getTransaction(txHash);
-            console.log(`🔍 [DIAGNOSTIC] Transaction details:`, {
+            logger.info(`🔍 [DIAGNOSTIC] Transaction details:`, {
               from: tx?.from,
               to: tx?.to,
               value: tx?.value?.toString(),
@@ -239,7 +240,7 @@ describe('ERC1155 Options Tests', () => {
               data: tx?.data?.substring(0, 100) + '...'
             });
           } catch (err) {
-            console.log(`⚠️ [DIAGNOSTIC] Could not get transaction debug info:`, err);
+            logger.info(`⚠️ [DIAGNOSTIC] Could not get transaction debug info:`, err);
           }
         }
 
@@ -280,7 +281,7 @@ describe('ERC1155 Options Tests', () => {
     try {
       await walletAdapter.setProvider(networkConfig);
     } catch (error) {
-      console.error(`[Test Setup] setProvider FAILED:`, error);
+      logger.error(`[Test Setup] setProvider FAILED:`, error);
       throw error;
     }
 
@@ -362,7 +363,7 @@ describe('ERC1155 Options Tests', () => {
     const data = '0x'; // Empty data
 
     // 7. Test Minting - NO CALLMETHOD, direct wallet transaction
-    console.log('🎨 Testing minting...');
+    logger.info('🎨 Testing minting...');
 
     const mintTxHash = await walletAdapter.writeContract({
       contractAddress: contractId,
@@ -377,7 +378,7 @@ describe('ERC1155 Options Tests', () => {
     expect(mintReceipt!.status).toBe(1);
 
     // 8. Test Pausing (requires owner)
-    console.log('⏸️ Testing pausing...');
+    logger.info('⏸️ Testing pausing...');
 
     const pauseTxHash = await walletAdapter.writeContract({
       contractAddress: contractId,
@@ -393,10 +394,10 @@ describe('ERC1155 Options Tests', () => {
     expect(pauseReceipt!.status).toBe(1);
 
     // 9. Test Unpausing (requires owner)
-    console.log('▶️ Testing unpausing...');
+    logger.info('▶️ Testing unpausing...');
 
     if (!pauseReceipt!.status) {
-      console.warn('Contract is not paused, skipping unpause test.');
+      logger.warning('Contract is not paused, skipping unpause test.');
     } else {
       const unpauseTxHash = await walletAdapter.writeContract({
         contractAddress: contractId,
@@ -412,7 +413,7 @@ describe('ERC1155 Options Tests', () => {
     }
 
     // 10. Test Burning
-    console.log('🔥 Testing burning...');
+    logger.info('🔥 Testing burning...');
 
     const burnTxHash = await walletAdapter.writeContract({
       contractAddress: contractId,
@@ -427,7 +428,7 @@ describe('ERC1155 Options Tests', () => {
     expect(burnReceipt!.status).toBe(1);
 
     // 11. Test URI Update (requires owner)
-    console.log('🔗 Testing URI update...');
+    logger.info('🔗 Testing URI update...');
 
     const newUri = 'ipfs://QmNewUri/{id}.json';
     const setUriTxHash = await walletAdapter.writeContract({
@@ -442,14 +443,14 @@ describe('ERC1155 Options Tests', () => {
     expect(setUriReceipt).not.toBeNull();
     expect(setUriReceipt!.status).toBe(1);
 
-    console.log('✅ All ERC1155 tests completed successfully!');
+    logger.info('✅ All ERC1155 tests completed successfully!');
 
   }, 300000); // Longer timeout for blockchain interaction
 
   // Add these tests after your existing integration test in the ERC1155 file:
 
   it('should deploy UUPS ERC1155 proxy and verify upgradeability', async () => {
-    console.log('🚀 Testing UUPS ERC1155 Proxy Deployment...');
+    logger.info('🚀 Testing UUPS ERC1155 Proxy Deployment...');
 
     // 1. Generate upgradeable ERC1155
     const contractSource = await contractHandler.generateContract({
@@ -495,7 +496,7 @@ describe('ERC1155 Options Tests', () => {
     expect(deploymentData.type).toBe('proxy');
 
     // 5. Deploy implementation first
-    console.log('📦 Deploying ERC1155 implementation...');
+    logger.info('📦 Deploying ERC1155 implementation...');
     const implTxHash = await walletAdapter.sendTransaction({
       data: deploymentData.implementation.data,
       value: deploymentData.implementation.value || '0'
@@ -505,7 +506,7 @@ describe('ERC1155 Options Tests', () => {
     const implementationAddress = implReceipt!.contractAddress!;
 
     // 6. Deploy proxy with real implementation address
-    console.log('🔄 Deploying ERC1155 proxy...');
+    logger.info('🔄 Deploying ERC1155 proxy...');
     const { ethers: ethersLib } = await import('ethers');
     const proxyFactory = new ethersLib.ContractFactory(
       deploymentData.proxy.abi,
@@ -528,10 +529,10 @@ describe('ERC1155 Options Tests', () => {
     expect(proxyReceipt?.status).toBe(1);
     const proxyAddress = proxyReceipt!.contractAddress!;
 
-    console.log('✅ ERC1155 Proxy deployed at:', proxyAddress);
+    logger.info('✅ ERC1155 Proxy deployed at:', proxyAddress);
 
     // 7. Test proxy functionality with ERC1155 operations
-    console.log('🧪 Testing ERC1155 proxy functionality...');
+    logger.info('🧪 Testing ERC1155 proxy functionality...');
 
     // Test batch minting through proxy (should work)
     const tokenIds = [1, 2];
@@ -554,7 +555,7 @@ describe('ERC1155 Options Tests', () => {
     expect(mintReceipt?.status).toBe(1);
 
     // Test pause/unpause functionality through proxy
-    console.log('⏸️ Testing pause through proxy...');
+    logger.info('⏸️ Testing pause through proxy...');
 
     const pauseTxHash = await walletAdapter.writeContract({
       contractAddress: proxyAddress,
@@ -566,7 +567,7 @@ describe('ERC1155 Options Tests', () => {
     const pauseReceipt = await waitForReceipt(pauseTxHash);
     expect(pauseReceipt?.status).toBe(1);
 
-    console.log('▶️ Testing unpause through proxy...');
+    logger.info('▶️ Testing unpause through proxy...');
 
     const unpauseTxHash = await walletAdapter.writeContract({
       contractAddress: proxyAddress,
@@ -580,7 +581,7 @@ describe('ERC1155 Options Tests', () => {
 
 
     // Test burning through proxy
-    console.log('🔥 Testing burn through proxy...');
+    logger.info('🔥 Testing burn through proxy...');
 
     const burnTxHash = await walletAdapter.writeContract({
       contractAddress: proxyAddress,
@@ -592,12 +593,12 @@ describe('ERC1155 Options Tests', () => {
     const burnReceipt = await waitForReceipt(burnTxHash);
     expect(burnReceipt?.status).toBe(1);
 
-    console.log('✅ UUPS ERC1155 Proxy deployment and functionality test passed!');
+    logger.info('✅ UUPS ERC1155 Proxy deployment and functionality test passed!');
 
   }, 300000);
 
   it('should deploy Transparent ERC1155 proxy and verify functionality', async () => {
-    console.log('🚀 Testing Transparent ERC1155 Proxy Deployment...');
+    logger.info('🚀 Testing Transparent ERC1155 Proxy Deployment...');
 
     // 1. Generate upgradeable ERC1155 with transparent proxy
     const contractSource = await contractHandler.generateContract({
@@ -635,7 +636,7 @@ describe('ERC1155 Options Tests', () => {
     expect(deploymentData.type).toBe('proxy');
 
     // Deploy implementation
-    console.log('📦 Deploying Transparent ERC1155 implementation...');
+    logger.info('📦 Deploying Transparent ERC1155 implementation...');
     const implTxHash = await walletAdapter.sendTransaction({
       data: deploymentData.implementation.data,
       value: deploymentData.implementation.value || '0'
@@ -645,7 +646,7 @@ describe('ERC1155 Options Tests', () => {
     const implementationAddress = implReceipt!.contractAddress!;
 
     // Deploy proxy
-    console.log('🔄 Deploying Transparent ERC1155 proxy...');
+    logger.info('🔄 Deploying Transparent ERC1155 proxy...');
     const { ethers: ethersLib } = await import('ethers');
     const proxyFactory = new ethersLib.ContractFactory(
       deploymentData.proxy.abi,
@@ -665,10 +666,10 @@ describe('ERC1155 Options Tests', () => {
     const proxyReceipt = await waitForReceipt(proxyTxHash);
     expect(proxyReceipt?.status).toBe(1);
     const proxyAddress = proxyReceipt!.contractAddress!;
-    console.log('✅ ERC1155 Proxy deployed at:', proxyAddress);
+    logger.info('✅ ERC1155 Proxy deployed at:', proxyAddress);
 
     // Test comprehensive ERC1155 functionality through proxy
-    console.log('🧪 Testing comprehensive ERC1155 proxy functionality...');
+    logger.info('🧪 Testing comprehensive ERC1155 proxy functionality...');
 
     // Test single mint
     const tokenId = 1;
@@ -690,7 +691,7 @@ describe('ERC1155 Options Tests', () => {
     expect(mintReceipt?.status).toBe(1);
 
     // Test URI update functionality (if updatableUri was enabled)
-    console.log('🔗 Testing URI update through proxy...');
+    logger.info('🔗 Testing URI update through proxy...');
 
     try {
       const newUri = 'ipfs://QmNewTransparent/{id}.json';
@@ -705,13 +706,13 @@ describe('ERC1155 Options Tests', () => {
       });
       const setUriReceipt = await waitForReceipt(setUriTxHash);
       expect(setUriReceipt?.status).toBe(1);
-      console.log('✅ URI update through proxy succeeded');
+      logger.info('✅ URI update through proxy succeeded');
     } catch (uriError) {
-      console.warn('⚠️ URI update not available (updatableUri might not be enabled)');
+      logger.warning('⚠️ URI update not available (updatableUri might not be enabled)');
     }
 
     // Test batch operations through proxy
-    console.log('📦 Testing batch operations through proxy...');
+    logger.info('📦 Testing batch operations through proxy...');
 
     const batchTokenIds = [10, 11, 12];
     const batchAmounts = [50, 75, 25];
@@ -733,7 +734,7 @@ describe('ERC1155 Options Tests', () => {
     expect(batchMintReceipt?.status).toBe(1);
 
     // Test burn batch through proxy
-    console.log('🔥 Testing batch burn through proxy...');
+    logger.info('🔥 Testing batch burn through proxy...');
 
     const burnBatchTxHash = await walletAdapter.writeContract({
       contractAddress: proxyAddress,
@@ -749,7 +750,7 @@ describe('ERC1155 Options Tests', () => {
     const burnBatchReceipt = await waitForReceipt(burnBatchTxHash);
     expect(burnBatchReceipt?.status).toBe(1);
 
-    console.log('✅ Transparent ERC1155 Proxy deployment and functionality test passed!');
+    logger.info('✅ Transparent ERC1155 Proxy deployment and functionality test passed!');
   }, 300000)
 
 });

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { AdapterArguments, detectRuntimeEnvironment, RuntimeEnvironment, registry } from '@m3s/shared';
+import { AdapterArguments, detectRuntimeEnvironment, RuntimeEnvironment, registry, Ms3Modules } from '@m3s/shared';
 import { IEthersWalletOptionsV1 } from '../src/adapters/index.js';
+import {logger} from '../../../logger.js';
 
 /**
  * Tests the adapter design pattern to ensure it follows factory pattern requirements
@@ -42,7 +43,7 @@ export function testAdapterPattern(AdapterClass: any, mockArgs: any = {}, hookTi
         adapterVersionForTest = testInstance.version;
       } catch (error: any) {
         // ✅ If creation fails with mock args, extract from error or use fallbacks
-        console.warn(`Failed to create test instance for discovery: ${error?.message}`);
+        logger.warning(`Failed to create test instance for discovery: ${error?.message}`);
 
         // Try to extract expected name from class name or use fallback
         if (AdapterClass.name === 'Web3AuthWalletAdapter') {
@@ -60,7 +61,7 @@ export function testAdapterPattern(AdapterClass: any, mockArgs: any = {}, hookTi
 
     it('create method should return a promise', () => {
       if (!adapterNameForTest) {
-        console.warn('Skipping test - adapter name not discovered');
+        logger.warning('Skipping test - adapter name not discovered');
         return;
       }
 
@@ -74,14 +75,14 @@ export function testAdapterPattern(AdapterClass: any, mockArgs: any = {}, hookTi
         const result = AdapterClass.create(completeMockArgsForCreate);
         expect(result).toBeInstanceOf(Promise);
       } catch (error: any) {
-        console.error(`Error in create promise test: ${error.message}`);
+        logger.error(`Error in create promise test: ${error.message}`);
       }
     });
 
     // ✅ Test name and version properties
     it('created instance should have name and version properties', async () => {
       if (!adapterNameForTest) {
-        console.warn('Skipping test - adapter name not discovered');
+        logger.warning('Skipping test - adapter name not discovered');
         return;
       }
 
@@ -100,7 +101,7 @@ export function testAdapterPattern(AdapterClass: any, mockArgs: any = {}, hookTi
         expect(instance.version).toBe(adapterVersionForTest);
 
       } catch (error: any) {
-        console.warn(`Property test failed: ${error.message}`);
+        logger.warning(`Property test failed: ${error.message}`);
         // ✅ Allow this test to pass if creation fails - the beforeAll fallback should handle name discovery
         expect(adapterNameForTest).toBeDefined();
         expect(adapterVersionForTest).toBeDefined();
@@ -134,22 +135,22 @@ describe('Core Wallet Tests', () => {
     expect(process.versions?.node).toBeDefined();
     expect(typeof window).toBe('undefined');
 
-    console.log(`[Environment Check] Detected environment: ${currentEnv} ✅`);
+    logger.info(`[Environment Check] Detected environment: ${currentEnv} ✅`);
   });
 
   // ✅ Add basic registry environment check
   it('should have environment requirements in registry', () => {
 
     // Check Web3Auth has browser requirement
-    const web3authEnv = registry.getEnvironmentRequirements('wallet', 'web3auth', '1.0.0');
+    const web3authEnv = registry.getEnvironmentRequirements(Ms3Modules.wallet, 'web3auth', '1.0.0');
     expect(web3authEnv).toBeDefined();
     expect(web3authEnv?.supportedEnvironments).toContain('browser');
 
     // Check Ethers has server requirement  
-    const ethersEnv = registry.getEnvironmentRequirements('wallet', 'ethers', '1.0.0');
+    const ethersEnv = registry.getEnvironmentRequirements(Ms3Modules.wallet, 'ethers', '1.0.0');
     expect(ethersEnv).toBeDefined();
     expect(ethersEnv?.supportedEnvironments).toContain('server');
 
-    console.log('[Environment Check] Registry environment requirements working ✅');
+    logger.info('[Environment Check] Registry environment requirements working ✅');
   });
 });

@@ -8,7 +8,7 @@ import { toBigInt, toWei } from '../../helpers/units.js';
  * Configuration specific to the EvmWalletAdapter (Ethers).
  */
 export interface IEthersWalletOptionsV1 {
-  privateKey?: string;
+  privateKey: string;
   provider?: NetworkConfig;
   multiChainRpcs?: Record<string, string[]>;
 }
@@ -146,6 +146,7 @@ export class EvmWalletAdapter implements IEVMWallet {
         methodName: 'setProvider'
       });
     }
+    
     // 1) Build preferred list (hex or decimal chainId)
     const cid = config.chainId;
     const preferred = this.multiChainRpcs[cid] || this.multiChainRpcs[String(cid)] || [];
@@ -333,15 +334,14 @@ export class EvmWalletAdapter implements IEVMWallet {
     return signer.getNonce(type);
   }
 
-  public async sendTransaction(tx: GenericTransactionData, abi?: any): Promise<string> {
-    console.log('SENDING THIS TX FROM THE CLIENT ...', tx)
+  public async sendTransaction(tx: GenericTransactionData): Promise<string> {
     if (!this.isConnected()) {
       throw new AdapterError("Wallet not connected.", { code: WalletErrorCode.WalletNotConnected, methodName: 'sendTransaction' });
     }
 
     const signer = await this.getSigner();
     const txRequest = await this.prepareTransactionRequest(tx);
-    console.log('SENDING THIS TX FROM prepareTransactionRequest ...', txRequest)
+    console.log('Sending tx from client: ', txRequest)
 
     try {
 
@@ -357,19 +357,9 @@ export class EvmWalletAdapter implements IEVMWallet {
       const senderAddress = (await this.getAccounts())[0];
       console.log('Sender address:', senderAddress);
 
-      function decodeCustomError(abi: any, revertData: string): string | undefined {
-        const iface = new ethers.Interface(abi);
-        try {
-          const error = iface.parseError(revertData);
-          return error?.name;
-        } catch (e) {
-          return undefined;
-        }
-      }
-      const decoded = decodeCustomError(abi, error.data);
-      console.error('DECODED ERROR', decoded)
+      console.error('Error decoded:', error)
 
-      console.error('FAILED TO SEND THE TRANSACTION', error)
+      console.error('Transaction failed:', error)
       const message = (error as any).shortMessage || (error as any).message || String(error);
       let code: WalletErrorCode | string = WalletErrorCode.TransactionFailed;
       if (message.toLowerCase().includes('user denied')) code = WalletErrorCode.UserRejected;
@@ -428,8 +418,7 @@ export class EvmWalletAdapter implements IEVMWallet {
       options: options.overrides,
     };
 
-
-    return this.sendTransaction(tx, options.abi);
+    return this.sendTransaction(tx);
 
   }
 
@@ -452,19 +441,24 @@ export class EvmWalletAdapter implements IEVMWallet {
         from: fromAddress,
       };
 
-      console.log('estimateGas-txRequest', txRequest)
       // Estimate gas limit
       const gasLimit = await provider.estimateGas(txRequest);
 
       // Get fee data from provider
       const feeData = await provider.getFeeData();
-
-      return {
+    
+      // Gas object data response.
+      const gas = {
         gasLimit,
         gasPrice: feeData.gasPrice?.toString(),
         maxFeePerGas: feeData.maxFeePerGas?.toString(),
         maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString(),
-      };
+      }
+
+      console.log('Gas estimation for: ', txRequest)
+      console.log('Gas estimation results:', gas)
+
+      return gas
 
     } catch (error: any) {
       throw new AdapterError(`Failed to estimate gas: ${(error as Error).message}`, {

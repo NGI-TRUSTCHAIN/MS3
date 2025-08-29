@@ -80,7 +80,7 @@ export class WalletTemplateAdapter implements IEVMWallet {
     method: string,
     args?: any[]
   }): Promise<string> {
-    console.log('callContract', options)
+    console.debug('callContract', options)
     throw new Error("callContract not implemented");
   }
 
@@ -94,7 +94,7 @@ export class WalletTemplateAdapter implements IEVMWallet {
       overrides?: Partial<GenericTransactionData['options']>
     }
   ): Promise<string> {
-    console.log('writeContract', options)
+    console.debug('writeContract', options)
     throw new Error("writeContract not implemented");
   }
 
@@ -126,7 +126,7 @@ export class WalletTemplateAdapter implements IEVMWallet {
 
   // Transaction Methods
   public async getNonce(type: 'latest' | 'pending' = 'pending'): Promise<number> {
-    console.log('type', type)
+    console.debug('type', type)
     throw new Error("getNonce not implemented");
   }
 
@@ -160,7 +160,7 @@ export class WalletTemplateAdapter implements IEVMWallet {
   }
 
   async updateAllChainRpcs(multiChainRpcs: Record<string, string[]>) {
-    console.log('updateAllChainRpcs', multiChainRpcs)
+    console.debug('updateAllChainRpcs', multiChainRpcs)
 
     throw new Error("updateAllChainRpcs not implemented");
   }

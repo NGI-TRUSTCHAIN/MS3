@@ -31,6 +31,18 @@ export class AdapterError extends Error {
         this.methodName = options?.methodName;
         this.details = options?.details; // Add this line
 
+         // Log the error automatically
+        console.error(
+            `[AdapterError] ${message}`,
+            {
+                code: this.code,
+                methodName: this.methodName,
+                details: this.details,
+                cause: this.cause,
+                stack: this.stack
+            }
+        );
+        
         if (typeof Error.captureStackTrace === 'function') {
             Error.captureStackTrace(this, this.constructor);
         }

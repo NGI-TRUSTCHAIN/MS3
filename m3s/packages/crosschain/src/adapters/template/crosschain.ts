@@ -37,15 +37,15 @@ export class CrosschainTemplateAdapter implements ICrossChain {
   }
 
   on(event: 'status', listener: (result: OperationResult) => void): this {
-    console.log('Event  ON', event)
-    console.log('Event  ON handler', listener)
+    console.info('Event  ON', event)
+    console.info('Event  ON handler', listener)
 
     throw new Error('Method not implemented to subscribe to: ');
   }
   
   off(event: 'status', listener: (result: OperationResult) => void): this {
-    console.log('Event  OFF', event)
-    console.log('Event  OFF handler', listener)
+    console.info('Event  OFF', event)
+    console.info('Event  OFF handler', listener)
 
     throw new Error('Method not implemented.');
   }

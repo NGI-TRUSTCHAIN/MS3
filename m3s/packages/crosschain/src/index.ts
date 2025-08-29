@@ -20,9 +20,6 @@ registry.registerInterfaceShape('ICrossChain', [
 ]);
 
 /**
- * TEST PIPELINE 1
- * TEST PIPELINE 2
- * TEST PIPELINE 3
  * Creates a CrossChain module instance with the specified adapter.
  * 
  * @param params - Configuration parameters for the CrossChain module
@@ -46,7 +43,6 @@ export async function createCrossChain<T extends ICrossChain = ICrossChain>(para
 
   // ✅ ADD: Validate environment before creation
   if (adapterInfo.environment) {
-    console.log(`[CrossChain] Environment requirements for ${name}:`, adapterInfo.environment);
     validateEnvironment(name, adapterInfo.environment);
   }
 

@@ -4,22 +4,21 @@ import { describe, beforeEach, it, expect, afterEach } from 'vitest';
 import { createContractHandler, GenerateContractInput, IBaseContractHandler } from '../../../src/index.js';
 import { testContractHandlerInterface } from '../../02_IBaseContractHandler.test.js';
 import { ethers } from 'ethers';
-import { TEST_PRIVATE_KEY, RUN_INTEGRATION_TESTS, INFURA_API_KEY, ALCHEMY_API_KEY } from '../../../config.js';
+import { TEST_PRIVATE_KEY, RUN_INTEGRATION, INFURA_API_KEY, ALCHEMY_API_KEY } from '../../../config.js';
 import { createWallet, IEVMWallet } from '@m3s/wallet';
-import { NetworkHelper } from '@m3s/shared';
+import { Ms3Modules, NetworkHelper, registry } from '@m3s/shared';
 import * as node_path from 'path';
 import * as fs_promises from 'fs/promises';
+import {logger} from '../../../../../logger.js';
 
-// Debug check for adapter registration
-import { registry } from '@m3s/shared';
-const smartContractAdapters = registry.getModuleAdapters('smart-contract');
-console.log('🔍 Available smart-contract adapters:', smartContractAdapters.map(a => `${a.name}@${a.version}`));
+const smartContractAdapters = registry.getModuleAdapters(Ms3Modules.smartcontract);
+logger.info('🔍 Available smart-contract adapters:', smartContractAdapters.map(a => `${a.name}@${a.version}`));
 
 describe('OpenZeppelinAdapter Tests', () => {
 
   // Test interface implementation (remains as is)
   describe('OpenZeppelinAdapter - Interface Implementation', () => {
-    let contractHandler: IBaseContractHandler;
+    let contractHandler: IBaseContractHandler & { workDir: string }
 
     beforeEach(async () => {
       contractHandler = await createContractHandler({
@@ -38,7 +37,7 @@ describe('OpenZeppelinAdapter Tests', () => {
 
   // Test ERC20 options (generation tests, remains skipped as per original and user focus)
   describe('ERC20 Options Tests', () => {
-    let contractHandler: IBaseContractHandler;
+    let contractHandler: IBaseContractHandler & { workDir: string }
 
     beforeEach(async () => {
       contractHandler = await createContractHandler({
@@ -264,9 +263,9 @@ describe('OpenZeppelinAdapter Tests', () => {
   });
 
   // Full integration tests for real blockchain deployment
-  (RUN_INTEGRATION_TESTS ? describe : describe.skip)('Full Integration Tests', () => {
+  (RUN_INTEGRATION ? describe : describe.skip)('Full Integration Tests', () => {
     let walletAdapter: IEVMWallet;
-    let contractHandler: IBaseContractHandler & { solidityCompilerConfig: { workDir: string } };
+    let contractHandler:  IBaseContractHandler & { workDir: string }
     let activeTempWorkDir: string | undefined; // To store temp workDir path for cleanup
 
     // Centralized setup function
@@ -286,9 +285,6 @@ describe('OpenZeppelinAdapter Tests', () => {
         name: 'ethers', version: '1.0.0', options: { privateKey: TEST_PRIVATE_KEY, provider: networkConfig }
       });
 
-      // await walletAdapter.setProvider(networkConfig);
-
-      let workDirToUse: string | undefined = undefined;
       if (useTempWorkDir) {
         // Clean up previous temp dir if any, before creating a new one for this test run
         if (activeTempWorkDir) {
@@ -296,13 +292,12 @@ describe('OpenZeppelinAdapter Tests', () => {
             await fs_promises.rm(activeTempWorkDir, { recursive: true, force: true });
           } catch (err) {
             // Log error but don't fail the setup, as OS might have already cleaned it or other issues.
-            console.warn(`[Test Setup] Could not clean up previous temp dir ${activeTempWorkDir}:`, (err as Error).message);
+            logger.warning(`[Test Setup] Could not clean up previous temp dir ${activeTempWorkDir}:`, (err as Error).message);
           }
           activeTempWorkDir = undefined;
         }
         const os = await import('os')
         activeTempWorkDir = await fs_promises.mkdtemp(node_path.join(os.tmpdir(), `m3s_erc20_oz_test_`));
-        workDirToUse = activeTempWorkDir;
       } else {
         // If not using temp, ensure activeTempWorkDir is cleared if it was set by a previous test
         if (activeTempWorkDir) {
@@ -316,9 +311,8 @@ describe('OpenZeppelinAdapter Tests', () => {
         options: {
           preserveOutput,
           providerConfig: networkConfig,
-          ...(workDirToUse ? { workDir: workDirToUse } : {}) // Conditionally set workDir
         }
-      }) as IBaseContractHandler & { solidityCompilerConfig: { workDir: string } };
+      }) as  IBaseContractHandler & { workDir: string }
     };
 
     // Centralized cleanup function for temporary directories
@@ -327,7 +321,7 @@ describe('OpenZeppelinAdapter Tests', () => {
         try {
           await fs_promises.rm(activeTempWorkDir, { recursive: true, force: true });
         } catch (err) {
-          console.error(`⚠️ Error cleaning up temp work dir ${activeTempWorkDir}:`, (err as Error).message);
+          logger.error(`⚠️ Error cleaning up temp work dir ${activeTempWorkDir}:`, (err as Error).message);
         }
         activeTempWorkDir = undefined;
       }
@@ -340,21 +334,21 @@ describe('OpenZeppelinAdapter Tests', () => {
 
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
-          console.error(`⏰ Timeout waiting for tx ${txHash}`);
+          logger.error(`⏰ Timeout waiting for tx ${txHash}`);
           resolve(null);
         }, timeout);
 
         provider.once(txHash, async (receipt: ethers.TransactionReceipt) => {
           clearTimeout(timer);
 
-          console.log(`Receipt found for ${txHash}. Status: ${receipt.status === 1 ? 'Success' : 'Failed'}`);
+          logger.info(`Receipt found for ${txHash}. Status: ${receipt.status === 1 ? 'Success' : 'Failed'}`);
 
           if (receipt.status === 0) {
-            console.log(`🚨 [DIAGNOSTIC] Transaction FAILED! Getting transaction details...`);
+            logger.info(`🚨 [DIAGNOSTIC] Transaction FAILED! Getting transaction details...`);
 
             try {
               const tx = await provider.getTransaction(txHash);
-              console.log(`🔍 [DIAGNOSTIC] Transaction details:`, {
+              logger.info(`🔍 [DIAGNOSTIC] Transaction details:`, {
                 from: tx?.from,
                 to: tx?.to,
                 value: tx?.value?.toString(),
@@ -365,7 +359,7 @@ describe('OpenZeppelinAdapter Tests', () => {
                 data: tx?.data?.substring(0, 100) + '...'
               });
             } catch (err) {
-              console.log(`⚠️ [DIAGNOSTIC] Could not get transaction debug info:`, err);
+              logger.info(`⚠️ [DIAGNOSTIC] Could not get transaction debug info:`, err);
             }
           }
 
@@ -385,7 +379,7 @@ describe('OpenZeppelinAdapter Tests', () => {
       });
 
       it('should deploy ERC20 with multiple features and verify functionality', async () => {
-        console.log('🚀 Testing Standard ERC20 (Non-Proxy) Deployment & Functionality...');
+        logger.info('🚀 Testing Standard ERC20 (Non-Proxy) Deployment & Functionality...');
         // ... existing test logic ...
         // Uses `contractHandler` set in beforeEach
         const accounts = await walletAdapter.getAccounts();
@@ -406,7 +400,7 @@ describe('OpenZeppelinAdapter Tests', () => {
           }
         });
 
-        console.log('SOURCE CODE, ', sourceCode)
+        logger.info('SOURCE CODE, ', sourceCode)
 
         const compiled = await contractHandler.compile({
           sourceCode,
@@ -418,7 +412,7 @@ describe('OpenZeppelinAdapter Tests', () => {
 
         // Get the required constructor args spec (for debugging or UI)
         const argSpec = compiled.getDeploymentArgsSpec();
-        console.log('Required constructor args:', argSpec);
+        logger.info('Required constructor args:', argSpec);
 
         // Prepare constructor args (should match the ABI)
         const constructorArgs = [deployerAddress, deployerAddress];
@@ -435,10 +429,7 @@ describe('OpenZeppelinAdapter Tests', () => {
         const deployReceipt = await waitForReceipt(deployTxHash);
         expect(deployReceipt?.status).toBe(1);
         const contractAddress = deployReceipt!.contractAddress!;
-        console.log(`✅ MultiFeatureToken (Regular) deployed at: ${contractAddress}`);
-
-        // const iface = new ethers.Interface(compiled.artifacts.abi);
-        // const balanceCallData = iface.encodeFunctionData('balanceOf', [deployerAddress]);
+        logger.info(`✅ MultiFeatureToken (Regular) deployed at: ${contractAddress}`);
 
         const initialBalance = await walletAdapter.callContract({
           contractAddress,
@@ -451,13 +442,10 @@ describe('OpenZeppelinAdapter Tests', () => {
         const expectedPremint = ethers.parseUnits(premintAmountStr, 18);
 
         expect(initialBalance[0]).toEqual(expectedPremint);
-        console.log(`✅ Premint to deployer verified: ${ethers.formatUnits(initialBalance[0], 18)} MFT`);
+        logger.info(`✅ Premint to deployer verified: ${ethers.formatUnits(initialBalance[0], 18)} MFT`);
 
         const mintAmount = ethers.parseUnits('500', 18);
         const recipientTwo = '0xd516D0139EFAf0729dD682786D5eEb705003d0F0';
-
-        // const mintCallData = iface.encodeFunctionData('mint', [recipientTwo, mintAmount]);
-        // const mintTxHash = await walletAdapter.sendTransaction({ to: contractAddress, data: mintCallData });
 
         const owner = await walletAdapter.callContract({
           contractAddress,
@@ -479,12 +467,12 @@ describe('OpenZeppelinAdapter Tests', () => {
           value: '0'
         });
 
-        console.log('Estimated gas/fee:', feeEstimate);
-        console.log('THE ABI ', JSON.stringify(compiled.artifacts.abi, null, 2))
-        console.log('Contract paused:', paused);
-        console.log('Contract owner:', owner[0]);
-        console.log('Deployer address:', deployerAddress);
-        console.log('Minting from:', deployerAddress, 'to:', recipientTwo, 'amount:', mintAmount.toString());
+        logger.info('Estimated gas/fee:', feeEstimate);
+        logger.info('THE ABI ', JSON.stringify(compiled.artifacts.abi, null, 2))
+        logger.info('Contract paused:', paused);
+        logger.info('Contract owner:', owner[0]);
+        logger.info('Deployer address:', deployerAddress);
+        logger.info('Minting from:', deployerAddress, 'to:', recipientTwo, 'amount:', mintAmount.toString());
 
         const mintTxHash = await walletAdapter.writeContract({
           contractAddress,
@@ -504,10 +492,8 @@ describe('OpenZeppelinAdapter Tests', () => {
         });
 
         expect(balanceRecipientTwo[0]).toEqual(mintAmount);
-        console.log(`✅ Mint to ${recipientTwo} verified: ${ethers.formatUnits(balanceRecipientTwo[0], 18)} MFT`);
+        logger.info(`✅ Mint to ${recipientTwo} verified: ${ethers.formatUnits(balanceRecipientTwo[0], 18)} MFT`);
 
-        // const pauseCallData = iface.encodeFunctionData('pause', []);
-        // const pauseTxHash = await walletAdapter.sendTransaction({ to: contractAddress, data: pauseCallData });
         const pauseTxHash = await walletAdapter.writeContract({
           contractAddress,
           abi: compiled.artifacts.abi,
@@ -520,10 +506,8 @@ describe('OpenZeppelinAdapter Tests', () => {
         expect(pauseReceipt?.status).toBe(1);
 
         const transferAmount = ethers.parseUnits('1', 18);
-        // const transferCallData = iface.encodeFunctionData('transfer', [recipientTwo, transferAmount]);
         let transferFailed = false;
         try {
-          // const txHash = await walletAdapter.sendTransaction({ to: contractAddress, data: transferCallData });
           const txHash = await walletAdapter.writeContract({
             contractAddress,
             abi: compiled.artifacts.abi,
@@ -541,10 +525,7 @@ describe('OpenZeppelinAdapter Tests', () => {
           expect(e.message).toMatch(/revert|paused|ERC20Pausable/i);
         }
         expect(transferFailed).toBe(true);
-        console.log(`✅ Pause verified (transfer failed as expected)`);
-
-        // const unpauseCallData = iface.encodeFunctionData('unpause', []);
-        // const unpauseTxHash = await walletAdapter.sendTransaction({ to: contractAddress, data: unpauseCallData });
+        logger.info(`✅ Pause verified (transfer failed as expected)`);
 
         const unpauseTxHash = await walletAdapter.writeContract({
           contractAddress,
@@ -556,7 +537,6 @@ describe('OpenZeppelinAdapter Tests', () => {
         const unpauseReceipt = await waitForReceipt(unpauseTxHash);
         expect(unpauseReceipt?.status).toBe(1);
 
-        // const transferTxHash = await walletAdapter.sendTransaction({ to: contractAddress, data: transferCallData });
         const transferTxHash = await walletAdapter.writeContract({
           contractAddress,
           abi: compiled.artifacts.abi,
@@ -566,11 +546,9 @@ describe('OpenZeppelinAdapter Tests', () => {
 
         const transferReceipt = await waitForReceipt(transferTxHash);
         expect(transferReceipt?.status).toBe(1);
-        console.log(`✅ Unpause verified (transfer succeeded)`);
+        logger.info(`✅ Unpause verified (transfer succeeded)`);
 
         const burnAmount = ethers.parseUnits('100', 18);
-        // const burnCallData = iface.encodeFunctionData('burn', [burnAmount]);
-        // const burnTxHash = await walletAdapter.sendTransaction({ to: contractAddress, data: burnCallData });
         const burnTxHash = await walletAdapter.writeContract({
           contractAddress,
           abi: compiled.artifacts.abi,
@@ -592,8 +570,8 @@ describe('OpenZeppelinAdapter Tests', () => {
 
         const expectedBalanceAfterBurn = expectedPremint - transferAmount - burnAmount;
         expect(balanceAfterBurn[0]).toEqual(expectedBalanceAfterBurn);
-        console.log(`✅ Burn verified. Deployer new balance: ${ethers.formatUnits(balanceAfterBurn[0], 18)} MFT`);
-        console.log('✅ Standard ERC20 (Non-Proxy) tests passed!');
+        logger.info(`✅ Burn verified. Deployer new balance: ${ethers.formatUnits(balanceAfterBurn[0], 18)} MFT`);
+        logger.info('✅ Standard ERC20 (Non-Proxy) tests passed!');
       }, 300000);
     });
 
@@ -607,7 +585,7 @@ describe('OpenZeppelinAdapter Tests', () => {
 
       const testProxyDeploymentFileSystem = async (preserve: boolean, contractNamePrefix: string) => {
         // contractHandler is set by the beforeEach of the nested describe below
-        console.log(`🚀 Testing Proxy Artifact Preservation (preserveOutput: ${preserve}, prefix: ${contractNamePrefix}, workDir: ${contractHandler.solidityCompilerConfig.workDir})...`);
+        logger.info(`🚀 Testing Proxy Artifact Preservation (preserveOutput: ${preserve}, prefix: ${contractNamePrefix}, workDir: ${contractHandler.workDir})...`);
         const accounts = await walletAdapter.getAccounts();
         const deployerAddress = accounts[0];
 
@@ -633,25 +611,25 @@ describe('OpenZeppelinAdapter Tests', () => {
         const proxyTxHash = await walletAdapter.sendTransaction({ data: proxyDeployTx.data!, value: proxyInfo.value || '0' });
         const proxyReceipt = await waitForReceipt(proxyTxHash);
         expect(proxyReceipt?.status).toBe(1);
-        console.log(`✅ ${contractNamePrefix} Proxy (preserve: ${preserve}) deployed at: ${proxyReceipt!.contractAddress!}`);
+        logger.info(`✅ ${contractNamePrefix} Proxy (preserve: ${preserve}) deployed at: ${proxyReceipt!.contractAddress!}`);
 
-        const mainAdapterWorkDir = contractHandler.solidityCompilerConfig.workDir; // This will be the temp dir
+        const mainAdapterWorkDir = contractHandler.workDir; // This will be the temp dir
         const expectedProxyCacheDirInWorkDir = node_path.join(mainAdapterWorkDir, 'm3s_proxies_cache');
 
         if (preserve) {
           try {
             await fs_promises.access(expectedProxyCacheDirInWorkDir);
-            console.log(`✅ Verified proxy artifacts base directory exists: ${expectedProxyCacheDirInWorkDir}`);
+            logger.info(`✅ Verified proxy artifacts base directory exists: ${expectedProxyCacheDirInWorkDir}`);
             const proxyBuildHashDirs = await fs_promises.readdir(expectedProxyCacheDirInWorkDir);
             expect(proxyBuildHashDirs.length).toBeGreaterThan(0);
-            console.log(`✅ Proxy artifacts base directory is not empty.`);
+            logger.info(`✅ Proxy artifacts base directory is not empty.`);
             const firstProxyBuildDir = node_path.join(expectedProxyCacheDirInWorkDir, proxyBuildHashDirs[0]);
             const artifactJsonPath = node_path.join(firstProxyBuildDir, 'artifacts', 'contracts', 'M3S_ERC1967Proxy.sol', 'M3S_ERC1967Proxy.json');
             await fs_promises.access(artifactJsonPath);
-            console.log(`✅ Verified proxy artifact JSON exists: ${artifactJsonPath}`);
-            console.log(`✅ Proxy artifacts ARE preserved in ${expectedProxyCacheDirInWorkDir} (preserveOutput: true).`);
+            logger.info(`✅ Verified proxy artifact JSON exists: ${artifactJsonPath}`);
+            logger.info(`✅ Proxy artifacts ARE preserved in ${expectedProxyCacheDirInWorkDir} (preserveOutput: true).`);
           } catch (error: any) {
-            console.error(`❌ Error during 'preserve: true' check for proxy artifacts at ${expectedProxyCacheDirInWorkDir}:`, error);
+            logger.error(`❌ Error during 'preserve: true' check for proxy artifacts at ${expectedProxyCacheDirInWorkDir}:`, error);
             throw error;
           }
         } else {
@@ -661,10 +639,10 @@ describe('OpenZeppelinAdapter Tests', () => {
             if (files.length > 0) {
               throw new Error(`Proxy artifacts directory ${expectedProxyCacheDirInWorkDir} found in temp workDir and is NOT empty when preserveOutput is false.`);
             }
-            console.log(`✅ Proxy artifacts directory ${expectedProxyCacheDirInWorkDir} found in temp workDir but is empty (acceptable for preserveOutput: false).`);
+            logger.info(`✅ Proxy artifacts directory ${expectedProxyCacheDirInWorkDir} found in temp workDir but is empty (acceptable for preserveOutput: false).`);
           } catch (error: any) {
             expect((error as NodeJS.ErrnoException).code).toBe('ENOENT');
-            console.log(`✅ Verified proxy artifacts directory ${expectedProxyCacheDirInWorkDir} does NOT exist in temp workDir (preserveOutput: false), as expected.`);
+            logger.info(`✅ Verified proxy artifacts directory ${expectedProxyCacheDirInWorkDir} does NOT exist in temp workDir (preserveOutput: false), as expected.`);
           }
         }
       };
@@ -694,7 +672,7 @@ describe('OpenZeppelinAdapter Tests', () => {
       });
 
       it('UUPS ERC20 Proxy: should deploy and verify functionality', async () => {
-        console.log('🚀 Testing UUPS ERC20 Proxy Functionality...');
+        logger.info('🚀 Testing UUPS ERC20 Proxy Functionality...');
         // ... existing test logic ...
         // Uses `contractHandler` set in beforeEach
         const accounts = await walletAdapter.getAccounts();
@@ -722,12 +700,9 @@ describe('OpenZeppelinAdapter Tests', () => {
         const proxyReceipt = await waitForReceipt(proxyTxHash);
         expect(proxyReceipt?.status).toBe(1);
         const proxyAddress = proxyReceipt!.contractAddress!;
-        console.log(`✅ UUPS ERC20 Proxy deployed at: ${proxyAddress}`);
+        logger.info(`✅ UUPS ERC20 Proxy deployed at: ${proxyAddress}`);
 
-        // const iface = new ethers.Interface(compiled.artifacts.abi);
         const mintAmount = ethers.parseUnits('1000', 18);
-        // const mintCallData = iface.encodeFunctionData('mint', [deployerAddress, mintAmount]);
-        // const mintTxHash = await walletAdapter.sendTransaction({ to: proxyAddress, data: mintCallData });
 
         const mintTxHash = await walletAdapter.writeContract({
           contractAddress: proxyAddress,
@@ -738,11 +713,11 @@ describe('OpenZeppelinAdapter Tests', () => {
 
         const mintReceipt = await waitForReceipt(mintTxHash);
         expect(mintReceipt?.status).toBe(1);
-        console.log('✅ UUPS ERC20 Proxy mint functionality test passed!');
+        logger.info('✅ UUPS ERC20 Proxy mint functionality test passed!');
       }, 300000);
 
       it('Transparent ERC20 Proxy: should deploy and verify functionality', async () => {
-        console.log('🚀 Testing Transparent (ERC1967) ERC20 Proxy Functionality...');
+        logger.info('🚀 Testing Transparent (ERC1967) ERC20 Proxy Functionality...');
         // ... existing test logic ...
         // Uses `contractHandler` set in beforeEach
         const accounts = await walletAdapter.getAccounts();
@@ -770,12 +745,9 @@ describe('OpenZeppelinAdapter Tests', () => {
         const proxyReceipt = await waitForReceipt(proxyTxHash);
         expect(proxyReceipt?.status).toBe(1);
         const proxyAddress = proxyReceipt!.contractAddress!;
-        console.log(`✅ Transparent ERC20 Proxy deployed at: ${proxyAddress}`);
+        logger.info(`✅ Transparent ERC20 Proxy deployed at: ${proxyAddress}`);
 
-        // const iface = new ethers.Interface(compiled.artifacts.abi);
         const mintAmount = ethers.parseUnits('500', 18);
-        // const mintCallData = iface.encodeFunctionData('mint', [deployerAddress, mintAmount]);
-        // const mintTxHash = await walletAdapter.sendTransaction({ to: proxyAddress, data: mintCallData });
 
         const mintTxHash = await walletAdapter.writeContract({
           contractAddress: proxyAddress,
@@ -786,7 +758,7 @@ describe('OpenZeppelinAdapter Tests', () => {
 
         const mintReceipt = await waitForReceipt(mintTxHash);
         expect(mintReceipt?.status).toBe(1);
-        console.log('✅ Transparent (ERC1967) ERC20 Proxy mint functionality test passed!');
+        logger.info('✅ Transparent (ERC1967) ERC20 Proxy mint functionality test passed!');
       }, 300000);
     });
   });

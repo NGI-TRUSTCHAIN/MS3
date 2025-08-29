@@ -148,7 +148,7 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
     }
 
     this.multiChainRpcs = { ...multiChainRpcs };
-    console.log(`[Web3AuthWalletAdapter] Updated all chain RPCs for ${Object.keys(multiChainRpcs).length} chains`);
+    console.info(`[Web3AuthWalletAdapter] Updated all chain RPCs for ${Object.keys(multiChainRpcs).length} chains`);
   }
 
   async setProvider(config: NetworkConfig): Promise<void> {
@@ -193,7 +193,7 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
     } catch (switchError: any) {
       if (switchError.code === 4902 || switchError.message?.includes('Unrecognized chain ID') || switchError.message?.includes('Chain config has not been added')) {
         try {
-          console.log(`[Web3AuthWalletAdapter] Adding chain ${newChainIdHex} to Web3Auth`);
+          console.info(`[Web3AuthWalletAdapter] Adding chain ${newChainIdHex} to Web3Auth`);
 
           const chainToAdd = {
             chainId: newChainIdHex,
@@ -423,7 +423,6 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
   }
 
   public async sendTransaction(tx: GenericTransactionData): Promise<string> {
-    console.log('SENDING THIS TX FROM THE CLIENT ...', tx)
 
     if (!this.isConnected()) {
       throw new AdapterError("Wallet not connected.", { code: WalletErrorCode.WalletNotConnected, methodName: 'sendTransaction' });
@@ -431,7 +430,7 @@ export class Web3AuthWalletAdapter implements IEVMWallet {
     try {
       const signer = await this.getSigner();
       const txRequest = await this.prepareTransactionRequest(tx);
-      console.log('SENDING THIS TX FROM prepareTransactionRequest ...', txRequest)
+    console.log('Sending tx from client: ', txRequest)
 
       const response = await signer.sendTransaction(txRequest);
       return response.hash;

@@ -2,22 +2,11 @@ import { AdapterMetadata, CompatibilityMatrix, CompatibilityReport, EnvironmentR
 import { Capability } from "./capability.js";
 import { checkCrossPackageCompatibility } from "./compatibility.js";
 
-
-
-// Helper function to get a value from a nested path
-export function getPropertyByPath(obj: any, path: string): any {
-  return path.split('.').reduce((currentObject, key) => {
-    return (currentObject && typeof currentObject === 'object' && Object.prototype.hasOwnProperty.call(currentObject, key))
-      ? currentObject[key]
-      : undefined;
-  }, obj);
-}
-
 class UniversalRegistry {
   private modules: Map<string, ModuleMetadata> = new Map();
   private adapters: Map<string, Map<string, AdapterMetadata>> = new Map();
   private compatibilityMatrices: Map<string, Map<string, CompatibilityMatrix>> = new Map();
-  private interfaceShapes: Map<string, string[]> = new Map(); // ✅ ADD: The missing map
+  private interfaceShapes: Map<string, Capability[]> = new Map();// ✅ ADD: The missing map
 
     /**
    * ✅ NEW: Register the shape of a convenience alias.
@@ -33,7 +22,7 @@ class UniversalRegistry {
    * ✅ NEW: Get the shape of a convenience alias.
    * This is called by the validator to verify an adapter meets an interface's requirements.
    */
-  getInterfaceShape(interfaceName: string): string[] | undefined {
+  getInterfaceShape(interfaceName: string): Capability[] | undefined {
     return this.interfaceShapes.get(interfaceName);
   }
 

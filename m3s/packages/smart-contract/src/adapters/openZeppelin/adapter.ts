@@ -44,7 +44,7 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
 
     private constructor(args: args) {
 
-        const defaultWorkDir = path.join(process.cwd(), 'contracts');
+        const defaultWorkDir = path.join(process.cwd(), 'artifacts');
         this.workDir = args.options?.workDir || defaultWorkDir;
         this.preserveOutput = args.options?.preserveOutput ?? false;
         this.providerConfig = args.options?.providerConfig;
@@ -55,14 +55,14 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
 
         // Configuration specific to helpers
         this.solidityCompilerConfig = {
-            workDir: this.workDir, // Pass the determined workDir
+            workDir: this.workDir,
             solcVersion: args.options?.solcVersion || '0.8.22',
             compilerSettings: args.options?.compilerSettings || { optimizer: { enabled: true, runs: 200 } },
             hardhatConfigFileName: args.options?.hardhatConfig?.configFileName || 'hardhat.config.cjs',
             preserveOutput: this.preserveOutput,
         };
 
-        // Create helper instances 1.0
+        // Create helper instances
         this.generator = new CodeGenerator();
         this.solidityCompiler = new SolidityCompiler(this.solidityCompilerConfig);
 
@@ -76,38 +76,38 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
 
     async initialize(): Promise<void> {
         if (this.initialized) return;
-        console.log(`[OpenZeppelinAdapter] Initializing...`);
+        console.info(`[OpenZeppelinAdapter] Initializing...`);
         try {
             // 1. Ensure work directory exists
             await fs.mkdir(this.workDir, { recursive: true });
-            console.log(`[OpenZeppelinAdapter] Work directory ensured: ${this.workDir}`);
+            console.info(`[OpenZeppelinAdapter] Work directory ensured: ${this.workDir}`);
 
             // 2. Initialize OpenZeppelinAdapter's optional default EVM provider
             let adapterRpcUrl: string | undefined;
             if (this.providerConfig) {
                 if (this.providerConfig.rpcUrls && Array.isArray(this.providerConfig.rpcUrls) && this.providerConfig.rpcUrls.length > 0) {
                     adapterRpcUrl = this.providerConfig.rpcUrls[0];
-                    console.log(`[OpenZeppelinAdapter] Using rpcUrls[0] for its default provider: ${adapterRpcUrl}`);
+                    console.info(`[OpenZeppelinAdapter] Using rpcUrls[0] for its default provider: ${adapterRpcUrl}`);
                 }
             }
 
             if (adapterRpcUrl) {
                 try {
-                    console.log(`[OpenZeppelinAdapter] Configuring its default EVM provider from: ${adapterRpcUrl}`);
+                    console.info(`[OpenZeppelinAdapter] Configuring its default EVM provider from: ${adapterRpcUrl}`);
                     const chainId = this.providerConfig?.chainId ? Number(this.providerConfig.chainId) : undefined;
                     this.defaultProvider = new JsonRpcProvider(adapterRpcUrl, chainId);
                     await this.defaultProvider.getNetwork(); // Test connection
-                    console.log(`[OpenZeppelinAdapter] Its default EVM provider connected successfully to network: ${(await this.defaultProvider.getNetwork()).name}`);
+                    console.info(`[OpenZeppelinAdapter] Its default EVM provider connected successfully to network: ${(await this.defaultProvider.getNetwork()).name}`);
                 } catch (providerError: any) {
                     console.warn(`[OpenZeppelinAdapter] Failed to initialize its default EVM provider: ${providerError.message}`);
                     this.defaultProvider = undefined;
                 }
             } else {
-                console.log(`[OpenZeppelinAdapter] No suitable RPC URL found in providerConfig for its own default provider.`);
+                console.warn(`[OpenZeppelinAdapter] No suitable RPC URL found in providerConfig for its own default provider.`);
             }
 
             this.initialized = true;
-            console.log(`[OpenZeppelinAdapter] Initialized successfully.`);
+            console.info(`[OpenZeppelinAdapter] Initialized successfully.`);
         } catch (error: any) {
             this.initialized = false;
             console.error(`[OpenZeppelinAdapter] Initialization failed: ${error.message}`, error.stack);
@@ -162,9 +162,9 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
         if (supportsUpgradeable) {
             const allowed = ["transparent", "uups"];
             if (!('upgradeable' in opts) || opts.upgradeable == null) {
-                opts["upgradeable"] = false; // Explicitly none
+                opts["upgradeable"] = false;
             } else if (!allowed.includes(opts.upgradeable)) {
-                opts["upgradeable"] = false; // Fallback to none if invalid
+                opts["upgradeable"] = false;
             }
         }
 
@@ -226,13 +226,14 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
                 methodName
             });
         }
-        console.log(`[OpenZeppelinAdapter] Routing compile request for language: ${input.language}`);
+
+        console.info(`[OpenZeppelinAdapter] Routing compile request for language: ${input.language}`);
 
         try {
             // --- Language-Based Compiler Routing ---
             switch (input.language.toLowerCase()) {
                 case 'solidity':
-                    console.log(`[OpenZeppelinAdapter] Using SolidityCompiler (solc ${this.solidityCompilerConfig.solcVersion})...`);
+                    console.info(`[OpenZeppelinAdapter] Using SolidityCompiler (solc ${this.solidityCompilerConfig.solcVersion})...`);
                     return await this.solidityCompiler.compile(input);
                 case 'cairo':
                     throw new AdapterError(`Compilation for 'cairo' is not yet implemented.`, {

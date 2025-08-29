@@ -1,4 +1,4 @@
-import { AdapterMetadata, getStaticCompatibilityMatrix, getEnvironments, getFeatures, getRequirements, registry, RuntimeEnvironment, Capability } from '@m3s/shared';
+import { AdapterMetadata, getStaticCompatibilityMatrix, getEnvironments, getRequirements, registry, RuntimeEnvironment, Capability, Ms3Modules } from '@m3s/shared';
 import { Web3AuthWalletAdapter } from './web3authWallet.js';
 import { WalletType } from '../../types/index.js';
 import Joi from 'joi';
@@ -55,12 +55,10 @@ const web3authEnvironment = getEnvironments(
   ]
 );
 
-const web3authFeatures = getFeatures(Web3AuthWalletAdapter);
-
 const adapterMetadata: AdapterMetadata = {
   name: 'web3auth',
   version: '1.0.0',
-  module: 'wallet',
+  module: Ms3Modules.wallet,
   adapterType: WalletType.web3auth,
   adapterClass: Web3AuthWalletAdapter,
    /** ✅ ADD: Define the capabilities this adapter implements. */
@@ -74,22 +72,21 @@ const adapterMetadata: AdapterMetadata = {
      Capability.TokenOperations,
      Capability.RPCHandler,
      Capability.TransactionStatus,
-         Capability.AdapterLifecycle
+     Capability.AdapterLifecycle
    ],
   requirements: web3authRequirements,
   environment: web3authEnvironment,
-  features: web3authFeatures
 };
 
-registry.registerAdapter('wallet', adapterMetadata);
+registry.registerAdapter(Ms3Modules.wallet, adapterMetadata);
 
 // ✅ REPLACE: Use static compatibility matrix
-const compatibilityMatrix = getStaticCompatibilityMatrix('wallet', 'web3auth', '1.0.0');
+const compatibilityMatrix = getStaticCompatibilityMatrix(Ms3Modules.wallet, 'web3auth', '1.0.0');
 if (compatibilityMatrix) {
-  registry.registerCompatibilityMatrix('wallet', compatibilityMatrix);
+  registry.registerCompatibilityMatrix(Ms3Modules.wallet, compatibilityMatrix);
 }
 
-console.log('✅ Web3Auth wallet adapter registered with static compatibility matrix');
-console.log('📋 Generated requirements:', web3authRequirements);
-console.log('🌍 Generated environment:', web3authEnvironment);
-console.log('🔧 Generated features:', web3authFeatures.map(f => f.name));
+console.debug('✅ Web3Auth wallet adapter registered with static compatibility matrix');
+console.debug('📋 Generated requirements:', web3authRequirements);
+console.debug('🌍 Generated environment:', web3authEnvironment);
+console.debug('🔧 Generated capabilities:', adapterMetadata.capabilities.map(c => JSON.parse(JSON.stringify(c))));

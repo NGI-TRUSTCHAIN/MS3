@@ -1,5 +1,5 @@
-import { AdapterMetadata, registry } from '@m3s/shared';
-import { getRequirements, getEnvironments, getFeatures, getStaticCompatibilityMatrix } from '@m3s/shared';
+import { AdapterMetadata, Ms3Modules, registry } from '@m3s/shared';
+import { getRequirements, getEnvironments, getStaticCompatibilityMatrix } from '@m3s/shared';
 import { WalletTemplateAdapter } from './wallet.js';
 import { RuntimeEnvironment } from '@m3s/shared';
 import Joi from 'joi';
@@ -28,28 +28,25 @@ const walletEnvironment = getEnvironments(
   ]
 );
 
-const walletFeatures = getFeatures(WalletTemplateAdapter);
-
 const adapterMetadata: AdapterMetadata = {
   name: 'wallet-template',
   version: '1.0.0',
-  module: 'wallet',
+  module: Ms3Modules.wallet,
   adapterType: WalletType.evm,
   adapterClass: WalletTemplateAdapter,
   capabilities: [],
   requirements: walletRequirements,
   environment: walletEnvironment,
-  features: walletFeatures
 };
 
-registry.registerAdapter('wallet', adapterMetadata);
+registry.registerAdapter(Ms3Modules.wallet, adapterMetadata);
 
-const compatibilityMatrix = getStaticCompatibilityMatrix('wallet', 'wallet-template', '1.0.0');
+const compatibilityMatrix = getStaticCompatibilityMatrix(Ms3Modules.wallet, 'wallet-template', '1.0.0');
 if (compatibilityMatrix) {
-  registry.registerCompatibilityMatrix('wallet', compatibilityMatrix);
+  registry.registerCompatibilityMatrix(Ms3Modules.wallet, compatibilityMatrix);
 }
 
-console.log('✅ Template wallet adapter registered with static compatibility matrix');
-console.log('📋 Generated requirements:', walletRequirements);
-console.log('🌍 Generated environment:', walletEnvironment);
-console.log('🔧 Generated features:', walletFeatures.map(f => f.name));
+console.debug('✅ Template wallet adapter registered with static compatibility matrix');
+console.debug('📋 Generated requirements:', walletRequirements);
+console.debug('🌍 Generated environment:', walletEnvironment);
+console.debug('🔧 Generated capabilities:', adapterMetadata.capabilities.map(c => JSON.parse(JSON.stringify(c))));

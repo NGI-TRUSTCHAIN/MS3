@@ -7,6 +7,7 @@ import { JsonRpcProvider } from 'ethers';
 import { WalletEvent, GenericTransactionData, createWallet, IEVMWallet } from '@m3s/wallet';
 import { EvmWalletAdapter } from '../../src/adapters/ethers/ethersWallet.js';
 import { INFURA_API_KEY } from '../../../crosschain/config.js';
+import {logger} from '../../../../logger.js';
 
 describe('EvmWalletAdapter Tests', () => {
   // For tests requiring a specific, potentially pre-funded key.
@@ -64,7 +65,7 @@ describe('EvmWalletAdapter Tests', () => {
       sepoliaConfig = await networkHelper.getNetworkConfig('holesky');
 
     } catch (e) {
-      console.error("Error loading Sepolia config in beforeAll:", e);
+      logger.error("Error loading Sepolia config in beforeAll:", e);
       sepoliaConfig = await networkHelper.getNetworkConfig('holesky'); // Fallback on error
     }
   });
@@ -89,12 +90,12 @@ describe('EvmWalletAdapter Tests', () => {
         try {
           await walletInstance.setProvider(sepoliaConfig);
         } catch (providerError) {
-          console.warn("Could not set provider in beforeEach:", providerError);
+          logger.warning("Could not set provider in beforeEach:", providerError);
         }
       }
 
     } catch (error) {
-      console.error('Failed to create or initialize wallet instance:', error);
+      logger.error('Failed to create or initialize wallet instance:', error);
       creationFailed = true; // Set flag if creation/initialization fails
       walletInstance = undefined; // Ensure instance is undefined on failure
     }
@@ -148,7 +149,7 @@ describe('EvmWalletAdapter Tests', () => {
     it('should use preferred RPCs when setting provider', async () => {
       // Skip if no valid network config available
       if (!sepoliaConfig || !sepoliaConfig.rpcUrls || sepoliaConfig.rpcUrls.length === 0) {
-        console.warn('Skipping RPC preference test - no valid network config');
+        logger.warning('Skipping RPC preference test - no valid network config');
         return;
       }
 
@@ -201,7 +202,7 @@ describe('EvmWalletAdapter Tests', () => {
           // ✅ Check that it's the right kind of error
           expect(error.message).toMatch(testCase.expectedError);
           expect(error.name).toContain('AdapterError');
-          console.log(`✅ Validation test passed: ${testCase.name}`);
+          logger.info(`✅ Validation test passed: ${testCase.name}`);
         }
       }
     });
@@ -251,7 +252,7 @@ describe('EvmWalletAdapter Tests', () => {
   describe('When wallet is initialized', () => {
     beforeEach(() => {
       // Check the flag
-      console.log('06 Skipping wallet tests?? ', creationFailed, !walletInstance, !walletInstance!.isInitialized())
+      logger.info('06 Skipping wallet tests?? ', creationFailed, !walletInstance, !walletInstance!.isInitialized())
 
       if (creationFailed || !walletInstance || !walletInstance.isInitialized()) {
         it.skip('Skipping wallet interface tests as initialization failed or instance unavailable', () => { });
@@ -312,11 +313,11 @@ describe('EvmWalletAdapter Tests', () => {
           expect(NetworkHelper.normalizeChainId(newNetwork.chainId))
             .toEqual(NetworkHelper.normalizeChainId(arbitrumConfig.chainId));
 
-          console.log('✅ Dynamic network selection succeeded with reliable RPC');
+          logger.info('✅ Dynamic network selection succeeded with reliable RPC');
 
         } catch (networkError: any) {
           if (networkError.message.includes('timeout')) {
-            console.warn('⚠️ Network switch timed out - this is acceptable for unreliable RPCs');
+            logger.warning('⚠️ Network switch timed out - this is acceptable for unreliable RPCs');
             expect(true).toBe(true); // Pass the test
           } else {
             throw networkError; // Re-throw other errors
@@ -327,7 +328,7 @@ describe('EvmWalletAdapter Tests', () => {
         walletInstance!.off(WalletEvent.chainChanged, eventSpy);
 
       } catch (error) {
-        console.warn('⚠️ Dynamic network selection test failed due to RPC connectivity:', error);
+        logger.warning('⚠️ Dynamic network selection test failed due to RPC connectivity:', error);
 
         // ✅ FIXED: Don't fail the test for RPC connectivity issues
         if (error instanceof Error && (
@@ -336,7 +337,7 @@ describe('EvmWalletAdapter Tests', () => {
           error.message.includes('RPC') ||
           error.message.includes('network')
         )) {
-          console.log('✅ Test passes - RPC connectivity issues are expected');
+          logger.info('✅ Test passes - RPC connectivity issues are expected');
           expect(true).toBe(true); // Pass the test
         } else {
           // Only fail for real errors (like assertion failures)
@@ -358,7 +359,7 @@ describe('EvmWalletAdapter Tests', () => {
       if (!walletInstance) return;
       // No need for !walletInstance check
       const name = walletInstance.name
-      console.log('NAME IS -->', name)
+      logger.info('NAME IS -->', name)
       expect(walletInstance.name).toBe('ethers'); // Should match adapterName passed to create
     });
 
@@ -414,11 +415,7 @@ describe('EvmWalletAdapter Tests', () => {
         // Clean up
         walletInstance!.off(WalletEvent.chainChanged, eventSpy);
       } catch (error) {
-        console.warn('Network switching test failed, likely due to connectivity:', error);
-        // Fail the test explicitly if dynamic switching is critical
-        // expect(true).toBe(false); // Uncomment to fail test on error
-        // Or allow to pass if connectivity is flaky in CI/local
-        // expect(true).toBe(true);
+        logger.warning('Network switching test failed, likely due to connectivity:', error);
       }
     }, 30000);
 
@@ -470,16 +467,16 @@ describe('EvmWalletAdapter Tests', () => {
             expect(txHash.length).toBe(66); // Standard Ethereum tx hash length
           } catch (sendError: any) {
             // Don't fail the test if sending fails due to network issues
-            console.warn('[EthersWallet Test] sendTransaction failed (likely network/RPC issue):', sendError.message);
+            logger.warning('[EthersWallet Test] sendTransaction failed (likely network/RPC issue):', sendError.message);
             // Just ensure we got past the signing part
             expect(signedTx).toBeDefined();
           }
         } else {
-          console.warn('[EthersWallet Test] Skipping sendTransaction part of flow as wallet is not connected.');
+          logger.warning('[EthersWallet Test] Skipping sendTransaction part of flow as wallet is not connected.');
         }
 
       } catch (error) {
-        console.warn('Transaction simulation failed:', error);
+        logger.warning('Transaction simulation failed:', error);
         throw error;
       }
     }, 20000);
@@ -529,13 +526,13 @@ describe('EvmWalletAdapter Tests', () => {
         expect(signedTx.length).toBeGreaterThan(100); // Basic check for a signed transaction
 
       } catch (error: any) {
-        console.error('Error in explicit signTransaction test:', error);
+        logger.error('Error in explicit signTransaction test:', error);
         // Log additional details if it's an ethers error
         if (error.info) {
-          console.error('Ethers error info:', error.info);
+          logger.error('Ethers error info:', error.info);
         }
         if (error.reason) {
-          console.error('Ethers error reason:', error.reason);
+          logger.error('Ethers error reason:', error.reason);
         }
         throw error; // Fail the test if any error occurs
       }

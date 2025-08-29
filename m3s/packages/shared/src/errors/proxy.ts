@@ -2,7 +2,7 @@ import { AdapterError } from "./AdapterError.js";
 import { WalletErrorCode } // Assuming WalletErrorCode is a general type for error codes, adjust if needed
   // Or import a more generic ErrorCode type if you have one for all modules
   from "../types/error.js"; // Or the correct path to your error code definitions
-import { MethodToCapabilityMap } from "../registry/capability.js";
+import { Capability, MethodToCapabilityMap } from "../registry/capability.js";
 
 /**
  * Creates a Proxy around an adapter instance to standardize error handling.
@@ -21,7 +21,7 @@ import { MethodToCapabilityMap } from "../registry/capability.js";
  */
 export function createErrorHandlingProxy<T extends object>(
   adapterInstance: T,
-  capabilities: string[], // ✅ ADD: The adapter's capabilities
+  capabilities: Capability[], // ✅ ADD: The adapter's capabilities
   errorMap: Record<string, WalletErrorCode | string> = {},
   defaultErrorCode?: WalletErrorCode | string, // Can be undefined
   contextName: string = 'UnknownAdapter' // Renamed from adapterType for clarity
@@ -44,7 +44,7 @@ export function createErrorHandlingProxy<T extends object>(
             );
           };
         }
-        
+
         const isAsync = originalValue.constructor.name === 'AsyncFunction';
 
         const handleError = (error: unknown) => {

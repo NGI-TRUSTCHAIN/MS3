@@ -1,9 +1,9 @@
-import pkgJson from '../package.json' with { type: "json" };
 import { registry, createErrorHandlingProxy, AdapterError, validateAdapterParameters, ModuleArguments, ValidatorArguments, validateEnvironment, Ms3Modules, Capability } from '@m3s/shared'
+import pkgJson from '../package.json' with { type: "json" };
 import { ICoreWallet, WalletAdapterOptionsV1 } from "./types/index.js";
 
 // Register this module in the registry
-registry.registerModule({ name: 'wallet', version: pkgJson.version });
+registry.registerModule({ name: Ms3Modules.wallet, version: pkgJson.version });
 export * from './types/index.js';
 export type { IEthersWalletOptionsV1, IWeb3AuthWalletOptionsV1 } from './adapters/index.js';
 
@@ -53,12 +53,11 @@ export async function createWallet<T extends ICoreWallet = ICoreWallet>(params: 
 
     // ✅ Validate environment before creation
     if (adapterInfo.environment) {
-      console.log(adapterInfo.environment);
+      console.info(adapterInfo.environment);
       validateEnvironment(name, adapterInfo.environment);
     }
 
     // Use the validation utility
-    // ✅ Updated ValidatorArguments
     const validatorArgs: ValidatorArguments = {
       moduleName: Ms3Modules.wallet,
       name,

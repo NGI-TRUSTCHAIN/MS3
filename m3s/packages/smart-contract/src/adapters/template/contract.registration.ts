@@ -1,5 +1,5 @@
-import { AdapterMetadata, registry } from '@m3s/shared';
-import { getRequirements, getEnvironments, getFeatures, getStaticCompatibilityMatrix } from '@m3s/shared';
+import { AdapterMetadata, Ms3Modules, registry } from '@m3s/shared';
+import { getRequirements, getEnvironments, getStaticCompatibilityMatrix } from '@m3s/shared';
 import { RuntimeEnvironment } from '@m3s/shared';
 import Joi from 'joi';
 import { ContractTemplateAdapter } from './contract.js';
@@ -28,28 +28,25 @@ const contractEnvironment = getEnvironments(
   ]
 );
 
-const contractFeatures = getFeatures(ContractTemplateAdapter);
-
 const adapterMetadata: AdapterMetadata = {
   name: 'contract-template',
   version: '1.0.0',
-  module: 'smart-contract',
+  module: Ms3Modules.smartcontract,
   adapterType: ContractHandlerType.openZeppelin,
   adapterClass: ContractTemplateAdapter,
   capabilities: [],
   requirements: contractRequirements,
   environment: contractEnvironment,
-  features: contractFeatures
 };
 
-registry.registerAdapter('smart-contract', adapterMetadata);
+registry.registerAdapter(Ms3Modules.smartcontract, adapterMetadata);
 
-const compatibilityMatrix = getStaticCompatibilityMatrix('smart-contract', 'contract-template', '1.0.0');
+const compatibilityMatrix = getStaticCompatibilityMatrix(Ms3Modules.smartcontract, 'contract-template', '1.0.0');
 if (compatibilityMatrix) {
-  registry.registerCompatibilityMatrix('smart-contract', compatibilityMatrix);
+  registry.registerCompatibilityMatrix(Ms3Modules.smartcontract, compatibilityMatrix);
 }
 
-console.log('✅ Template contract adapter registered with static compatibility matrix');
-console.log('📋 Generated requirements:', contractRequirements);
-console.log('🌍 Generated environment:', contractEnvironment);
-console.log('🔧 Generated features:', contractFeatures.map(f => f.name));
+console.debug('✅ Template contract adapter registered with static compatibility matrix');
+console.debug('📋 Generated requirements:', contractRequirements);
+console.debug('🌍 Generated environment:', contractEnvironment);
+console.debug('🔧 Generated capabilities:', adapterMetadata.capabilities.map(c => JSON.parse(JSON.stringify(c))));

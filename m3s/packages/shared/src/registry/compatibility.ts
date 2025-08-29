@@ -1,5 +1,5 @@
 import { detectRuntimeEnvironment } from '../helpers/environment.js';
-import { CompatibilityMatrix } from '../types/registry.js';
+import { CompatibilityMatrix, Ms3Modules } from '../types/registry.js';
 import { Capability } from './capability.js';
 import { registry } from './registry.js';
 
@@ -17,12 +17,12 @@ export const WALLET_COMPATIBILITY: Record<string, CompatibilityMatrix> = {
     breakingChanges: [],
     crossModuleCompatibility: [
       {
-        moduleName: 'smart-contract',
+        moduleName: Ms3Modules.smartcontract,
         // ✅ This wallet can work with any smart-contract adapter that can generate contracts.
         requiresCapabilities: [Capability.ContractGenerator]
       },
       {
-        moduleName: 'crosschain',
+        moduleName: Ms3Modules.crosschain,
         // ✅ This wallet can work with any crosschain adapter that can execute operations.
         requiresCapabilities: [Capability.OperationHandler]
       }
@@ -35,12 +35,12 @@ export const WALLET_COMPATIBILITY: Record<string, CompatibilityMatrix> = {
     breakingChanges: [],
     crossModuleCompatibility: [
       {
-        moduleName: 'smart-contract',
+        moduleName: Ms3Modules.smartcontract,
         // ✅ This wallet can work with any smart-contract adapter that can generate contracts.
         requiresCapabilities: [Capability.ContractGenerator]
       },
       {
-        moduleName: 'crosschain',
+        moduleName: Ms3Modules.crosschain,
         // ✅ This wallet can work with any crosschain adapter that can execute operations.
         requiresCapabilities: [Capability.OperationHandler]
       }
@@ -57,7 +57,7 @@ export const SMART_CONTRACT_COMPATIBILITY: Record<string, CompatibilityMatrix> =
     breakingChanges: [],
     crossModuleCompatibility: [
       {
-        moduleName: 'wallet',
+        moduleName: Ms3Modules.wallet,
         // ✅ This smart-contract adapter needs a wallet that can handle transactions.
         requiresCapabilities: [Capability.TransactionHandler, Capability.RPCHandler]
       }
@@ -74,7 +74,7 @@ export const CROSSCHAIN_COMPATIBILITY: Record<string, CompatibilityMatrix> = {
     breakingChanges: [],
     crossModuleCompatibility: [
       {
-        moduleName: 'wallet',
+        moduleName: Ms3Modules.wallet,
         // ✅ This crosschain adapter needs a wallet that can handle transactions and RPC calls.
         requiresCapabilities: [Capability.TransactionHandler, Capability.RPCHandler]
       }
@@ -91,11 +91,11 @@ export function getStaticCompatibilityMatrix(
   const key = `${adapterName}@${version}`;
 
   switch (moduleName) {
-    case 'wallet':
+    case Ms3Modules.wallet:
       return WALLET_COMPATIBILITY[key];
-    case 'smart-contract':
+    case Ms3Modules.smartcontract:
       return SMART_CONTRACT_COMPATIBILITY[key];
-    case 'crosschain':
+    case Ms3Modules.crosschain:
       return CROSSCHAIN_COMPATIBILITY[key];
     default:
       return undefined;
@@ -110,7 +110,7 @@ export function checkCrossPackageCompatibility(
   const sourceMatrix = getStaticCompatibilityMatrix(sourceModule, sourceAdapter, sourceVersion);
   if (!sourceMatrix) return false;
 
-  // Find the compatibility rule for the target module (e.g., 'wallet')
+  // Find the compatibility rule for the target module (e.g.,  Ms3Modules.wallet)
   const targetModuleCompatRule = sourceMatrix.crossModuleCompatibility.find(
     cmc => cmc.moduleName === targetModule
   );
@@ -137,7 +137,7 @@ export function checkCrossPackageCompatibility(
   // ✅ --- END REVISED CHECK ---
 
   // ✅ CORE LOGIC: Check if the target adapter's capabilities include ALL required capabilities.
-  return targetModuleCompatRule.requiresCapabilities.every(requiredCap =>
-    targetAdapterInfo.capabilities.includes(requiredCap)
-  );
+  return targetModuleCompatRule.requiresCapabilities.every((requiredCap: Capability) =>{
+    return targetAdapterInfo.capabilities.includes(requiredCap)
+  });
 }

@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { createCrossChain, ExecutionStatusEnum } from '../../src/index.js';
 import { ILiFiAdapterOptionsV1, MinimalLiFiAdapter } from '../../src/adapters/LI.FI.Adapter.js';
 import { OperationQuote, OperationResult, OperationIntent, ChainAsset } from '../../src/types/interfaces/index.js';
 import { createWallet, IEVMWallet } from '@m3s/wallet';
-import { RouteExtended } from '@lifi/sdk';
-import { TEST_PRIVATE_KEY, LIFI_API_KEY, RUN_REAL_EXECUTION, INFURA_API_KEY, BRIDGE_TIMEOUT, QUOTE_TEST_TIMEOUT, SWAP_EXECUTION_TIMEOUT } from '../../config.js';
+import { TEST_PRIVATE_KEY, LIFI_API_KEY, RUN_INTEGRATION, INFURA_API_KEY, BRIDGE_TIMEOUT, QUOTE_TEST_TIMEOUT, SWAP_EXECUTION_TIMEOUT } from '../../config.js';
 import { AdapterArguments, NetworkConfig, NetworkHelper } from '@m3s/shared';
 import { testAdapterPattern } from '../01_Core.test.js';
 import { IEthersWalletOptionsV1 } from '@m3s/wallet';
+import {logger} from '../../../../logger.js';
 
 // --- Dynamic Network Configs (Same as 03) ---
 let polygonConfig: any;
@@ -35,10 +35,10 @@ beforeAll(async () => {
     throw new Error("TEST_PRIVATE_KEY environment variable is not set. Cannot run execution tests.");
   }
   if (!INFURA_API_KEY) {
-    console.warn("INFURA_API_KEY is not set. Preferred RPCs for Polygon/Optimism might not work or fall back to public ones.");
+    logger.warning("INFURA_API_KEY is not set. Preferred RPCs for Polygon/Optimism might not work or fall back to public ones.");
   }
   if (!LIFI_API_KEY) {
-    console.warn("LIFI_API_KEY is not set. Li.Fi specific operations might fail.");
+    logger.warning("LIFI_API_KEY is not set. Li.Fi specific operations might fail.");
   }
 
   const networkHelper = NetworkHelper.getInstance();
@@ -145,7 +145,7 @@ beforeAll(async () => {
   try {
     await walletInstance.setProvider(walletProviderConfig);
   } catch (error) {
-    console.error("Failed to set provider on walletInstance in beforeAll:", error);
+    logger.error("Failed to set provider on walletInstance in beforeAll:", error);
     throw error;
   }
 
@@ -199,7 +199,7 @@ describe('MinimalLiFiAdapter Pattern & Lifecycle Tests', () => {
     } catch (error) {
       // This path should ideally not be taken if LiFi SDK's getChains works with defaults.
       // If it does fail, it should be a LiFi SDK error or a network error, not "Adapter not initialized".
-      console.error("Test 1.1: getSupportedChains failed unexpectedly:", error);
+      logger.error("Test 1.1: getSupportedChains failed unexpectedly:", error);
       throw error; // Re-throw to fail the test if it's an unexpected error
     }
   });
@@ -268,7 +268,7 @@ describe('MinimalLiFiAdapter getOperationQuote Method Tests', () => {
       // this catch block would handle it. The error should NOT be "Adapter not initialized".
       // For now, we'll assume it might succeed or return empty.
       // If a specific error IS expected from LiFi here, assert for that error.
-      console.error("Test 5.1: getOperationQuote failed unexpectedly or with a specific LiFi error:", error);
+      logger.error("Test 5.1: getOperationQuote failed unexpectedly or with a specific LiFi error:", error);
       // Depending on LiFi's behavior, you might re-throw or assert a specific error type/message.
       // For now, let's allow it to pass if it doesn't throw "Adapter not initialized".
     }
@@ -294,10 +294,10 @@ describe('MinimalLiFiAdapter getOperationQuote Method Tests', () => {
       if (quotes.length > 0) {
         expect(quotes[0].adapter.name).toBe('lifi');
       } else {
-        console.warn("⚠️ [Minimal] Quote 5.2 returned empty array (likely needs API key)");
+        logger.warning("⚠️ [Minimal] Quote 5.2 returned empty array (likely needs API key)");
       }
     } catch (error) {
-      console.warn("⚠️ [Minimal] Quote 5.2 timed out or failed:", error);
+      logger.warning("⚠️ [Minimal] Quote 5.2 timed out or failed:", error);
     }
   }, QUOTE_TEST_TIMEOUT + 2000);
 
@@ -338,10 +338,10 @@ describe('MinimalLiFiAdapter getOperationQuote Method Tests', () => {
         expect(quotes[0].adapter.name).toBe('lifi');
         expect(quotes[0].adapter.version).toBe('1.0.0');
       } else {
-        console.warn("⚠️ [Minimal] Quote 5.4 returned empty array (likely needs API key)");
+        logger.warning("⚠️ [Minimal] Quote 5.4 returned empty array (likely needs API key)");
       }
     } catch (error) {
-      console.warn("⚠️ [Minimal] Quote 5.4 timed out or failed:", error);
+      logger.warning("⚠️ [Minimal] Quote 5.4 timed out or failed:", error);
       throw error; // Re-throw unexpected errors
     }
   }, QUOTE_TEST_TIMEOUT + 2000);
@@ -528,15 +528,15 @@ describe('MinimalLiFiAdapter Swap Operation Lifecycle', () => {
       expect(quotes.length).toBeGreaterThan(0);
       expect(quotes[0].adapter.name).toBe('lifi');
     } catch (error) {
-      console.error("⚠️ [Minimal] Swap Quote 7.1 failed unexpectedly:", error);
+      logger.error("⚠️ [Minimal] Swap Quote 7.1 failed unexpectedly:", error);
       throw error;
     }
   }, QUOTE_TEST_TIMEOUT);
 
   // Test 7.2 - Execute & Track (this is the key test)
   it('7.2: should execute same-chain swap and track its status', async () => {
-    if (!RUN_REAL_EXECUTION) {
-      console.warn("[Minimal] Skipping real execution test 7.2 - set RUN_REAL_EXECUTION=true to enable");
+    if (!RUN_INTEGRATION) {
+      logger.warning("[Minimal] Skipping real execution test 7.2 - set RUN_INTEGRATION=true to enable");
       return;
     }
 
@@ -563,7 +563,7 @@ describe('MinimalLiFiAdapter Swap Operation Lifecycle', () => {
         finalStatus = status;
       }
       // Log for debugging
-      console.log(`[TEST] Status update: ${status.operationId} - ${status.status} - ${status.statusMessage}`);
+      logger.info(`[TEST] Status update: ${status.operationId} - ${status.status} - ${status.statusMessage}`);
     };
 
     adapter.on('status', onStatus);
@@ -594,7 +594,7 @@ describe('MinimalLiFiAdapter Swap Operation Lifecycle', () => {
       expect(finalStatus!.sourceTx?.hash).toBeDefined();
       expect(finalStatus!.receivedAmount).toBeDefined();
       expect(parseFloat(finalStatus!.receivedAmount!)).toBeGreaterThan(0);
-      console.log('🎉 Swap operation completed successfully!');
+      logger.info('🎉 Swap operation completed successfully!');
     } else {
       throw new Error(`Swap operation failed: ${finalStatus!.error}`);
     }
@@ -616,24 +616,24 @@ describe('MinimalLiFiAdapter Bridge Operation Lifecycle', () => {
       expect(quotes[0].intent.destinationAsset.symbol).toBe('USDC');
       expect(quotes[0].intent.destinationAsset.chainId).toBe(optimismConfig.chainId);
     } catch (error) {
-      console.error("⚠️ [Minimal] Bridge Quote 8.1 failed unexpectedly:", error);
+      logger.error("⚠️ [Minimal] Bridge Quote 8.1 failed unexpectedly:", error);
       throw error;
     }
   }, QUOTE_TEST_TIMEOUT);
 
   // Test 8.2 (Execute & Track) - Event-driven tracking
   it('8.2: should execute cross-chain bridge and track its status', async () => {
-    if (!RUN_REAL_EXECUTION) {
-      console.log("[Minimal] Skipping real execution test 8.2 - set RUN_REAL_EXECUTION=true to enable");
+    if (!RUN_INTEGRATION) {
+      logger.info("[Minimal] Skipping real execution test 8.2 - set RUN_INTEGRATION=true to enable");
       return;
     }
 
     // 1. Get Quote
     let quoteToExecute: OperationQuote;
     try {
-      console.log('BRIDGE INTENT ',bridgeIntent )
+      logger.info('BRIDGE INTENT ',bridgeIntent )
       const quotes = await adapter.getOperationQuote(bridgeIntent);
-      console.log('quotes ' ,quotes )
+      logger.info('quotes ' ,quotes )
 
       expect(quotes.length).toBeGreaterThan(0);
       quoteToExecute = quotes[0];
@@ -655,7 +655,7 @@ describe('MinimalLiFiAdapter Bridge Operation Lifecycle', () => {
         failed = true;
         finalStatus = status;
       }
-      console.log(`[TEST] Bridge status update: ${status.operationId} - ${status.status} - ${status.statusMessage}`);
+      logger.info(`[TEST] Bridge status update: ${status.operationId} - ${status.status} - ${status.statusMessage}`);
     };
 
     adapter.on('status', onStatus);
@@ -697,7 +697,7 @@ describe('MinimalLiFiAdapter Bridge Operation Lifecycle', () => {
       expect(finalStatus!.receivedAmount).toBeDefined();
       expect(parseFloat(finalStatus!.receivedAmount!)).toBeGreaterThan(0);
       expect(finalStatus!.error).toBeUndefined();
-      console.log('🎉 Bridge operation completed successfully!');
+      logger.info('🎉 Bridge operation completed successfully!');
     } else {
       throw new Error(`Bridge operation failed: ${finalStatus!.error}`);
     }
@@ -708,8 +708,8 @@ describe('MinimalLiFiAdapter Advanced Operation Control Tests', () => {
 
   // Test 9.1 (Cancellation) - Event-driven status tracking, no OperationMonitor
   it('9.1: should support manual operation cancellation', async () => {
-    if (!RUN_REAL_EXECUTION) {
-      console.log("[Minimal] Skipping real execution test 9.1 - set RUN_REAL_EXECUTION=true to enable");
+    if (!RUN_INTEGRATION) {
+      logger.info("[Minimal] Skipping real execution test 9.1 - set RUN_INTEGRATION=true to enable");
       return;
     }
 
@@ -732,7 +732,7 @@ describe('MinimalLiFiAdapter Advanced Operation Control Tests', () => {
         failed = true;
         finalStatus = status;
       }
-      console.log(`[TEST] Cancel status update: ${status.operationId} - ${status.status} - ${status.statusMessage}`);
+      logger.info(`[TEST] Cancel status update: ${status.operationId} - ${status.status} - ${status.statusMessage}`);
     };
 
     adapter.on('status', onStatus);
@@ -744,7 +744,7 @@ describe('MinimalLiFiAdapter Advanced Operation Control Tests', () => {
       expect(initialResult.status).toBe('PENDING');
     } catch (execError) {
       adapter.off('status', onStatus);
-      console.error("Failed to initiate operation for cancellation test:", execError);
+      logger.error("Failed to initiate operation for cancellation test:", execError);
       throw execError;
     }
 
@@ -761,7 +761,7 @@ describe('MinimalLiFiAdapter Advanced Operation Control Tests', () => {
       expect(cancelResult.adapter.version).toBe('1.0.0');
     } catch (cancelError) {
       adapter.off('status', onStatus);
-      console.error("Error during cancellation call:", cancelError);
+      logger.error("Error during cancellation call:", cancelError);
       throw new Error(`cancelOperation failed unexpectedly: ${cancelError}`);
     }
 
@@ -786,12 +786,12 @@ describe('MinimalLiFiAdapter Advanced Operation Control Tests', () => {
     ).toMatch(/cancel|fail|completed|success/);
     expect(finalStatus!.adapter.name).toBe('lifi');
     expect(finalStatus!.adapter.version).toBe('1.0.0');
-  }, 30000);
+  }, 60000);
 
   // Test 9.2: Validate chain ID extraction
   it('9.2: should properly extract chain IDs and transaction details', async () => {
-    if (!RUN_REAL_EXECUTION) {
-      console.log("[Minimal] Skipping chain ID validation test - set RUN_REAL_EXECUTION=true to enable");
+    if (!RUN_INTEGRATION) {
+      logger.info("[Minimal] Skipping chain ID validation test - set RUN_INTEGRATION=true to enable");
       return;
     }
 
@@ -801,11 +801,11 @@ describe('MinimalLiFiAdapter Advanced Operation Control Tests', () => {
 
     const result = await adapter.executeOperation(quote, { wallet: walletInstance });
     expect(result.operationId).toBeDefined();
-  }, 30000);
+  }, 60000);
 
   // Test 9.3: Debouncing logic
   it('9.3: should handle rapid status updates without performance issues', async () => {
-    if (!RUN_REAL_EXECUTION) return;
+    if (!RUN_INTEGRATION) return;
 
     const quotes = await adapter.getOperationQuote(swapIntent);
     const quote = quotes[0];
@@ -818,7 +818,7 @@ describe('MinimalLiFiAdapter Advanced Operation Control Tests', () => {
     const currentRpcs = walletInstance.getAllChainRpcs();
     expect(Object.keys(currentRpcs).length).toBeGreaterThan(0);
 
-    console.log('Current wallet RPCs:', currentRpcs);
+    logger.info('Current wallet RPCs:', currentRpcs);
 
     const updatedRpcs = {
       ...currentRpcs,
@@ -833,6 +833,6 @@ describe('MinimalLiFiAdapter Advanced Operation Control Tests', () => {
     expect(finalRpcs['137']).toBeDefined();
     expect(finalRpcs['10']).toBeDefined();
 
-    console.log('✅ Wallet RPC management workflow completed successfully');
+    logger.info('✅ Wallet RPC management workflow completed successfully');
   }, 60000);
 });
