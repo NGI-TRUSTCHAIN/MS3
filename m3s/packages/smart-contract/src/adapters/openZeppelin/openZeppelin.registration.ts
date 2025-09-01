@@ -1,5 +1,5 @@
 
-import { AdapterMetadata, getStaticCompatibilityMatrix, getEnvironments, getFeatures, getRequirements, registry, RuntimeEnvironment } from '@m3s/common';
+import { AdapterMetadata, getStaticCompatibilityMatrix, getEnvironments, getRequirements, registry, RuntimeEnvironment, Capability, Ms3Modules } from '@m3s/shared';
 import { ContractHandlerType } from '../../types/index.js';
 import { OpenZeppelinAdapter } from './adapter.js';
 import Joi from "joi";
@@ -24,15 +24,6 @@ export const openZeppelinOptionsSchema = Joi.object({
 // const openZeppelinRequirements: Requirement[] = [];
 const openZeppelinRequirements = getRequirements(openZeppelinOptionsSchema, 'openZeppelin');
 
-// const openZeppelinEnvironment: EnvironmentRequirements = {
-//   supportedEnvironments: [RuntimeEnvironment.SERVER],
-//   limitations: [
-//     'Smart contract compilation requires Node.js environment with file system access.',
-//     'Hardhat compiler execution requires shell command capabilities.',
-//     'Cannot be used in browser environments due to child_process dependency.',
-//     'Requires write permissions for temporary contract compilation directories.'
-//   ]
-// };
 const openZeppelinEnvironment = getEnvironments(
   'openZeppelin',
   [RuntimeEnvironment.SERVER],
@@ -47,27 +38,30 @@ const openZeppelinEnvironment = getEnvironments(
   ]
 );
 
-const openZeppelinFeatures = getFeatures(OpenZeppelinAdapter);
-
 const adapterMetadata: AdapterMetadata = {
   name: 'openZeppelin',
   version: '1.0.0',
-  module: 'smart-contract',
+  module: Ms3Modules.smartcontract,
   adapterType: ContractHandlerType.openZeppelin,
   adapterClass: OpenZeppelinAdapter,
+  capabilities: [
+    Capability.AdapterIdentity,
+    Capability.AdapterLifecycle,
+    Capability.ContractGenerator,
+    Capability.ContractCompiler
+  ],
   requirements: openZeppelinRequirements,
   environment: openZeppelinEnvironment,
-  features: openZeppelinFeatures
 };
 
-registry.registerAdapter('smart-contract', adapterMetadata);
+registry.registerAdapter(Ms3Modules.smartcontract, adapterMetadata);
 
 // ✅ REPLACE: Use static compatibility matrix
-const compatibilityMatrix = getStaticCompatibilityMatrix('smart-contract', 'openZeppelin', '1.0.0');
+const compatibilityMatrix = getStaticCompatibilityMatrix(Ms3Modules.smartcontract, 'openZeppelin', '1.0.0');
 if (compatibilityMatrix) {
-  registry.registerCompatibilityMatrix('smart-contract', compatibilityMatrix);
+  registry.registerCompatibilityMatrix(Ms3Modules.smartcontract, compatibilityMatrix);
 }
 
-console.log('✅ OpenZeppelin adapter registered with static compatibility matrix');
-console.log('📋 Generated requirements:', openZeppelinRequirements);
-console.log('🔧 Generated features:', openZeppelinFeatures.map(f => f.name));
+console.debug('✅ OpenZeppelin adapter registered with static compatibility matrix');
+console.debug('📋 Generated requirements:', openZeppelinRequirements);
+console.debug('🔧 Generated capabilities:', adapterMetadata.capabilities.map(c => JSON.parse(JSON.stringify(c))));

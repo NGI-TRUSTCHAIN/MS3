@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { AdapterError, WalletErrorCode } from "@m3s/common";
+import { AdapterError, WalletErrorCode } from "@m3s/shared";
 import { EIP712TypedData } from "../types/index.js";
 
 /**

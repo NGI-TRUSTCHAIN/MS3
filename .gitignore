@@ -7,6 +7,7 @@
 node_modules/
 dist/
 .env
+.vs/
 
 #Visual Studio
 *.vs
@@ -19,6 +20,7 @@ dist/
 
 # Log files
 *.log
+logs/
 
 # Package files
 *.jar
@@ -51,4 +53,3 @@ Thumbs.db
 *.flv
 *.mov
 *.wmv
-/.vs/MS3/FileContentIndex

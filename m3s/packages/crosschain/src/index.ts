@@ -1,7 +1,7 @@
 import { ICrossChain } from './types/interfaces/index.js';
 import pkgJson from '../package.json' with { type: "json" };
 
-import { registry, createErrorHandlingProxy, ModuleArguments, validateAdapterParameters, ValidatorArguments, AdapterError, validateEnvironment, Ms3Modules } from '@m3s/common';
+import { registry, createErrorHandlingProxy, ModuleArguments, validateAdapterParameters, ValidatorArguments, AdapterError, validateEnvironment, Ms3Modules, Capability } from '@m3s/shared';
 import { ILiFiAdapterOptionsV1 } from './adapters/index.js';
 
 // Register this module in the registry
@@ -9,15 +9,17 @@ registry.registerModule({ name: Ms3Modules.crosschain, version: pkgJson.version 
 import './adapters/index.js';
 
 export * from './types/index.js';
-export * from './helpers/index.js'
 export type { ILiFiAdapterOptionsV1 } from './adapters/index.js';
 
-export interface ICrossChainOptions extends ModuleArguments<string, ILiFiAdapterOptionsV1> { }
+export interface ICrossChainOptions extends ModuleArguments< ILiFiAdapterOptionsV1> { }
+
+registry.registerInterfaceShape('ICrossChain', [
+  Capability.AdapterIdentity, Capability.AdapterLifecycle, Capability.QuoteProvider,
+  Capability.OperationHandler, Capability.ChainDiscovery,
+  Capability.GasEstimator, Capability.OperationMaintenance
+]);
 
 /**
- * TEST PIPELINE 1
- * TEST PIPELINE 2
- * TEST PIPELINE 3
  * Creates a CrossChain module instance with the specified adapter.
  * 
  * @param params - Configuration parameters for the CrossChain module
@@ -41,7 +43,6 @@ export async function createCrossChain<T extends ICrossChain = ICrossChain>(para
 
   // ✅ ADD: Validate environment before creation
   if (adapterInfo.environment) {
-    console.log(`[CrossChain] Environment requirements for ${name}:`, adapterInfo.environment);
     validateEnvironment(name, adapterInfo.environment);
   }
 
@@ -83,10 +84,11 @@ export async function createCrossChain<T extends ICrossChain = ICrossChain>(para
   }
 
   // ✅ Preserve all error handling and proxy functionality
-  return createErrorHandlingProxy(
-    adapter,
-    adapterInfo.errorMap || {},
-    undefined,
-    `CrossChainAdapter(${name})`  // ✅ Updated display name
-  ) as T;
+   return createErrorHandlingProxy(
+      adapter,
+      adapterInfo.capabilities,
+      adapterInfo.errorMap || {},
+      undefined,
+      `CrossChainAdapter(${name})`
+    ) as T;
 }

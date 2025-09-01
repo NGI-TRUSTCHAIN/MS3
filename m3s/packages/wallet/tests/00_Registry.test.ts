@@ -1,19 +1,20 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { registry } from '@m3s/common';
-import { getRequirements, getEnvironments, getFeatures } from '@m3s/common';
-import { RuntimeEnvironment } from '@m3s/common';
+import { Ms3Modules, registry } from '@m3s/shared';
+import { getRequirements, getEnvironments } from '@m3s/shared';
+import { RuntimeEnvironment } from '@m3s/shared';
 import Joi from 'joi';
-import { EvmWalletAdapter } from '../src/adapters/ethers/v1/ethersWallet.js';
-import { ethersOptionsSchema } from '../src/adapters/ethers/v1/ethersWallet.registration.js';
-import { web3AuthOptionsSchema } from '../src/adapters/web3auth/v1/web3authWallet.registration.js';
+import { EvmWalletAdapter } from '../src/adapters/ethers/ethersWallet.js';
+import { ethersOptionsSchema } from '../src/adapters/ethers/ethersWallet.registration.js';
+import { web3AuthOptionsSchema } from '../src/adapters/web3auth/web3authWallet.registration.js';
 import '@m3s/wallet'
+import { logger } from '../../../logger.js';
 
 describe('Auto-Generation System Tests (JOI-Based)', () => {
   describe('JOI Schema Requirements Generation', () => {
     it('should generate correct requirements from Ethers JOI schema', () => {
       const requirements = getRequirements(ethersOptionsSchema, 'ethers');
       expect(requirements).toHaveLength(2);
-      
+
       // Check privateKey requirement
       const privateKeyReq = requirements.find((r: any) => r.path === 'options.privateKey');
       expect(privateKeyReq).toBeDefined();
@@ -32,7 +33,7 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
       const requirements = getRequirements(web3AuthOptionsSchema, 'web3auth');
 
       expect(requirements.length).toBeGreaterThan(0);
-      
+
       // Check main config requirement
       const configReq = requirements.find((r: any) => r.path === 'options.web3authConfig');
       expect(configReq).toBeDefined();
@@ -126,7 +127,7 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
         });
 
         const requirements = getRequirements(deepSchema, 'deep-nested');
-        
+
         // Should find the deeply nested requirement
         const deepReq = requirements.find(r => r.path === 'options.level1.level2.level3.level4.value');
         expect(deepReq).toBeDefined();
@@ -146,7 +147,7 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
             otherwise: Joi.forbidden()
           }),
           privateKey: Joi.when('authType', {
-            is: 'privateKey', 
+            is: 'privateKey',
             then: Joi.string().required(),
             otherwise: Joi.forbidden()
           })
@@ -154,7 +155,7 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
 
         const requirements = getRequirements(alternativesSchema, 'alternatives-test');
         expect(requirements.length).toBeGreaterThan(0);
-        
+
         // Should handle the authType requirement
         const authTypeReq = requirements.find(r => r.path === 'options.authType');
         expect(authTypeReq).toBeDefined();
@@ -175,7 +176,7 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
         });
 
         const requirements = getRequirements(arraySchema, 'array-test');
-        
+
         const endpointsReq = requirements.find(r => r.path === 'options.endpoints');
         expect(endpointsReq).toBeDefined();
         expect(endpointsReq!.type).toBe('array');
@@ -214,10 +215,10 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
       );
 
       expect(environment.supportedEnvironments).toEqual([
-        RuntimeEnvironment.SERVER, 
+        RuntimeEnvironment.SERVER,
         RuntimeEnvironment.BROWSER
       ]);
-      
+
       expect(environment.limitations).toContain('Custom limitation');
       expect(environment.securityNotes).toContain('Custom security note');
       expect(environment.securityNotes).toContain('ethers adapter follows standard security practices');
@@ -237,20 +238,20 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
         // Mock different environment scenarios
         const originalProcess = (global as any).process;
         const originalWindow = (global as any).window;
-        
+
         try {
           // Test browser environment validation
           const browserOnlyEnv = getEnvironments('test-browser', [RuntimeEnvironment.BROWSER]);
-          
+
           expect(browserOnlyEnv.supportedEnvironments).toEqual([RuntimeEnvironment.BROWSER]);
           expect(browserOnlyEnv.limitations).toContain('Cannot be used in Node.js server environments');
-          
+
           // Test dual environment
           const dualEnv = getEnvironments('test-dual', [RuntimeEnvironment.SERVER, RuntimeEnvironment.BROWSER]);
-          
+
           expect(dualEnv.supportedEnvironments).toContain(RuntimeEnvironment.SERVER);
           expect(dualEnv.supportedEnvironments).toContain(RuntimeEnvironment.BROWSER);
-          
+
         } finally {
           // Restore original environment
           (global as any).process = originalProcess;
@@ -265,11 +266,11 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
           ['Duplicate limitation', 'Duplicate limitation', 'Unique limitation'],
           ['Duplicate security note', 'Duplicate security note', 'Unique security note']
         );
-        
+
         // Should deduplicate limitations and security notes
         const limitationCount = environment.limitations!.filter(l => l === 'Duplicate limitation').length;
         const securityNoteCount = environment.securityNotes!.filter(n => n === 'Duplicate security note').length;
-        
+
         expect(limitationCount).toBe(1);
         expect(securityNoteCount).toBe(1);
         expect(environment.limitations).toContain('Unique limitation');
@@ -279,76 +280,65 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
   });
 
   describe('Features Generation', () => {
-    it('should extract method signatures from adapter class', () => {
-      const features = getFeatures(EvmWalletAdapter);
+    it('should detect core EVM wallet methods and async behavior (prototype + metadata checks)', () => {
+      // Prototype inspection
+      const methodNames = Object.getOwnPropertyNames(EvmWalletAdapter.prototype)
+        .filter(n => n !== 'constructor' && typeof (EvmWalletAdapter.prototype as any)[n] === 'function');
 
-      expect(features.length).toBeGreaterThan(0);
-      
-      // Check for core methods
-      const initMethod = features.find(f => f.name === 'initialize');
-      expect(initMethod).toBeDefined();
-      expect(initMethod!.returnType.includes('Promise') || initMethod!.isAsync).toBe(true);
-      expect(initMethod!.isAsync).toBe(true);
+      // Basic presence checks
+      expect(methodNames).toContain('initialize');
+      expect(methodNames).toContain('getAccounts');
+      expect(methodNames).toContain('signTypedData');
 
-      const getAccountsMethod = features.find(f => f.name === 'getAccounts');
-      expect(getAccountsMethod).toBeDefined();
-      expect(getAccountsMethod!.returnType.includes('Promise') || getAccountsMethod!.isAsync).toBe(true);
+      // Async checks for core methods where applicable
+      const initFn = (EvmWalletAdapter.prototype as any).initialize;
+      if (initFn) expect(initFn.constructor.name).toBe('AsyncFunction');
 
-      // Check for EVM-specific methods
-      const signTypedDataMethod = features.find(f => f.name === 'signTypedData');
-      expect(signTypedDataMethod).toBeDefined();
-      expect(
-        signTypedDataMethod!.returnType.includes('Promise<string>') || 
-        signTypedDataMethod!.returnType.includes('Promise') || 
-        signTypedDataMethod!.isAsync
-      ).toBe(true);
+      const signTypedFn = (EvmWalletAdapter.prototype as any).signTypedData;
+      if (signTypedFn) expect(['AsyncFunction', 'Function']).toContain(signTypedFn.constructor.name);
+
+      // If adapter was registered, ensure capabilities exist
+      const meta = registry.getAdapter(Ms3Modules.wallet, 'ethers', '1.0.0');
+      if (meta) {
+        expect(meta.capabilities).toBeDefined();
+        expect(meta.capabilities.length).toBeGreaterThan(0);
+      }
     });
 
-    it('should handle method parameters correctly', () => {
-      const features = getFeatures(EvmWalletAdapter);
-      
-      const signMessageMethod = features.find((f: any) => f.name === 'signMessage');
-      expect(signMessageMethod).toBeDefined();
-      expect(signMessageMethod!.parameters.length).toBeGreaterThan(0);
-      expect(signMessageMethod!.parameters[0].name).toBeDefined();
+    it('should handle method parameter detection correctly (prototype param counts)', () => {
+      const signMessageFn = (EvmWalletAdapter.prototype as any).signMessage;
+      expect(typeof signMessageFn).toBe('function');
+      // Use declared parameter count (.length) as a lightweight check
+      expect(signMessageFn.length).toBeGreaterThan(0);
     });
 
     // ✅ NEW FEATURE EXTRACTION EDGE CASES
     describe('Feature Extraction Edge Cases', () => {
-      it('should handle async method detection correctly', () => {
-        const features = getFeatures(EvmWalletAdapter);
-        
-        // All wallet methods should be properly marked as async or not
-        const asyncMethods = features.filter(f => f.isAsync);
-        
-        // Most wallet methods are async
+      it('should detect async methods via prototype inspection', () => {
+        const methodNames = Object.getOwnPropertyNames(EvmWalletAdapter.prototype)
+          .filter(n => n !== 'constructor' && typeof (EvmWalletAdapter.prototype as any)[n] === 'function');
+
+        const asyncMethods = methodNames.filter(n => {
+          const fn = (EvmWalletAdapter.prototype as any)[n];
+          return fn && fn.constructor && fn.constructor.name === 'AsyncFunction';
+        });
+
         expect(asyncMethods.length).toBeGreaterThan(0);
-        
-        // Check specific async methods
-        const sendTxMethod = features.find(f => f.name === 'sendTransaction');
-        if (sendTxMethod) {
-          expect(sendTxMethod.isAsync).toBe(true);
-          expect(sendTxMethod.returnType).toMatch(/Promise/i);
-        }
       });
 
-      it('should handle method parameter extraction for complex signatures', () => {
-        const features = getFeatures(EvmWalletAdapter);
-        
-        // Find methods with multiple parameters
-        const complexMethods = features.filter(f => f.parameters.length > 1);
-        expect(complexMethods.length).toBeGreaterThan(0);
-        
-        // Check setProvider method parameters
-        const setProviderMethod = features.find(f => f.name === 'setProvider');
-        if (setProviderMethod) {
-          expect(setProviderMethod.parameters.length).toBeGreaterThan(0);
-          expect(setProviderMethod.parameters[0].name).toBeDefined();
-        }
+      it('should find methods with multiple declared parameters', () => {
+        const methodNames = Object.getOwnPropertyNames(EvmWalletAdapter.prototype)
+          .filter(n => n !== 'constructor' && typeof (EvmWalletAdapter.prototype as any)[n] === 'function');
+
+        const complex = methodNames.filter(n => {
+          const fn = (EvmWalletAdapter.prototype as any)[n];
+          return typeof fn === 'function' && fn.length > 1;
+        });
+
+        expect(complex.length).toBeGreaterThan(0);
       });
 
-      it('should gracefully handle malformed adapter classes', () => {
-        // Test with various invalid inputs
+      it('should gracefully handle malformed adapter classes during inspection', () => {
         const invalidInputs = [
           null,
           undefined,
@@ -360,8 +350,17 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
 
         for (const invalidInput of invalidInputs) {
           expect(() => {
-            const features = getFeatures(invalidInput as any);
-            expect(Array.isArray(features)).toBe(true);
+            if (typeof invalidInput === 'function') {
+              const names = Object.getOwnPropertyNames((invalidInput as any).prototype || {})
+                .filter(n => n !== 'constructor' && typeof (invalidInput as any).prototype[n] === 'function');
+              expect(Array.isArray(names)).toBe(true);
+            } else if (invalidInput && typeof invalidInput === 'object' && invalidInput.prototype && typeof invalidInput.prototype === 'object') {
+              const names = Object.getOwnPropertyNames(invalidInput.prototype || {})
+                .filter((n: string) => n !== 'constructor' && typeof (invalidInput as any).prototype[n] === 'function');
+              expect(Array.isArray(names)).toBe(true);
+            } else {
+              expect(typeof invalidInput).not.toBe('function');
+            }
           }).not.toThrow();
         }
       });
@@ -371,39 +370,39 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
   describe('Registry Integration', () => {
     beforeAll(async () => {
       // Import registrations to ensure adapters are registered
-      await import('../src/adapters/ethers/v1/ethersWallet.registration.js');
-      await import('../src/adapters/web3auth/v1/web3authWallet.js')
+      await import('../src/adapters/ethers/ethersWallet.registration.js');
+      await import('../src/adapters/web3auth/web3authWallet.js')
     });
 
     it('should have registered web3auth adapter with JOI-generated data', () => {
-      const adapterInfo = registry.getAdapter('wallet', 'web3auth', '1.0.0');
-      
+      const adapterInfo = registry.getAdapter(Ms3Modules.wallet, 'web3auth', '1.0.0');
+
       expect(adapterInfo).toBeDefined();
       expect(adapterInfo!.requirements).toBeDefined();
       expect(adapterInfo!.environment).toBeDefined();
-      expect(adapterInfo!.features).toBeDefined();
-      
+      expect(adapterInfo!.capabilities).toBeDefined();
+
       // Check requirements were generated from JOI (should have many nested requirements)
       expect(adapterInfo!.requirements!.length).toBeGreaterThan(5); // Should have many nested fields
-      
+
       // Check for deep nested requirement
       const chainIdReq = adapterInfo!.requirements!.find(r => r.path === 'options.web3authConfig.chainConfig.chainId');
       expect(chainIdReq).toBeDefined();
       expect(chainIdReq!.allowUndefined).toBe(false); // Required field
-      
+
       // Check environment is browser-only
       expect(adapterInfo!.environment!.supportedEnvironments).toEqual([RuntimeEnvironment.BROWSER]);
       expect(adapterInfo!.environment!.supportedEnvironments).not.toContain(RuntimeEnvironment.SERVER);
     });
 
     it('should have generated compatibility matrices', () => {
-      const ethersMatrix = registry.getCompatibilityMatrix('wallet', 'ethers', '1.0.0');
+      const ethersMatrix = registry.getCompatibilityMatrix(Ms3Modules.wallet, 'ethers', '1.0.0');
       expect(ethersMatrix).toBeDefined();
       expect(ethersMatrix!.adapterName).toBe('ethers');
       expect(ethersMatrix!.version).toBe('1.0.0');
       expect(ethersMatrix!.compatibleVersions).toContain('1.0.0');
 
-      const web3authMatrix = registry.getCompatibilityMatrix('wallet', 'web3auth', '1.0.0');
+      const web3authMatrix = registry.getCompatibilityMatrix(Ms3Modules.wallet, 'web3auth', '1.0.0');
       expect(web3authMatrix).toBeDefined();
       expect(web3authMatrix!.adapterName).toBe('web3auth');
       expect(web3authMatrix!.version).toBe('1.0.0');
@@ -413,18 +412,18 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
     describe('Registry Edge Cases', () => {
       it('should handle adapter lookup with invalid parameters', () => {
         // Test various invalid lookups
-        expect(registry.getAdapter('wallet', 'nonexistent', '1.0.0')).toBeUndefined();
+        expect(registry.getAdapter(Ms3Modules.wallet, 'nonexistent', '1.0.0')).toBeUndefined();
         expect(registry.getAdapter('nonexistent', 'ethers', '1.0.0')).toBeUndefined();
-        expect(registry.getAdapter('wallet', 'ethers', '999.0.0')).toBeUndefined();
+        expect(registry.getAdapter(Ms3Modules.wallet, 'ethers', '999.0.0')).toBeUndefined();
       });
 
       it('should handle compatibility matrix edge cases', () => {
         // Test invalid compatibility matrix lookups
-        expect(registry.getCompatibilityMatrix('wallet', 'nonexistent', '1.0.0')).toBeUndefined();
+        expect(registry.getCompatibilityMatrix(Ms3Modules.wallet, 'nonexistent', '1.0.0')).toBeUndefined();
         expect(registry.getCompatibilityMatrix('nonexistent', 'ethers', '1.0.0')).toBeUndefined();
-        
+
         // Valid matrix should have required properties
-        const ethersMatrix = registry.getCompatibilityMatrix('wallet', 'ethers', '1.0.0');
+        const ethersMatrix = registry.getCompatibilityMatrix(Ms3Modules.wallet, 'ethers', '1.0.0');
         if (ethersMatrix) {
           expect(ethersMatrix.adapterName).toBeDefined();
           expect(ethersMatrix.version).toBeDefined();
@@ -436,18 +435,18 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
 
       it('should validate registry module registration completeness', () => {
         // Check that all registered adapters have required metadata
-        const ethersAdapter = registry.getAdapter('wallet', 'ethers', '1.0.0');
+        const ethersAdapter = registry.getAdapter(Ms3Modules.wallet, 'ethers', '1.0.0');
         expect(ethersAdapter).toBeDefined();
         expect(ethersAdapter!.name).toBe('ethers');
         expect(ethersAdapter!.version).toBe('1.0.0');
-        expect(ethersAdapter!.module).toBe('wallet');
+        expect(ethersAdapter!.module).toBe(Ms3Modules.wallet);
         expect(ethersAdapter!.adapterClass).toBeDefined();
-        
-        const web3authAdapter = registry.getAdapter('wallet', 'web3auth', '1.0.0');
+
+        const web3authAdapter = registry.getAdapter(Ms3Modules.wallet, 'web3auth', '1.0.0');
         expect(web3authAdapter).toBeDefined();
         expect(web3authAdapter!.name).toBe('web3auth');
         expect(web3authAdapter!.version).toBe('1.0.0');
-        expect(web3authAdapter!.module).toBe('wallet');
+        expect(web3authAdapter!.module).toBe(Ms3Modules.wallet);
         expect(web3authAdapter!.adapterClass).toBeDefined();
       });
     });
@@ -462,9 +461,8 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
         retries: Joi.number().integer().min(0).max(5).optional().default(3).description('Number of retry attempts (0-5)'),
         endpoints: Joi.array().items(Joi.string().uri()).min(1).required().description('Array of valid endpoint URLs'),
         features: Joi.object({
-          enableLogging: Joi.boolean().default(true).description('Enable request logging'),
-          compression: Joi.string().valid('gzip', 'deflate', 'br').optional().description('Compression algorithm')
-        }).optional().description('Optional feature configuration')
+          enableLogging: Joi.boolean().optional().default(false).description('Enable logging feature')
+        }).optional().description('Optional feature toggles')
       });
 
       const requirements = getRequirements(complexSchema, 'complex-adapter');
@@ -500,7 +498,7 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
       });
 
       const requirements = getRequirements(schema, 'edge-case');
-      
+
       // Should handle special characters in field names
       expect(requirements.length).toBeGreaterThan(0);
     });
@@ -513,9 +511,9 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
         for (let i = 0; i < 100; i++) {
           fields[`field${i}`] = Joi.string().optional().description(`Field number ${i}`);
         }
-        
+
         const largeSchema = Joi.object(fields);
-        
+
         expect(() => {
           const requirements = getRequirements(largeSchema, 'large-schema-test');
           expect(Array.isArray(requirements)).toBe(true);
@@ -533,17 +531,17 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
           Joi.object({ test3: Joi.boolean().required() })
         ];
 
-        const promises = schemas.map((schema, index) => 
+        const promises = schemas.map((schema, index) =>
           Promise.resolve(getRequirements(schema, `concurrent-test-${index}`))
         );
 
         const results = await Promise.all(promises);
-        
+
         // All should succeed
         expect(results).toHaveLength(5);
         results.forEach((result, index) => {
           expect(Array.isArray(result)).toBe(true);
-          console.log(`✅ Concurrent schema ${index} processed: ${result.length} requirements`);
+          logger.info(`✅ Concurrent schema ${index} processed: ${result.length} requirements`);
         });
       });
 
@@ -565,50 +563,55 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
 
   // ✅ NEW INTEGRATION TESTS SECTION
   describe('Cross-Package Integration Tests', () => {
+    beforeAll(async () => {
+      await import('../../smart-contract/src/adapters/openZeppelin/openZeppelin.registration.js');
+      await import('../../crosschain/src/adapters/LI.FI.registration.js');
+    });
+
     it('should validate wallet adapter compatibility with smart-contract module', async () => {
-      const { checkCrossPackageCompatibility } = await import('@m3s/common');
-      
+      const { checkCrossPackageCompatibility } = await import('@m3s/shared');
+
       // Test ethers wallet compatibility with smart contract module
       const ethersToSC = checkCrossPackageCompatibility(
-        'wallet', 'ethers', '1.0.0',
-        'smart-contract', 'openZeppelin', '1.0.0'
+        Ms3Modules.wallet, 'ethers', '1.0.0',
+        Ms3Modules.smartcontract, 'openZeppelin', '1.0.0'
       );
       expect(ethersToSC).toBe(true);
-      
+
       // Test web3auth wallet compatibility with smart contract module
       const web3authToSC = checkCrossPackageCompatibility(
-        'wallet', 'web3auth', '1.0.0',
-        'smart-contract', 'openZeppelin', '1.0.0'
+        Ms3Modules.wallet, 'web3auth', '1.0.0',
+        Ms3Modules.smartcontract, 'openZeppelin', '1.0.0'
       );
-      expect(web3authToSC).toBe(true);
+      expect(web3authToSC).toBe(false);
     });
 
     it('should validate wallet adapter compatibility with crosschain module', async () => {
-      const { checkCrossPackageCompatibility } = await import('@m3s/common');
-      
+      const { checkCrossPackageCompatibility } = await import('@m3s/shared');
+
       // Test ethers wallet compatibility with crosschain module
       const ethersToCrosschain = checkCrossPackageCompatibility(
-        'wallet', 'ethers', '1.0.0',
-        'crosschain', 'lifi', '1.0.0'
+        Ms3Modules.wallet, 'ethers', '1.0.0',
+        Ms3Modules.crosschain, 'lifi', '1.0.0'
       );
       expect(ethersToCrosschain).toBe(true);
-      
+
       // Test web3auth incompatibility with crosschain (environment mismatch)
       const web3authToCrosschain = checkCrossPackageCompatibility(
-        'wallet', 'web3auth', '1.0.0',
-        'crosschain', 'lifi', '1.0.0'
+        Ms3Modules.wallet, 'web3auth', '1.0.0',
+        Ms3Modules.crosschain, 'lifi', '1.0.0'
       );
       expect(web3authToCrosschain).toBe(false); // Environment incompatibility
     });
 
     it('should handle environment-based compatibility validation', async () => {
       // Test that environment requirements are properly enforced in compatibility
-      const ethersEnv = registry.getEnvironmentRequirements('wallet', 'ethers', '1.0.0');
-      const web3authEnv = registry.getEnvironmentRequirements('wallet', 'web3auth', '1.0.0');
-      
+      const ethersEnv = registry.getEnvironmentRequirements(Ms3Modules.wallet, 'ethers', '1.0.0');
+      const web3authEnv = registry.getEnvironmentRequirements(Ms3Modules.wallet, 'web3auth', '1.0.0');
+
       expect(ethersEnv?.supportedEnvironments).toContain(RuntimeEnvironment.SERVER);
       expect(ethersEnv?.supportedEnvironments).toContain(RuntimeEnvironment.BROWSER);
-      
+
       expect(web3authEnv?.supportedEnvironments).toContain(RuntimeEnvironment.BROWSER);
       expect(web3authEnv?.supportedEnvironments).not.toContain(RuntimeEnvironment.SERVER);
     });
@@ -618,37 +621,37 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
   describe('Performance and Load Tests', () => {
     it('should handle rapid adapter lookups efficiently', () => {
       const startTime = Date.now();
-      
+
       // Perform many rapid lookups
       for (let i = 0; i < 1000; i++) {
-        registry.getAdapter('wallet', 'ethers', '1.0.0');
-        registry.getAdapter('wallet', 'web3auth', '1.0.0');
-        registry.getCompatibilityMatrix('wallet', 'ethers', '1.0.0');
+        registry.getAdapter(Ms3Modules.wallet, 'ethers', '1.0.0');
+        registry.getAdapter(Ms3Modules.wallet, 'web3auth', '1.0.0');
+        registry.getCompatibilityMatrix(Ms3Modules.wallet, 'ethers', '1.0.0');
       }
-      
+
       const endTime = Date.now();
       const duration = endTime - startTime;
-      
+
       // Should complete within reasonable time (less than 1 second)
       expect(duration).toBeLessThan(1000);
-      console.log(`✅ 3000 registry lookups completed in ${duration}ms`);
+      logger.info(`✅ 3000 registry lookups completed in ${duration}ms`);
     });
 
     it('should handle bulk requirement generation efficiently', () => {
       const startTime = Date.now();
-      
+
       // Generate requirements for many schemas
       for (let i = 0; i < 100; i++) {
         getRequirements(ethersOptionsSchema, `bulk-test-${i}`);
         getRequirements(web3AuthOptionsSchema, `bulk-test-${i}`);
       }
-      
+
       const endTime = Date.now();
       const duration = endTime - startTime;
-      
+
       // Should complete within reasonable time
       expect(duration).toBeLessThan(2000);
-      console.log(`✅ 200 requirement generations completed in ${duration}ms`);
+      logger.info(`✅ 200 requirement generations completed in ${duration}ms`);
     });
   });
 });

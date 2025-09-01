@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeAll, vi } from 'vitest';
-import { registry } from '@m3s/common';
-import { getRequirements, getEnvironments, getFeatures } from '@m3s/common';
+import { describe, it, expect, beforeAll } from 'vitest';
+import { Capability, registry } from '@m3s/shared';
+import { getRequirements, getEnvironments } from '@m3s/shared';
 import { MinimalLiFiAdapter } from '../src/adapters/LI.FI.Adapter.js';
-import { RuntimeEnvironment, Ms3Modules } from '@m3s/common';
+import { RuntimeEnvironment, Ms3Modules } from '@m3s/shared';
 import { lifiOptionsSchema } from '../src/adapters/LI.FI.registration.js';
 import Joi from 'joi';
+import { logger } from '../../../logger.js';
 
 describe('Crosschain Auto-Generation System Tests', () => {
   describe('JOI Schema Requirements Generation', () => {
@@ -26,7 +27,7 @@ describe('Crosschain Auto-Generation System Tests', () => {
         expect(providerReq.allowUndefined).toBe(true); // Optional
       }
 
-      console.log('✅ LiFi requirements generated:', requirements);
+      logger.info('✅ LiFi requirements generated:', requirements);
     });
 
     it('should handle bridge-specific configuration requirements', () => {
@@ -38,7 +39,7 @@ describe('Crosschain Auto-Generation System Tests', () => {
       );
 
       expect(chainReqs.length).toBeGreaterThanOrEqual(0); // May have bridge-specific config
-      console.log('📋 Bridge-specific requirements found:', chainReqs.length);
+      logger.info('📋 Bridge-specific requirements found:', chainReqs.length);
     });
 
     it('should handle JOI validation rules correctly', () => {
@@ -278,52 +279,78 @@ describe('Crosschain Auto-Generation System Tests', () => {
   });
 
   describe('Features Generation', () => {
-    it('should extract method signatures from LiFi adapter', () => {
-      const features = getFeatures(MinimalLiFiAdapter);
+    it('should expose declared capabilities and expected crosschain methods (metadata + prototype checks)', () => {
+      // Validate metadata reports capabilities
+      const adapterMeta = registry.getAdapter(Ms3Modules.crosschain, 'lifi', '1.0.0');
+      expect(adapterMeta).toBeDefined();
+      const capabilities = adapterMeta?.capabilities ?? [];
+      expect(capabilities.length).toBeGreaterThan(0);
 
-      expect(features.length).toBeGreaterThan(0);
+      // Expect core crosschain capabilities to be declared
+      expect(capabilities).toContain(Capability.QuoteProvider);
+      expect(capabilities).toContain(Capability.OperationHandler);
 
-      // ✅ Check for actual crosschain methods from ICrossChain interface
-      const crosschainMethods = features.filter(f =>
-        f.name.includes('Quote') || f.name.includes('Operation') || f.name.includes('Chain') || f.name === 'executeOperation'
-      );
+      // Inspect the adapter class prototype for method presence
+      const methodNames = Object.getOwnPropertyNames(MinimalLiFiAdapter.prototype)
+        .filter(n => n !== 'constructor' && typeof (MinimalLiFiAdapter.prototype as any)[n] === 'function');
 
-      expect(crosschainMethods.length).toBeGreaterThan(0);
-      console.log('🌉 Crosschain-specific methods found:', crosschainMethods.map(m => m.name));
+      // Methods that represent crosschain operations should exist on the class
+      expect(methodNames).toContain('getOperationQuote');
+      expect(methodNames).toContain('executeOperation');
+      logger.info('🌉 Crosschain-specific methods found (prototype):', methodNames.filter(n =>
+        n.includes('Quote') || n.includes('Operation') || n.includes('Chain') || n === 'executeOperation'
+      ));
     });
 
-    it('should handle bridge-specific method parameters correctly', () => {
-      const features = getFeatures(MinimalLiFiAdapter);
+    it('should validate bridge-specific methods are async and have sensible parameter counts', () => {
+      const expectedBridgeMethods = ['getOperationQuote', 'executeOperation', 'getOperationStatus'];
 
-      // Look for bridge-specific methods
-      const bridgeMethods = features.filter(f =>
-        f.name === 'getOperationQuote' || f.name === 'executeOperation' || f.name === 'getOperationStatus'
-      );
+      // Verify prototype has listed methods
+      const methodNames = Object.getOwnPropertyNames(MinimalLiFiAdapter.prototype)
+        .filter(n => n !== 'constructor' && typeof (MinimalLiFiAdapter.prototype as any)[n] === 'function');
 
-      expect(bridgeMethods.length).toBeGreaterThan(0);
+      const found = expectedBridgeMethods.filter(m => methodNames.includes(m));
+      expect(found.length).toBeGreaterThan(0);
 
-      // Check that methods have reasonable parameter counts
-      bridgeMethods.forEach(method => {
-        expect(method.parameters).toBeDefined();
-        expect(method.isAsync).toBe(true); // Bridge operations should be async
-        console.log(`🔧 Bridge method: ${method.name}(${method.parameters.length} params) -> ${method.returnType}`);
-      });
+      // For each expected method, assert existence, async-ness and inspect parameter count
+      for (const name of found) {
+        const fn = (MinimalLiFiAdapter.prototype as any)[name];
+        expect(typeof fn).toBe('function');
+
+        // Parameter count (JS function .length gives declared params)
+        const paramCount = fn.length;
+        expect(typeof paramCount).toBe('number');
+
+        // Expect async bridge operations (AsyncFunction constructor)
+        const isAsync = fn && fn.constructor && fn.constructor.name === 'AsyncFunction';
+        expect(isAsync).toBe(true);
+
+        logger.info(`🔧 Bridge method: ${name}(${paramCount} params) -> async:${isAsync}`);
+      }
     });
 
     // ✅ NEW CROSSCHAIN FEATURE EXTRACTION EDGE CASES
     describe('Crosschain Feature Extraction Edge Cases', () => {
       it('should handle async bridge method detection correctly', () => {
-        const features = getFeatures(MinimalLiFiAdapter);
+        // Inspect the adapter prototype.
+        const methodNames = Object.getOwnPropertyNames(MinimalLiFiAdapter.prototype)
+          .filter(n => n !== 'constructor' && typeof (MinimalLiFiAdapter.prototype as any)[n] === 'function');
 
-        // All crosschain operations should be async
-        const asyncMethods = features.filter(f => f.isAsync);
-        const syncMethods = features.filter(f => !f.isAsync);
+        const asyncMethods = methodNames.filter(n => {
+          const fn = (MinimalLiFiAdapter.prototype as any)[n];
+          return fn && fn.constructor && fn.constructor.name === 'AsyncFunction';
+        });
+
+        const syncMethods = methodNames.filter(n => {
+          const fn = (MinimalLiFiAdapter.prototype as any)[n];
+          return !(fn && fn.constructor && fn.constructor.name === 'AsyncFunction');
+        });
 
         expect(asyncMethods.length).toBeGreaterThan(0);
 
         // Log for debugging
-        console.log('🔄 Async bridge methods:', asyncMethods.map(m => m.name));
-        console.log('⚡ Sync bridge methods:', syncMethods.map(m => m.name));
+        logger.info('🔄 Async bridge methods (prototype):', asyncMethods);
+        logger.info('⚡ Sync bridge methods (prototype):', syncMethods);
       });
 
       it('should handle complex bridge operation signatures', () => {
@@ -342,25 +369,28 @@ describe('Crosschain Auto-Generation System Tests', () => {
           }
         }
 
-        const features = getFeatures(MockBridgeAdapter);
+        const proto = MockBridgeAdapter.prototype;
+        const quoteFn = (proto as any).getBridgeQuote;
+        const execFn = (proto as any).executeBridge;
 
-        // Find the complex bridge methods
-        const quoteMethod = features.find(f => f.name === 'getBridgeQuote');
-        const executeMethod = features.find(f => f.name === 'executeBridge');
-
-        if (quoteMethod) {
-          expect(quoteMethod.parameters.length).toBe(4);
-          expect(quoteMethod.isAsync).toBe(true);
+        if (typeof quoteFn === 'function') {
+          expect(quoteFn.length).toBe(4);
+          expect(quoteFn.constructor.name).toBe('AsyncFunction');
+        } else {
+          // If not present, fail explicitly to keep test meaningful
+          throw new Error('getBridgeQuote not found on MockBridgeAdapter prototype');
         }
 
-        if (executeMethod) {
-          expect(executeMethod.parameters.length).toBe(3);
-          expect(executeMethod.isAsync).toBe(true);
+        if (typeof execFn === 'function') {
+          expect(execFn.length).toBe(3);
+          expect(execFn.constructor.name).toBe('AsyncFunction');
+        } else {
+          throw new Error('executeBridge not found on MockBridgeAdapter prototype');
         }
       });
 
       it('should gracefully handle malformed bridge adapter classes', () => {
-        // Test with various invalid inputs
+        // Test with various invalid inputs — ensure safe inspection does not throw
         const invalidInputs = [
           null,
           undefined,
@@ -372,8 +402,20 @@ describe('Crosschain Auto-Generation System Tests', () => {
 
         for (const invalidInput of invalidInputs) {
           expect(() => {
-            const features = getFeatures(invalidInput as any);
-            expect(Array.isArray(features)).toBe(true);
+            // Safe prototype inspection: only attempt when input looks like a constructor function
+            if (typeof invalidInput === 'function') {
+              const names = Object.getOwnPropertyNames((invalidInput as any).prototype || {})
+                .filter(n => n !== 'constructor' && typeof (invalidInput as any).prototype[n] === 'function');
+              expect(Array.isArray(names)).toBe(true);
+            } else if (invalidInput && typeof invalidInput === 'object' && invalidInput.prototype && typeof invalidInput.prototype === 'object') {
+              // defensive: prototype present but possibly malformed
+              const names = Object.getOwnPropertyNames(invalidInput.prototype || {})
+                .filter((n: string) => n !== 'constructor' && typeof (invalidInput as any).prototype[n] === 'function');
+              expect(Array.isArray(names)).toBe(true);
+            } else {
+              // non-constructors should not throw and simply be ignored
+              expect(typeof invalidInput === 'function').toBe(false);
+            }
           }).not.toThrow();
         }
       });
@@ -392,7 +434,7 @@ describe('Crosschain Auto-Generation System Tests', () => {
       expect(adapterInfo).toBeDefined();
       expect(adapterInfo!.requirements).toBeDefined();
       expect(adapterInfo!.environment).toBeDefined();
-      expect(adapterInfo!.features).toBeDefined();
+      expect(adapterInfo!.capabilities).toBeDefined();
 
       // ✅ Check environment supports both
       expect(adapterInfo!.environment!.supportedEnvironments).toEqual([
@@ -400,7 +442,7 @@ describe('Crosschain Auto-Generation System Tests', () => {
         RuntimeEnvironment.BROWSER
       ]);
       expect(adapterInfo!.environment!.supportedEnvironments).toContain(RuntimeEnvironment.BROWSER);
-      console.log('✅ LiFi adapter registered with generated metadata');
+      logger.info('✅ LiFi adapter registered with generated metadata');
     });
 
     it('should have static compatibility matrix with wallet compatibility declarations', () => {
@@ -409,17 +451,14 @@ describe('Crosschain Auto-Generation System Tests', () => {
       expect(compatMatrix!.adapterName).toBe('lifi');
       expect(compatMatrix!.version).toBe('1.0.0');
 
-      // ✅ TEST: What this package DECLARES about wallet compatibility  
+      // ✅ FIX: Test what this package DECLARES about wallet compatibility using requiresCapabilities
       const walletCompat = compatMatrix!.crossModuleCompatibility.find(c => c.moduleName === Ms3Modules.wallet);
       expect(walletCompat).toBeDefined();
+      expect(walletCompat!.requiresCapabilities).toBeDefined();
+      expect(Array.isArray(walletCompat!.requiresCapabilities)).toBe(true);
+      expect(walletCompat!.requiresCapabilities.length).toBeGreaterThan(0);
 
-      const ethersCompat = walletCompat!.compatibleAdapters.find(a => a.name === 'ethers');
-      expect(ethersCompat).toBeDefined();
-
-      const web3authCompat = walletCompat!.compatibleAdapters.find(a => a.name === 'web3auth');
-      expect(web3authCompat).toBeUndefined(); // Should NOT be compatible (environment mismatch)
-
-      console.log('✅ Crosschain correctly DECLARES wallet adapter compatibility');
+      logger.info('✅ Crosschain correctly DECLARES wallet adapter compatibility requirements');
     });
 
     it('should have generated bridge-specific compatibility matrices', () => {
@@ -563,7 +602,7 @@ describe('Crosschain Auto-Generation System Tests', () => {
         expect(results).toHaveLength(5);
         results.forEach((result, index) => {
           expect(Array.isArray(result)).toBe(true);
-          console.log(`✅ Concurrent bridge schema ${index} processed: ${result.length} requirements`);
+          logger.info(`✅ Concurrent bridge schema ${index} processed: ${result.length} requirements`);
         });
       });
 
@@ -585,9 +624,14 @@ describe('Crosschain Auto-Generation System Tests', () => {
   });
 
   describe('Static Cross-Package Compatibility Matrix', () => {
+    beforeAll(async () => {
+      await import('../../wallet/src/adapters/ethers/ethersWallet.registration.js');
+      await import('../../wallet/src/adapters/web3auth/web3authWallet.registration.js');
+    }, 20000);
+
     it('should test static compatibility declarations (what crosschain package controls)', async () => {
       // ✅ Import the static compatibility functions
-      const { checkCrossPackageCompatibility } = await import('@m3s/common');
+      const { checkCrossPackageCompatibility } = await import('@m3s/shared');
 
       // ✅ Test what the crosschain package DECLARES
 
@@ -598,6 +642,7 @@ describe('Crosschain Auto-Generation System Tests', () => {
         crosschain, 'lifi', '1.0.0',
         wallet, 'ethers', '1.0.0'
       );
+
       expect(ccToEthers).toBe(true);
 
       const ccToWeb3Auth = checkCrossPackageCompatibility(
@@ -606,11 +651,11 @@ describe('Crosschain Auto-Generation System Tests', () => {
       );
       expect(ccToWeb3Auth).toBe(false); // Environment incompatible
 
-      console.log('✅ Static compatibility matrix correctly declares wallet compatibility');
+      logger.info('✅ Static compatibility matrix correctly declares wallet compatibility');
     });
 
     it('should validate environment-aware compatibility (server vs browser)', async () => {
-      const { checkCrossPackageCompatibility } = await import('@m3s/common');
+      const { checkCrossPackageCompatibility } = await import('@m3s/shared');
       const { wallet } = Ms3Modules
       const { crosschain } = Ms3Modules
 
@@ -628,11 +673,11 @@ describe('Crosschain Auto-Generation System Tests', () => {
       );
       expect(ccToWeb3Auth).toBe(false);
 
-      console.log('✅ Environment-aware static compatibility working - server/browser separation maintained');
+      logger.info('✅ Environment-aware static compatibility working - server/browser separation maintained');
     });
 
     it('should handle bridge compatibility with smart contract module', async () => {
-      const { checkCrossPackageCompatibility } = await import('@m3s/common');
+      const { checkCrossPackageCompatibility } = await import('@m3s/shared');
 
       // Crosschain bridges might interact with smart contracts
       // This tests the theoretical compatibility
@@ -644,7 +689,7 @@ describe('Crosschain Auto-Generation System Tests', () => {
 
       // This should be false as crosschain doesn't directly declare smart-contract compatibility
       expect(typeof ccToSmartContract).toBe('boolean');
-      console.log('🔗 Crosschain to smart-contract compatibility:', ccToSmartContract);
+      logger.info('🔗 Crosschain to smart-contract compatibility:', ccToSmartContract);
     });
 
     it('should handle environment-based bridge compatibility validation', async () => {
@@ -654,14 +699,19 @@ describe('Crosschain Auto-Generation System Tests', () => {
       expect(lifiEnv?.supportedEnvironments).toContain(RuntimeEnvironment.SERVER);
       expect(lifiEnv?.supportedEnvironments).toContain(RuntimeEnvironment.BROWSER);
 
-      console.log('✅ Bridge environment requirements properly validated');
+      logger.info('✅ Bridge environment requirements properly validated');
     });
   });
 
   // ✅ NEW CROSSCHAIN INTEGRATION TESTS SECTION
   describe('Cross-Package Bridge Integration Tests', () => {
+    beforeAll(async () => {
+      await import('../../wallet/src/adapters/ethers/ethersWallet.registration.js');
+      await import('../../wallet/src/adapters/web3auth/web3authWallet.registration.js');
+    }, 20000);
+
     it('should validate bridge adapter compatibility with wallet modules', async () => {
-      const { checkCrossPackageCompatibility } = await import('@m3s/common');
+      const { checkCrossPackageCompatibility, Ms3Modules } = await import('@m3s/shared');
 
       // Test bridge compatibility with ethers wallet
       const bridgeToEthers = checkCrossPackageCompatibility(
@@ -687,7 +737,7 @@ describe('Crosschain Auto-Generation System Tests', () => {
 
       // Bridge-specific limitations should be present
       expect(lifiEnv?.limitations).toBeDefined();
-      console.log('🌉 Bridge environment limitations:', lifiEnv?.limitations);
+      logger.info('🌉 Bridge environment limitations:', lifiEnv?.limitations);
     });
   });
 
@@ -707,7 +757,7 @@ describe('Crosschain Auto-Generation System Tests', () => {
 
       // Should complete within reasonable time (less than 1 second)
       expect(duration).toBeLessThan(1000);
-      console.log(`✅ 2000 bridge registry lookups completed in ${duration}ms`);
+      logger.info(`✅ 2000 bridge registry lookups completed in ${duration}ms`);
     });
 
     it('should handle bulk bridge requirement generation efficiently', () => {
@@ -723,7 +773,7 @@ describe('Crosschain Auto-Generation System Tests', () => {
 
       // Should complete within reasonable time
       expect(duration).toBeLessThan(2000);
-      console.log(`✅ 100 bridge requirement generations completed in ${duration}ms`);
+      logger.info(`✅ 100 bridge requirement generations completed in ${duration}ms`);
     });
   });
 });

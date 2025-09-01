@@ -4,7 +4,7 @@ import {
   CompileInput,
   GenerateContractInput,
 } from "../../types/index.js";
-import { AdapterArguments } from "@m3s/common";
+import { AdapterArguments } from "@m3s/shared";
 
 /**
  * Specific options for this contract adapter template.

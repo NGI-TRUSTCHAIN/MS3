@@ -1,11 +1,31 @@
-import { IAdapterIdentity, IAdapterLifecycle } from "@m3s/common";
+import { DeploymentDataType } from "../enums/base.js";
+import { ERC20Options } from "@openzeppelin/wizard/dist/erc20.js";
+import { ERC721Options } from "@openzeppelin/wizard/dist/erc721.js";
+import { ERC1155Options } from "@openzeppelin/wizard/dist/erc1155.js";
+import { GenerateContractInput } from "../types/index.js";
 
 /** Input for generating contract source code */
-export interface GenerateContractInput {
+// Define a base that is common to all inputs
+interface BaseContractInput {
   language: string; // e.g., 'solidity', 'cairo', 'rust'
-  template?: string; // Optional: e.g., 'openzeppelin_erc20', 'spl_token'
-  options: Record<string, any>; // Language/template specific options provided by the user
 }
+
+// Create a specific interface for each template
+export interface ERC20ContractInput extends BaseContractInput {
+  template: 'openzeppelin_erc20'; // Use a literal type
+  options: ERC20Options;
+}
+
+export interface ERC721ContractInput extends BaseContractInput {
+  template: 'openzeppelin_erc721'; // Use a literal type
+  options: ERC721Options;
+}
+
+export interface ERC1155ContractInput extends BaseContractInput {
+  template: 'openzeppelin_erc1155'; // Use a literal type
+  options: ERC1155Options;
+}
+
 
 /** Input for compiling source code */
 export interface CompileInput {
@@ -14,6 +34,7 @@ export interface CompileInput {
   contractName?: string; // Optional hint for the main contract artifact
   compilerOptions?: Record<string, any>; // Language/toolchain specific compiler flags
 }
+
 export interface CompiledOutput {
   artifacts: {
     abi: any[];
@@ -28,13 +49,13 @@ export interface CompiledOutput {
 }
 
 export interface RegularDeployment {
-  type: 'regular';
+  type:  DeploymentDataType.regular;
   data: string; // Full calldata for deployment (bytecode + encoded constructor args)
   value?: string;
 }
 
 export interface ProxyDeployment {
-  type: 'proxy';
+  type: DeploymentDataType.proxy;
   implementation: { // Data to deploy the logic contract
     data: string; // Full calldata for logic contract deployment (bytecode + encoded constructor args, if any)
     value?: string;
@@ -53,7 +74,7 @@ export interface ProxyDeployment {
 /**
  * Contract source code generation capabilities
  */
-interface IContractGenerator {
+export interface IContractGenerator {
   /**
    * Generates contract source code based on language, template, and options.
    * @param input - Parameters defining the contract to generate.
@@ -65,7 +86,7 @@ interface IContractGenerator {
 /**
  * Contract compilation capabilities
  */
-interface IContractCompiler {
+export interface IContractCompiler {
   /**
    * Compiles contract source code for a specific language.
    * @param input - Source code, language, and compiler options.
@@ -73,12 +94,3 @@ interface IContractCompiler {
    */
   compile(input: CompileInput): Promise<CompiledOutput>;
 }
-
-/**
- * Complete contract handler interface - composed of all contract operations
- */
-export interface IBaseContractHandler extends
-  IAdapterIdentity,
-  IAdapterLifecycle,
-  IContractGenerator,
-  IContractCompiler { }

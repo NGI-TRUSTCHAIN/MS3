@@ -10,15 +10,12 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
 // Load .env from the root directory
-dotenv.config({ path: path.resolve(rootDir, '../.env') });
-
-// Debug output to troubleshoot
-// console.debug('Loading environment variables from:', path.resolve(rootDir, '../.env'));
+dotenv.config({ path: path.resolve(rootDir, '../../.env') });
 
 // Export environment variables
 export const LIFI_API_KEY = process.env.LIFI_API_KEY
 export const TEST_PRIVATE_KEY = process.env.TEST_PRIVATE_KEY
-export const RUN_INTEGRATION_TESTS = process.env.RUN_SC_INTEGRATION_TESTS === 'true';
+export const RUN_INTEGRATION = process.env.RUN_INTEGRATION === 'true';
 export const INFURA_API_KEY = process.env.INFURA_API_KEY
 export const ALCHEMY_API_KEY =process.env.ALCHEMY_API_KEY
 
@@ -26,7 +23,7 @@ export const ALCHEMY_API_KEY =process.env.ALCHEMY_API_KEY
 export function verifyDotEnvLoading() {
   console.debug('TEST_PRIVATE_KEY found:', TEST_PRIVATE_KEY ? 'YES ✅' : 'NO ❌');
   console.debug('TEST_PRIVATE_KEY preview:', TEST_PRIVATE_KEY ? `${TEST_PRIVATE_KEY.substring(0, 10)}...` : 'N/A');
-  console.debug('RUN_INTEGRATION_TESTS:', RUN_INTEGRATION_TESTS);
+  console.debug('RUN_INTEGRATION:', RUN_INTEGRATION);
   console.debug('INFURA API KEY:', INFURA_API_KEY ? 'YES ✅' : 'NO ❌')
 }
 

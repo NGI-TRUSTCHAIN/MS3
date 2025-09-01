@@ -1,5 +1,5 @@
-import { IEVMWallet, AssetBalance, EstimatedFeeData } from "@m3s/wallet";
-import { AdapterArguments, NetworkConfig } from "@m3s/common";
+import { IEVMWallet, AssetBalance, EstimatedFeeData, GenericTransactionData } from "@m3s/wallet";
+import { AdapterArguments, NetworkConfig } from "@m3s/shared";
 
 /**
  * Specific options for this wallet adapter template.
@@ -74,9 +74,28 @@ export class WalletTemplateAdapter implements IEVMWallet {
     throw new Error("getBalance not implemented");
   }
 
-  async callContract(to: string, data: string): Promise<string> {
-    console.log('callContract', to, data)
+  async callContract(options: {
+    contractAddress: string,
+    abi: any,
+    method: string,
+    args?: any[]
+  }): Promise<string> {
+    console.debug('callContract', options)
     throw new Error("callContract not implemented");
+  }
+
+  async writeContract(
+    options: {
+      contractAddress: string,
+      abi: any,
+      method: string,
+      args?: any[],
+      value?: string | bigint,// Optional: send ETH with call
+      overrides?: Partial<GenericTransactionData['options']>
+    }
+  ): Promise<string> {
+    console.debug('writeContract', options)
+    throw new Error("writeContract not implemented");
   }
 
   async getNetwork(): Promise<NetworkConfig> {
@@ -106,6 +125,11 @@ export class WalletTemplateAdapter implements IEVMWallet {
   }
 
   // Transaction Methods
+  public async getNonce(type: 'latest' | 'pending' = 'pending'): Promise<number> {
+    console.debug('type', type)
+    throw new Error("getNonce not implemented");
+  }
+
   async sendTransaction(): Promise<string> {
     throw new Error("sendTransaction not implemented");
   }
@@ -136,7 +160,7 @@ export class WalletTemplateAdapter implements IEVMWallet {
   }
 
   async updateAllChainRpcs(multiChainRpcs: Record<string, string[]>) {
-    console.log('updateAllChainRpcs', multiChainRpcs)
+    console.debug('updateAllChainRpcs', multiChainRpcs)
 
     throw new Error("updateAllChainRpcs not implemented");
   }

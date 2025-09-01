@@ -1,4 +1,4 @@
-import { AdapterError, WalletErrorCode } from "@m3s/common";
+import { AdapterError, WalletErrorCode } from "@m3s/shared";
 import { ethers } from "ethers";
 
 export function toWei(

@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { ICrossChain } from '../src/types/interfaces/index.js';
+import {logger} from '../../../logger.js';
 
 export function testCrossChainInterface(crosschain: ICrossChain, skipConnectivity: boolean = false) {
   // Safety check for undefined crosschain
   if (!crosschain) {
-    console.warn('CrossChain instance is undefined, skipping full test suite');
+    logger.warning('CrossChain instance is undefined, skipping full test suite');
     return;
   }
 
@@ -62,9 +63,8 @@ export function testCrossChainInterface(crosschain: ICrossChain, skipConnectivit
             expect(Array.isArray(chains)).toBe(true);
             expect(chains.length).toBeGreaterThan(0);
           } catch (error) {
-            console.warn('Could not fetch chains:', error);
-            // Still pass the test in test environment
-            // expect(true).toBe(true);
+            logger.warning('Could not fetch chains:', error);
+       
           }
         });
       });

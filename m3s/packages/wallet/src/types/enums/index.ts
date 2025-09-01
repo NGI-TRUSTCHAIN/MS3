@@ -10,8 +10,14 @@ export enum WalletEvent {
 };
 
 export enum WalletType {
-  'core' = 'core',
-  'evm' = 'evm',
-  'web3auth' = 'web3auth'
+  core = 'core',
+  evm = 'evm',
+  web3auth = 'web3auth'
 };
+
+export enum NonceType {
+  latest = 'latest',
+  pending = 'pending',
+};
+
 // ---- ENUMS --- //

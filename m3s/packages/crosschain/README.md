@@ -1,8 +1,12 @@
+<div align="center">
+  <img src="./logo.png" alt="MS3 Banner" width="300"/>
+</div>
+
 # @m3s/crosschain
 
-Cross-chain token transfers and swaps across 20+ blockchains. Built on LI.FI with simple, standardized API.
+Cross-chain token transfers and swaps across 20+ blockchains. Built on LI.FI with a minimal adapter exposing a standardized API for quoting, executing and monitoring cross-chain operations.
 
-> ⚠️ **Alpha Release**: APIs may change. Not production-ready.
+> ⚠️ Alpha release — APIs may change. For authoritative examples see the tests and adapter source.
 
 ## Installation
 
@@ -10,124 +14,120 @@ Cross-chain token transfers and swaps across 20+ blockchains. Built on LI.FI wit
 npm install @m3s/crosschain
 ```
 
-## Quick Start
+## Key behavior (important clarifications)
+
+- Primary UX: event-driven status updates. executeOperation emits 'status' events as the route progresses. You should listen to these events to get real‑time updates.
+- getOperationStatus is available as a fallback / query API: it returns the latest cached status (adapter store) and falls back to LI.FI's active route lookup. Polling is not required for normal usage — prefer events.
+- Wallets: provide reliable RPC endpoints via the wallet adapter. The adapter validates RPC reliability before executing on‑chain steps and will ask you to configure private RPCs if necessary.
+
+## Quick Start (recommended)
+
+1. Create a wallet (manages keys + RPC lists).
+2. Create crosschain adapter (optionally pass the wallet to adapter options).
+3. Request quotes.
+4. Execute a quote and listen to 'status' events for updates.
+
+Example — preferred event-driven flow:
 
 ```javascript
 import { createCrossChain } from '@m3s/crosschain';
 import { createWallet } from '@m3s/wallet';
 
-// Setup wallet
+// 1) Create wallet with multiChainRpcs (preferred)
 const wallet = await createWallet({
   name: 'ethers',
-  options: { privateKey: 'YOUR_PRIVATE_KEY' }
+  version: '1.0.0',
+  options: {
+    privateKey: '0x....',
+    multiChainRpcs: {
+      '137': ['https://polygon-mainnet.infura.io/v3/YOUR_KEY'],
+      '10':  ['https://optimism-mainnet.infura.io/v3/YOUR_KEY']
+    }
+  }
 });
 
-// Create crosschain adapter
+// 2) Set an active provider (recommended so wallet.getNetwork() returns correct chain)
+await wallet.setProvider({
+  chainId: '137',
+  rpcUrls: ['https://polygon-mainnet.infura.io/v3/YOUR_KEY'],
+  displayName: 'Polygon'
+});
+// Note: multiChainRpcs supplies RPC lists for validation; setProvider sets the active chain for the wallet.
+
+// 3) Create adapter (you can also pass wallet in options so executeOperation can reuse it)
 const crosschain = await createCrossChain({
   name: 'lifi',
   version: '1.0.0',
-  options: {
-    apiKey: process.env.LIFI_API_KEY // Optional for quotes
-  }
+  options: { apiKey: process.env.LIFI_API_KEY, wallet }
 });
 
-// Get quotes for cross-chain transfer
+// 4) Get quotes
 const quotes = await crosschain.getOperationQuote({
-  sourceAsset: {
-    chainId: 137,      // Polygon
-    address: '0x...', // USDC
-    symbol: 'USDC',
-    decimals: 6
-  },
-  destinationAsset: {
-    chainId: 10,       // Optimism  
-    address: '0x...', // USDC
-    symbol: 'USDC',
-    decimals: 6
-  },
-  amount: '100000000', // 100 USDC
-  userAddress: await wallet.getAccounts()[0],
-  slippageBps: 50      // 0.5%
+  sourceAsset: { chainId: 137, address: '0x...', symbol: 'USDC', decimals: 6 },
+  destinationAsset: { chainId: 10, address: '0x...', symbol: 'USDC', decimals: 6 },
+  amount: '0.1',                // human units (adapter converts to chain units)
+  userAddress: (await wallet.getAccounts())[0],
+  slippageBps: 50               // 0.5%
 });
 
-// Execute best quote
-const result = await crosschain.executeOperation(quotes[0]);
-console.log(`Transfer started: ${result.operationId}`);
+// 5) Execute selected quote and listen for status events
+const quote = quotes[0];
+const result = await crosschain.executeOperation(quote, { wallet }); // wallet required for execution steps
+console.log('Started operation:', result.operationId);
 
-// Track status
-const status = await crosschain.getOperationStatus(result.operationId);
-console.log(`Status: ${status.status}`);
-```
-
-## Features
-
-- **20+ Chains** - All major EVM networks supported
-- **Route Optimization** - Find best paths automatically  
-- **Gas Estimation** - Accurate cost estimates
-- **Status Tracking** - Real-time operation monitoring
-- **LI.FI Integration** - Access to 15+ bridge protocols
-
-## Supported Networks
-
-| Network | Chain ID | Native Token |
-|---------|----------|--------------|
-| Ethereum | 1 | ETH |
-| Polygon | 137 | MATIC |
-| Arbitrum | 42161 | ETH |
-| Optimism | 10 | ETH |
-| Base | 8453 | ETH |
-| BNB Chain | 56 | BNB |
-| Avalanche | 43114 | AVAX |
-
-## Examples
-
-### Token Swap + Bridge
-```javascript
-// MATIC on Polygon → WETH on Arbitrum
-const quotes = await crosschain.getOperationQuote({
-  sourceAsset: { chainId: 137, address: '0x...', symbol: 'MATIC' },
-  destinationAsset: { chainId: 42161, address: '0x...', symbol: 'WETH' },
-  amount: ethers.parseEther('100').toString(),
-  userAddress: userAddress
+// Listen for updates
+crosschain.on('status', (status) => {
+  console.log('Status update', status.operationId, status.status, status.statusMessage);
 });
+
+// Optionally query latest status (fallback)
+const latest = await crosschain.getOperationStatus(result.operationId);
+console.log('Latest status', latest.status);
 ```
 
-### Advanced Options
-```javascript
-// Custom slippage and bridge preferences  
-const quotes = await crosschain.getOperationQuote({
-  // ... assets ...
-  options: {
-    slippage: 0.005,           // 0.5%
-    allowBridges: ['stargate', 'across'],
-    denyExchanges: ['paraswap']
-  }
-});
-```
+## Events vs polling — what to use
 
-### Status Monitoring
-```javascript
-// Poll for updates
-const checkStatus = async (operationId) => {
-  const status = await crosschain.getOperationStatus(operationId);
-  
-  console.log(`Status: ${status.status}`);
-  if (status.sourceTx?.hash) {
-    console.log(`Source TX: ${status.sourceTx.hash}`);
-  }
-  if (status.destinationTx?.hash) {
-    console.log(`Destination TX: ${status.destinationTx.hash}`);
-  }
-};
-```
+- Use events: executeOperation emits 'status' events continuously (initial PENDING, intermediate updates, terminal COMPLETED/FAILED).
+- Use getOperationStatus: only as a query/fallback when you need to fetch latest adapter-cached state (e.g., after reconnecting, or if you missed events). The adapter stores latest statuses in-memory and consults LI.FI active routes when needed.
+- Polling is not required for normal usage and not recommended as first choice.
 
-## Community Adapters
+## Wallet / RPC notes (clarified)
 
-Extend to more bridges and protocols:
-- 📖 [**Full Documentation**](https://docs.m3s.dev/crosschain) - Complete API reference
-- 🧪 [**Live Demo**](https://demo.m3s.dev) - Try cross-chain transfers  
-- 🔧 [**Adapter Templates**](https://github.com/m3s-org/community-adapters) - Create bridge adapters
+- multiChainRpcs in createWallet: supplies lists of RPC endpoints keyed by chain id. This is used by the adapter (via wallet.getAllChainRpcs()) for RPC reliability checks — do provide private RPC endpoints (Infura/Alchemy/QuickNode) for production.
+- setProvider: still recommended. The adapter calls wallet.getNetwork() to detect the wallet's current chain when creating temporary providers. If you do not call setProvider, ensure wallet.getNetwork() returns a valid network (some wallet adapters may set a default).
+- You can pass the wallet either:
+  - into createCrossChain options (adapter will reuse wallet), or
+  - to executeOperation as { wallet } (per-call), as shown above.
+
+## Error handling & RPC validation
+
+- Before execution the adapter validates RPCs for source/destination chains. If validation fails it throws an AdapterError with an actionable message like "Private RPCs required ... use wallet.updateAllChainRpcs()".
+- Provide multiChainRpcs with private endpoints to avoid failures in execution.
+
+## API summary
+
+- getOperationQuote(intent) => Promise<OperationQuote[]>
+- executeOperation(quote, { wallet }) => Promise<OperationResult> (returns initial PENDING result and emits 'status' updates)
+- getOperationStatus(operationId) => Promise<OperationResult>
+- cancelOperation(operationId, { wallet?, reason? }) => Promise<OperationResult>
+- resumeOperation(operationId, { wallet? }) => Promise<OperationResult>
+- on('status', handler) — listen for OperationResult updates
+
+## Tests & authoritative examples
+
+See tests for real usage patterns and helpers (waitForReceipt, event tracking, RPC management):
+- packages/crosschain/tests/adapters/03_LifiAdapter.test.ts
+- packages/crosschain/src/adapters/LI.FI.Adapter.ts
+- packages/crosschain/src/adapters/LI.FI.registration.ts
+
+## Troubleshooting
+
+- "Private RPCs required ... updateAllChainRpcs" — add private RPCs via wallet.updateAllChainRpcs() and ensure wallet.setProvider active chain is set.
+- If getOperationQuote returns [], try adding an API key or adjusting intent (amount, slippage).
+
+## Links
+- 📖 [**Full Documentation**](https://m3s.changetheblock.com/docs/)
+- 🧪 [**Live Demo**](https://m3s.changetheblock.com/demo/)
 
 ## License
-
-MIT
+  - Apache-2.0 — see LICENSE in [here.](https://github.com/NGI-TRUSTCHAIN/MS3/blob/main/LICENSE)

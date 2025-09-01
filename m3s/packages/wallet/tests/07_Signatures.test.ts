@@ -1,9 +1,10 @@
 import { describe, beforeEach, it, expect, beforeAll } from 'vitest';
 import { createWallet, EIP712TypedData, IEVMWallet } from '@m3s/wallet';
 import { EIP712Validator } from '../src/helpers/signatures.js';
-import { NetworkHelper, PrivateKeyHelper } from '@m3s/common';
+import { Ms3Modules, NetworkHelper, PrivateKeyHelper } from '@m3s/shared';
 import { ethers } from 'ethers';
 import { TEST_PRIVATE_KEY } from '../config.js';
+import {logger} from '../../../logger.js';
 
 describe('Signature and EIP-712 Tests', () => {
     let ethersWallet: IEVMWallet;
@@ -18,6 +19,10 @@ describe('Signature and EIP-712 Tests', () => {
     beforeEach(async () => {
         const privateKey = TEST_PRIVATE_KEY || pkHelper.generatePrivateKey();
 
+        if (!privateKey) {
+            throw new Error('Failed to obtain a valid private key');
+        }
+
         ethersWallet = await createWallet({
             name: 'ethers',
             version: '1.0.0',
@@ -25,31 +30,32 @@ describe('Signature and EIP-712 Tests', () => {
         });
 
         const networkConfig = await networkHelper.getNetworkConfig('holesky');
+
         if (networkConfig && networkConfig.rpcUrls && networkConfig.rpcUrls.length > 0) {
-            console.log('[Test Setup 07_Signatures] Attempting to set provider with Sepolia config for ethersWallet.');
+            logger.info('[Test Setup 07_Signatures] Attempting to set provider with Sepolia config for ethersWallet.');
             try {
                 await ethersWallet.setProvider(networkConfig);
                 if (ethersWallet.isConnected()) {
-                    console.log('[Test Setup 07_Signatures] ethersWallet successfully connected via setProvider.');
+                    logger.info('[Test Setup 07_Signatures] ethersWallet successfully connected via setProvider.');
                     const network = await ethersWallet.getNetwork();
-                    console.log(`[Test Setup 07_Signatures] Connected to network: ${network.name} (Chain ID: ${network.chainId})`);
+                    logger.info(`[Test Setup 07_Signatures] Connected to network: ${network.name} (Chain ID: ${network.chainId})`);
                 } else {
-                    console.warn('[Test Setup 07_Signatures] ethersWallet.setProvider called but wallet is still not connected.');
+                    logger.warning('[Test Setup 07_Signatures] ethersWallet.setProvider called but wallet is still not connected.');
                 }
             } catch (error) {
-                console.error('[Test Setup 07_Signatures] Failed to set provider for signature tests:', error);
+                logger.error('[Test Setup 07_Signatures] Failed to set provider for signature tests:', error);
             }
         } else {
-            console.warn('[Test Setup 07_Signatures] Sepolia config not available or no RPC URLs; provider not set for ethersWallet.');
+            logger.warning('[Test Setup 07_Signatures] Sepolia config not available or no RPC URLs; provider not set for ethersWallet.');
         }
 
         try {
             accounts = await ethersWallet.getAccounts();
             if (accounts.length === 0) {
-                console.error('[Test Setup 07_Signatures] No accounts retrieved from ethersWallet.');
+                logger.error('[Test Setup 07_Signatures] No accounts retrieved from ethersWallet.');
             }
         } catch (error) {
-            console.error('[Test Setup 07_Signatures] Error getting accounts:', error);
+            logger.error('[Test Setup 07_Signatures] Error getting accounts:', error);
             accounts = []; // Ensure accounts is an array
         }
     }, 30000);
@@ -117,7 +123,7 @@ describe('Signature and EIP-712 Tests', () => {
         it('should sign and verify EIP-712 typed data', async () => {
             // Skip if not connected (chain validation won't work)
             if (!ethersWallet.isConnected()) {
-                console.warn('Skipping EIP-712 test - wallet not connected to validate chain ID');
+                logger.warning('Skipping EIP-712 test - wallet not connected to validate chain ID');
                 return;
             }
 
@@ -135,7 +141,7 @@ describe('Signature and EIP-712 Tests', () => {
                 types: {
                     Person: [
                         { name: 'name', type: 'string' },
-                        { name: 'wallet', type: 'address' }
+                        { name: Ms3Modules.wallet, type: 'address' }
                     ],
                     Mail: [
                         { name: 'from', type: 'Person' },
@@ -183,6 +189,10 @@ describe('Signature and EIP-712 Tests', () => {
                 value: { contents: 'test' }
             } as any;
 
+            if (!ethersWallet.isConnected()) {
+                throw new Error('Wallet not connected');
+            }
+
             await expect(ethersWallet.signTypedData(invalidData1))
                 .rejects.toThrow(/Invalid EIP-712 structure/);
 
@@ -209,7 +219,7 @@ describe('Signature and EIP-712 Tests', () => {
 
         it('should validate domain fields', async () => {
             if (!ethersWallet.isConnected()) {
-                console.warn('Skipping "validate domain fields" test - ethersWallet not connected.');
+                logger.warning('Skipping "validate domain fields" test - ethersWallet not connected.');
                 return;
             }
 
@@ -296,7 +306,7 @@ describe('Signature and EIP-712 Tests', () => {
 
         it('should handle chain ID validation when connected', async () => {
             if (!ethersWallet.isConnected()) {
-                console.warn('Skipping chain ID validation test - wallet not connected');
+                logger.warning('Skipping chain ID validation test - wallet not connected');
                 return;
             }
 
@@ -320,7 +330,7 @@ describe('Signature and EIP-712 Tests', () => {
 
         it('should support complex nested types', async () => {
             if (!ethersWallet.isConnected()) {
-                console.warn('Skipping complex types test - wallet not connected');
+                logger.warning('Skipping complex types test - wallet not connected');
                 return;
             }
 
@@ -467,7 +477,7 @@ describe('Signature and EIP-712 Tests', () => {
             }
             const verifyTime = Date.now() - verifyStartTime;
 
-            console.log(`✅ Performance test: ${10} signatures in ${signingTime}ms, ${10} verifications in ${verifyTime}ms`);
+            logger.info(`✅ Performance test: ${10} signatures in ${signingTime}ms, ${10} verifications in ${verifyTime}ms`);
 
             // Should complete within reasonable time
             expect(signingTime).toBeLessThan(5000); // 5 seconds for 10 signatures
@@ -476,7 +486,7 @@ describe('Signature and EIP-712 Tests', () => {
 
         it('should prevent signature replay attacks through proper validation', async () => {
             if (!ethersWallet.isConnected()) {
-                console.warn('Skipping replay attack test - wallet not connected');
+                logger.warning('Skipping replay attack test - wallet not connected');
                 return;
             }
 

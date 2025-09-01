@@ -5,7 +5,7 @@ import { IBaseContractHandler, GenerateContractInput, CompileInput, CompiledOutp
 import SolidityCompiler from "./compilers/solidityCompiler.js";
 import CodeGenerator from "./generator.js";
 import { NetworkConfig } from "@m3s/wallet"
-import { AdapterArguments, AdapterError, SmartContractErrorCode } from "@m3s/common";
+import { AdapterArguments, AdapterError, SmartContractErrorCode } from "@m3s/shared";
 
 export interface IOpenZeppelinAdapterOptionsV1 {
     workDir?: string;
@@ -26,6 +26,7 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
     public readonly version: string;
 
     protected initialized: boolean = false;
+
     private workDir: string;
     private preserveOutput: boolean;
     private providerConfig?: NetworkConfig;
@@ -43,7 +44,7 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
 
     private constructor(args: args) {
 
-        const defaultWorkDir = path.join(process.cwd(), 'contracts');
+        const defaultWorkDir = path.join(process.cwd(), 'artifacts');
         this.workDir = args.options?.workDir || defaultWorkDir;
         this.preserveOutput = args.options?.preserveOutput ?? false;
         this.providerConfig = args.options?.providerConfig;
@@ -54,14 +55,14 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
 
         // Configuration specific to helpers
         this.solidityCompilerConfig = {
-            workDir: this.workDir, // Pass the determined workDir
+            workDir: this.workDir,
             solcVersion: args.options?.solcVersion || '0.8.22',
             compilerSettings: args.options?.compilerSettings || { optimizer: { enabled: true, runs: 200 } },
             hardhatConfigFileName: args.options?.hardhatConfig?.configFileName || 'hardhat.config.cjs',
             preserveOutput: this.preserveOutput,
         };
 
-        // Create helper instances 1.0
+        // Create helper instances
         this.generator = new CodeGenerator();
         this.solidityCompiler = new SolidityCompiler(this.solidityCompilerConfig);
 
@@ -73,41 +74,40 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
         return adapter;
     }
 
-
     async initialize(): Promise<void> {
         if (this.initialized) return;
-        console.log(`[OpenZeppelinAdapter] Initializing...`);
+        console.info(`[OpenZeppelinAdapter] Initializing...`);
         try {
             // 1. Ensure work directory exists
             await fs.mkdir(this.workDir, { recursive: true });
-            console.log(`[OpenZeppelinAdapter] Work directory ensured: ${this.workDir}`);
+            console.info(`[OpenZeppelinAdapter] Work directory ensured: ${this.workDir}`);
 
             // 2. Initialize OpenZeppelinAdapter's optional default EVM provider
             let adapterRpcUrl: string | undefined;
             if (this.providerConfig) {
                 if (this.providerConfig.rpcUrls && Array.isArray(this.providerConfig.rpcUrls) && this.providerConfig.rpcUrls.length > 0) {
                     adapterRpcUrl = this.providerConfig.rpcUrls[0];
-                    console.log(`[OpenZeppelinAdapter] Using rpcUrls[0] for its default provider: ${adapterRpcUrl}`);
+                    console.info(`[OpenZeppelinAdapter] Using rpcUrls[0] for its default provider: ${adapterRpcUrl}`);
                 }
             }
 
             if (adapterRpcUrl) {
                 try {
-                    console.log(`[OpenZeppelinAdapter] Configuring its default EVM provider from: ${adapterRpcUrl}`);
+                    console.info(`[OpenZeppelinAdapter] Configuring its default EVM provider from: ${adapterRpcUrl}`);
                     const chainId = this.providerConfig?.chainId ? Number(this.providerConfig.chainId) : undefined;
                     this.defaultProvider = new JsonRpcProvider(adapterRpcUrl, chainId);
                     await this.defaultProvider.getNetwork(); // Test connection
-                    console.log(`[OpenZeppelinAdapter] Its default EVM provider connected successfully to network: ${(await this.defaultProvider.getNetwork()).name}`);
+                    console.info(`[OpenZeppelinAdapter] Its default EVM provider connected successfully to network: ${(await this.defaultProvider.getNetwork()).name}`);
                 } catch (providerError: any) {
                     console.warn(`[OpenZeppelinAdapter] Failed to initialize its default EVM provider: ${providerError.message}`);
                     this.defaultProvider = undefined;
                 }
             } else {
-                console.log(`[OpenZeppelinAdapter] No suitable RPC URL found in providerConfig for its own default provider.`);
+                console.warn(`[OpenZeppelinAdapter] No suitable RPC URL found in providerConfig for its own default provider.`);
             }
 
             this.initialized = true;
-            console.log(`[OpenZeppelinAdapter] Initialized successfully.`);
+            console.info(`[OpenZeppelinAdapter] Initialized successfully.`);
         } catch (error: any) {
             this.initialized = false;
             console.error(`[OpenZeppelinAdapter] Initialization failed: ${error.message}`, error.stack);
@@ -124,67 +124,94 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
         return this.initialized;
     }
 
-    // // --- Delegate to Internal Helpers ---
-    // async generateContract(input: GenerateContractInput): Promise<string> {
-    //     if (!this.initialized) {
-    //         throw new AdapterError("Adapter not initialized", {
-    //             code: SmartContractErrorCode.AdapterNotInitialized,
-    //             methodName: 'generateContract'
-    //         });
-    //     }
-    //     try {
-    //         return await this.generator.generate(input);
-    //     } catch (error: any) {
-    //         if (error instanceof AdapterError) throw error;
-    //         throw new AdapterError(`Contract generation failed: ${error.message}`, {
-    //             cause: error,
-    //             code: SmartContractErrorCode.MethodCallFailed, // Or a more specific SC_GENERATION_FAILED if added
-    //             methodName: 'generateContract',
-    //             details: { input }
-    //         });
-    //     }
-    // }
+    normalizeOzOptions(template: string, options: any): any {
+        // Clone to avoid mutating original
+        const opts = { ...options };
+
+        // --- Required fields ---
+        if (template === 'openzeppelin_erc20' || template === 'openzeppelin_erc721') {
+            if (!opts.name) throw new AdapterError("Missing required option: 'name'.", {
+                code: SmartContractErrorCode.InvalidInput,
+                methodName: 'generateContract'
+            });
+            if (!opts.symbol) throw new AdapterError("Missing required option: 'symbol'.", {
+                code: SmartContractErrorCode.InvalidInput,
+                methodName: 'generateContract'
+            });
+        }
+        if (template === 'openzeppelin_erc1155') {
+            if (!opts.name) throw new AdapterError("Missing required option: 'name'.", {
+                code: SmartContractErrorCode.InvalidInput,
+                methodName: 'generateContract'
+            });
+            if (!('uri' in opts)) throw new AdapterError("Missing required option: 'uri'.", {
+                code: SmartContractErrorCode.InvalidInput,
+                methodName: 'generateContract'
+            });
+            // If user sets uri to empty string, that's fine (OZ accepts "")
+        }
+
+        // --- Optional fields ---
+        // Only set upgradeable if missing, and only to "" (none)
+        const supportsUpgradeable = [
+            'openzeppelin_erc20',
+            'openzeppelin_erc721',
+            'openzeppelin_erc1155'
+        ].includes(template);
+
+        if (supportsUpgradeable) {
+            const allowed = ["transparent", "uups"];
+            if (!('upgradeable' in opts) || opts.upgradeable == null) {
+                opts["upgradeable"] = false;
+            } else if (!allowed.includes(opts.upgradeable)) {
+                opts["upgradeable"] = false;
+            }
+        }
+
+        // Do NOT set optional features like pausable, burnable, etc.
+        // Only forward what the user provides.
+
+        return opts;
+    }
 
     async generateContract(input: GenerateContractInput): Promise<string> {
         if (!this.initialized) {
             throw new AdapterError("Adapter not initialized", {
                 code: SmartContractErrorCode.AdapterNotInitialized,
-                methodName: 'generateContract'
+                methodName: ''
             });
         }
 
-        // ✅ FIX: Template-specific validation
-        const { template, options } = input;
-
-        if (template?.includes('erc20') || template?.includes('erc721')) {
-            // ERC20 and ERC721 require both name and symbol
-            if (!options?.name || !options?.symbol) {
-                throw new AdapterError("Contract 'name' and 'symbol' are required for ERC20/ERC721 templates", {
-                    code: SmartContractErrorCode.InvalidInput,
-                    methodName: 'generateContract',
-                    details: { template, providedOptions: options }
-                });
-            }
-        } else if (template?.includes('erc1155')) {
-            // ERC1155 requires name and uri, but NOT symbol
-            if (!options?.name || !options?.uri) {
-                throw new AdapterError("Contract 'name' and 'uri' are required for ERC1155 templates", {
-                    code: SmartContractErrorCode.InvalidInput,
-                    methodName: 'generateContract',
-                    details: { template, providedOptions: options }
-                });
-            }
-        }
+        // Normalize options for OZ Wizard
+        const normalizedOptions = this.normalizeOzOptions(input.template, input.options);
+        const normalizedInput = { ...input, options: normalizedOptions };
 
         try {
-            const code = await this.generator.generate(input);
-            console.log('GENERATED CODE --- generateContract', code)
-            return code
+            const code = await this.generator.generate(normalizedInput);
+            return code;
         } catch (error: any) {
-            if (error instanceof AdapterError) throw error;
-            throw new AdapterError(`Contract generation failed: ${error.message}`, {
+            // Bubble up OZ errors, but wrap in AdapterError for client clarity
+            let message = error?.message || "Unknown error during contract generation";
+            let code = SmartContractErrorCode.MethodCallFailed;
+
+            // If OZ error message indicates missing/invalid option, make it actionable
+            if (message.includes("Unknown value for `upgradeable`")) {
+                message = "Missing or invalid value for 'upgradeable'. Please provide a valid option (\"\", \"transparent\", \"uups\").";
+                code = SmartContractErrorCode.InvalidInput;
+            }
+            if (message.includes("must have name")) {
+                message = "Missing required option: 'name'.";
+                code = SmartContractErrorCode.InvalidInput;
+            }
+            if (message.includes("must have symbol")) {
+                message = "Missing required option: 'symbol'.";
+                code = SmartContractErrorCode.InvalidInput;
+            }
+            // Add more mappings if OZ error messages are predictable
+
+            throw new AdapterError(`Contract generation failed: ${message}`, {
                 cause: error,
-                code: SmartContractErrorCode.MethodCallFailed,
+                code,
                 methodName: 'generateContract',
                 details: { input }
             });
@@ -199,13 +226,14 @@ export class OpenZeppelinAdapter implements IBaseContractHandler {
                 methodName
             });
         }
-        console.log(`[OpenZeppelinAdapter] Routing compile request for language: ${input.language}`);
+
+        console.info(`[OpenZeppelinAdapter] Routing compile request for language: ${input.language}`);
 
         try {
             // --- Language-Based Compiler Routing ---
             switch (input.language.toLowerCase()) {
                 case 'solidity':
-                    console.log(`[OpenZeppelinAdapter] Using SolidityCompiler (solc ${this.solidityCompilerConfig.solcVersion})...`);
+                    console.info(`[OpenZeppelinAdapter] Using SolidityCompiler (solc ${this.solidityCompilerConfig.solcVersion})...`);
                     return await this.solidityCompiler.compile(input);
                 case 'cairo':
                     throw new AdapterError(`Compilation for 'cairo' is not yet implemented.`, {

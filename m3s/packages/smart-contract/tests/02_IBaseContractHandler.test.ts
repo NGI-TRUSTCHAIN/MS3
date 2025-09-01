@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { IBaseContractHandler } from '../src/types/index.js';
+import {logger} from '../../../logger.js';
 
 export function testContractHandlerInterface(handler: IBaseContractHandler, skipDeployment: boolean = false) {
   // Safety check for undefined handler
   if (!handler) {
-    console.warn('Contract handler is undefined, skipping full test suite');
+    logger.warning('Contract handler is undefined, skipping full test suite');
     return;
   }
 
