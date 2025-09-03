@@ -10,7 +10,6 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-
   - name: RUN_REAL_EXECUTION
     value: true
   - name: RUN_SC_INTEGRATION_TESTS
