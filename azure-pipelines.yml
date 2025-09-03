@@ -45,7 +45,7 @@ jobs:
       - script: mkdir -p .tmp
         displayName: 'Prepare tmp directory'
 
-      - script: npm run test:wallet-mocked
+      - script: npm run test
         displayName: 'Running tests...'
         env:
           TMPDIR: $(Build.SourcesDirectory)/.tmp
