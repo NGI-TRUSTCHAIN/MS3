@@ -61,13 +61,23 @@ jobs:
           echo "Sanitized branch name: $BRANCH_NAME"
           echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Push branch to Azure DevOps
+      - name: Checkout GitHub feature branch
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ steps.extract_branch.outputs.branch_name }}
+          fetch-depth: 0
+          
+      - name: Set up Git
+        run: |
+          git config --global user.email '${{ secrets.AZURE_DEVOPS_M3S_EMAIL }}'
+          git config --global user.name "Soporte Changetheblock"
+
+      - name: Push feature branch to Azure DevOps
         run: |
           BRANCH_NAME="${{ steps.extract_branch.outputs.branch_name }}"
-          # Add the Azure DevOps repository as a new remote named "azure"
           git remote add azure "https://:$PAT@dev.azure.com/$ORG/$PROJECT/_git/$REPO_NAME"
-          # Push the main branch from GitHub to the new feature branch on the "azure" remote.
-          git push azure "refs/heads/main:refs/heads/$BRANCH_NAME" --force
+          # Push the FEATURE branch from GitHub to a branch with the SAME NAME on Azure.
+          git push azure "refs/heads/$BRANCH_NAME:refs/heads/$BRANCH_NAME" --force
 
       - name: Create Pull Request in Azure DevOps
         run: |
