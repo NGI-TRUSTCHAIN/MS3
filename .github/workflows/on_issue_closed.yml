@@ -42,7 +42,9 @@ jobs:
           echo "La issue '${{ github.event.issue.title }}' fue cerrada por ${{ github.actor }}"
       - name: Checkout GitHub repo
         uses: actions/checkout@v3
-
+        with:
+          fetch-depth: 0
+          
       - name: Set up Git
         run: |
           git config --global user.email '${{ secrets.AZURE_DEVOPS_M3S_EMAIL }}'
