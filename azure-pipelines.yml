@@ -36,7 +36,7 @@ jobs:
           versionSpec: '20.x'
         displayName: 'Use Node 20'
 
-      - script: npm ci --legacy-peer-deps
+      - script: npm install --legacy-peer-deps
         displayName: 'Installing dependencies...'
 
       - script: npm run build
