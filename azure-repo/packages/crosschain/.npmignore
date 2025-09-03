@@ -1,0 +1,6 @@
+src/
+build.js
+publish.js
+tsconfig.json
+tsconfig.tsbuildinfo
+node_modules/
