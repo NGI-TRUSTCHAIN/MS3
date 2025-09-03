@@ -8,8 +8,7 @@
   ],
   "scripts": {
     "clean": "node --loader ts-node/esm scripts/clean.ts",
-    "prebuild": "cd packages/shared && npm run build",
-    "build": "npm run prebuild && node --loader ts-node/esm scripts/build.ts",
+    "build": "npm run build:shared && npm run build:smart-contract && npm run build:crosschain && npm run build:wallet",
     "build:shared": "node --loader ts-node/esm scripts/build.ts shared",
     "build:wallet": "node --loader ts-node/esm scripts/build.ts wallet",
     "build:crosschain": "node --loader ts-node/esm scripts/build.ts crosschain",
