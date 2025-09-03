@@ -29,13 +29,13 @@ jobs:
       - script: npm install --legacy-peer-deps
         displayName: 'Installing dependencies...'
 
-      - script: npm run build
+      - script: npm run build:ci
         displayName: 'Building internal dependencies...'
 
       - script: mkdir -p .tmp
         displayName: 'Prepare tmp directory'
 
-      - script: npm run test
+      - script: npm run test:ci
         displayName: 'Running tests...'
         env:
           WEB3AUTH_CLIENT_ID: $(WEB3AUTH_CLIENT_ID)
@@ -43,6 +43,7 @@ jobs:
           ALCHEMY_API_KEY: $(ALCHEMY_API_KEY)
           TEST_PRIVATE_KEY: $(TEST_PRIVATE_KEY)
           LIFI_API_KEY: $(LIFI_API_KEY)
+
           RUN_REAL_EXECUTION: $(RUN_REAL_EXECUTION)
           RUN_SC_INTEGRATION_TESTS: $(RUN_SC_INTEGRATION_TESTS)
 
@@ -52,6 +53,7 @@ jobs:
 
   - job: version_control
     dependsOn: tests
+    condition: succeeded()
     steps:
       - script: npm run version -- wallet --minor
         displayName: 'Version Updated.'
