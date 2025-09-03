@@ -8,12 +8,6 @@ node_modules/
 dist/
 .env
 .vs/
-<<<<<<< HEAD
-
-#Visual Studio
-*.vs
-=======
->>>>>>> ea3ca4e5fd46b3008b95fd61711d0b065c961c52
 
 # Compiled Java class files
 *.class

@@ -1,0 +1,60 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - name: WEB3AUTH_CLIENT_ID
+    value: BCUGgXUJQX2T90W4YBqJQpvLsjKzNv-fmFzbqdMq5zW7EOsCikCvOrrIIUmbHwFGw8rNp5Cgmc5KQ2cafWVT2tk
+  - name: INFURA_API_KEY
+    value: 5791a18dd1ee45af8ac3d79b549d54f1
+  - name: ALCHEMY_API_KEY
+    value: DQekU5QTd_rEShUJE_DlD
+  - name: TEST_PRIVATE_KEY
+    value: 0x63a648a4c0efeeb4f08207f1682bed9937a4c6cb5f7f1ee39f75c135e8828b2b
+  - name: LIFI_API_KEY
+    value: 5914aec1-53de-4147-b701-f2751beb4432.47b2600f-bf0e-428b-a9e5-1737f8cc97d4
+  - name: RUN_REAL_EXECUTION
+    value: true
+  - name: RUN_SC_INTEGRATION_TESTS
+    value: true
+
+jobs:
+  - job: tests
+    steps:
+      - script: echo Test suit started!
+        displayName: 'Starting tests...'
+        
+      - task: NodeTool@0
+        inputs:
+          versionSpec: '20.x'
+        displayName: 'Use Node 20'
+
+      - script: npm ci --legacy-peer-deps
+        displayName: 'Installing dependencies...'
+
+      - script: npm run build
+        displayName: 'Building internal dependencies...'
+
+      - script: mkdir -p .tmp
+        displayName: 'Prepare tmp directory'
+
+      - script: npm run test:mocked
+        displayName: 'Running tests...'
+        env:
+          TMPDIR: $(Build.SourcesDirectory)/.tmp
+          TMP: $(Build.SourcesDirectory)/.tmp
+          TEMP: $(Build.SourcesDirectory)/.tmp
+
+  - job: version_control
+    dependsOn: tests
+    steps:
+      - script: npm run version -- wallet --minor
+        displayName: 'Version Updated.'
+        
