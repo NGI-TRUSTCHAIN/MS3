@@ -1,9 +1,0 @@
-{
-  "name": "implementation-compilation-UUPSNFT",
-  "version": "1.0.0",
-  "type": "module",
-  "dependencies": {
-    "@openzeppelin/contracts": "^5.0.0",
-    "@openzeppelin/contracts-upgradeable": "^5.0.0"
-  }
-}
