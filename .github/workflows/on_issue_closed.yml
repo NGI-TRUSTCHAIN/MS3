@@ -50,17 +50,17 @@ jobs:
           git config --global user.email '${{ secrets.AZURE_DEVOPS_M3S_EMAIL }}'
           git config --global user.name "Soporte Changetheblock"
 
+      # THIS STEP IS REPLACED WITH THE CORRECT, IDENTICAL LOGIC
       - name: Sanitize and Extract branch name from issue
         id: extract_branch
         run: |
           ISSUE_NUMBER=${{ github.event.issue.number }}
           ISSUE_TITLE="${{ github.event.issue.title }}"
-          # Sanitize the title: replace spaces and special characters with hyphens
-          SANITIZED_TITLE=$(echo "$ISSUE_TITLE" | iconv -t ascii//TRANSLIT | sed -r s/[^a-zA-Z0-9]+/-/g | sed -r s/^-+\|-+$//g | tr A-Z a-z)
-          BRANCH_NAME="${SANITIZED_TITLE}-issue-${ISSUE_NUMBER}"
-          echo "Sanitized branch name: $BRANCH_NAME"
+          SANITIZED_TITLE=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9]/-/g' -e 's/--\+/-/g' -e 's/^-//' -e 's/-$//')
+          BRANCH_NAME="${ISSUE_NUMBER}-${SANITIZED_TITLE}"
           echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
 
+      # THIS IS THE ONLY CHECKOUT STEP NEEDED
       - name: Checkout GitHub feature branch
         uses: actions/checkout@v3
         with:
@@ -76,7 +76,6 @@ jobs:
         run: |
           BRANCH_NAME="${{ steps.extract_branch.outputs.branch_name }}"
           git remote add azure "https://:$PAT@dev.azure.com/$ORG/$PROJECT/_git/$REPO_NAME"
-          # Push the FEATURE branch from GitHub to a branch with the SAME NAME on Azure.
           git push azure "refs/heads/$BRANCH_NAME:refs/heads/$BRANCH_NAME" --force
 
       - name: Create Pull Request in Azure DevOps

@@ -18,8 +18,10 @@ jobs:
         run: |
           ISSUE_NUMBER=${{ github.event.issue.number }}
           ISSUE_TITLE="${{ github.event.issue.title }}"
-          BRANCH_NAME="${ISSUE_TITLE}-issue-${ISSUE_NUMBER}"
+          SANITIZED_TITLE=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9]/-/g' -e 's/--\+/-/g' -e 's/^-//' -e 's/-$//')
+          BRANCH_NAME="${ISSUE_NUMBER}-${SANITIZED_TITLE}"
           echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
+          
       - name: Create and push branch
         run: |
           git config --global user.name "github-actions[bot]"
