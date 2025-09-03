@@ -9,6 +9,9 @@ dist/
 .env
 .vs/
 
+#Visual Studio
+*.vs
+
 # Compiled Java class files
 *.class
 
