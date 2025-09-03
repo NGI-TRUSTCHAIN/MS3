@@ -29,13 +29,13 @@ jobs:
       - script: npm install --legacy-peer-deps
         displayName: 'Installing dependencies...'
 
-      - script: npm run build:ci
+      - script: npm run build
         displayName: 'Building internal dependencies...'
 
       - script: mkdir -p .tmp
         displayName: 'Prepare tmp directory'
 
-      - script: npm run test:ci
+      - script: npm run test
         displayName: 'Running tests...'
         env:
           WEB3AUTH_CLIENT_ID: $(WEB3AUTH_CLIENT_ID)
