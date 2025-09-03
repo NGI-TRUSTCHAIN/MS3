@@ -308,8 +308,4 @@ Process:
   - Apache-2.0 — see LICENSE in [here.](https://github.com/NGI-TRUSTCHAIN/MS3/blob/main/LICENSE)
 
 ## Issues
-<<<<<<< HEAD
   - GitHub Issues: https://github.com/NGI-TRUSTCHAIN/MS3/issues
-=======
-  - GitHub Issues: https://github.com/NGI-TRUSTCHAIN/MS3/issues
->>>>>>> ea3ca4e5fd46b3008b95fd61711d0b065c961c52
