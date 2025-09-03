@@ -10,20 +10,11 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  - name: WEB3AUTH_CLIENT_ID
-    value: BCUGgXUJQX2T90W4YBqJQpvLsjKzNv-fmFzbqdMq5zW7EOsCikCvOrrIIUmbHwFGw8rNp5Cgmc5KQ2cafWVT2tk
-  - name: INFURA_API_KEY
-    value: 5791a18dd1ee45af8ac3d79b549d54f1
-  - name: ALCHEMY_API_KEY
-    value: DQekU5QTd_rEShUJE_DlD
-  - name: TEST_PRIVATE_KEY
-    value: 0x63a648a4c0efeeb4f08207f1682bed9937a4c6cb5f7f1ee39f75c135e8828b2b
-  - name: LIFI_API_KEY
-    value: 5914aec1-53de-4147-b701-f2751beb4432.47b2600f-bf0e-428b-a9e5-1737f8cc97d4
+
   - name: RUN_REAL_EXECUTION
     value: true
   - name: RUN_SC_INTEGRATION_TESTS
-    value: true
+    value: false
 
 jobs:
   - job: tests
@@ -48,6 +39,14 @@ jobs:
       - script: npm run test
         displayName: 'Running tests...'
         env:
+          WEB3AUTH_CLIENT_ID: $(WEB3AUTH_CLIENT_ID)
+          INFURA_API_KEY: $(INFURA_API_KEY)
+          ALCHEMY_API_KEY: $(ALCHEMY_API_KEY)
+          TEST_PRIVATE_KEY: $(TEST_PRIVATE_KEY)
+          LIFI_API_KEY: $(LIFI_API_KEY)
+          RUN_REAL_EXECUTION: $(RUN_REAL_EXECUTION)
+          RUN_SC_INTEGRATION_TESTS: $(RUN_SC_INTEGRATION_TESTS)
+
           TMPDIR: $(Build.SourcesDirectory)/.tmp
           TMP: $(Build.SourcesDirectory)/.tmp
           TEMP: $(Build.SourcesDirectory)/.tmp
