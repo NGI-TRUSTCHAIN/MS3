@@ -55,9 +55,9 @@ jobs:
         run: |
           ISSUE_NUMBER=${{ github.event.issue.number }}
           ISSUE_TITLE="${{ github.event.issue.title }}"
-          # Sanitize the title: replace spaces and special characters with hyphens
-          SANITIZED_TITLE=$(echo "$ISSUE_TITLE" | iconv -t ascii//TRANSLIT | sed -r s/[^a-zA-Z0-9]+/-/g | sed -r s/^-+\|-+$//g | tr A-Z a-z)
-          BRANCH_NAME="${SANITIZED_TITLE}-issue-${ISSUE_NUMBER}"
+          # This logic now matches your branch naming convention (e.g., 53-interfacelast)
+          SANITIZED_TITLE=$(echo "$ISSUE_TITLE" | tr -d ' ' | tr '[:upper:]' '[:lower:]')
+          BRANCH_NAME="${ISSUE_NUMBER}-${SANITIZED_TITLE}"
           echo "Sanitized branch name: $BRANCH_NAME"
           echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
 
