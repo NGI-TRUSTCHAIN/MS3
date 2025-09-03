@@ -18,5 +18,8 @@
       "@m3s/wallet/*": ["packages/wallet/dist/*"]
     }
   },
+  "ts-node": {
+    "esm": true
+  },
   "exclude": ["node_modules", "**/dist"]
 }
