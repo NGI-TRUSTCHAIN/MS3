@@ -6,26 +6,26 @@
   "workspaces": [
     "packages/*"
   ],
-    "scripts": {
-    "clean": "node --loader ts-node/esm scripts/clean.ts",
+  "scripts": {
+    "clean": "node --import ts-node/esm scripts/clean.ts",
     "prebuild": "cd packages/shared && npm run build",
-    "build": "npm run prebuild && node --loader ts-node/esm scripts/build.ts",
-    "build:shared": "node --loader ts-node/esm scripts/build.ts shared",
-    "build:wallet": "node --loader ts-node/esm scripts/build.ts wallet",
-    "build:crosschain": "node --loader ts-node/esm scripts/build.ts crosschain",
-    "build:smart-contract": "node --loader ts-node/esm scripts/build.ts smart-contract",
-    "publish": "node --loader ts-node/esm scripts/publish.ts",
-    "publish:wallet": "node --loader ts-node/esm scripts/publish.ts wallet",
-    "publish:crosschain": "node --loader ts-node/esm scripts/publish.ts crosschain",
-    "publish:smart-contract": "node --loader ts-node/esm scripts/publish.ts smart-contract",
-    "link": "node --loader ts-node/esm scripts/link-packages.ts",
+    "build": "npm run prebuild && node --import ts-node/esm scripts/build.ts",
+    "build:shared": "node --import ts-node/esm scripts/build.ts shared",
+    "build:wallet": "node --import ts-node/esm scripts/build.ts wallet",
+    "build:crosschain": "node --import ts-node/esm scripts/build.ts crosschain",
+    "build:smart-contract": "node --import ts-node/esm scripts/build.ts smart-contract",
+    "publish": "node --import ts-node/esm scripts/publish.ts",
+    "publish:wallet": "node --import ts-node/esm scripts/publish.ts wallet",
+    "publish:crosschain": "node --import ts-node/esm scripts/publish.ts crosschain",
+    "publish:smart-contract": "node --import ts-node/esm scripts/publish.ts smart-contract",
+    "link": "node --import ts-node/esm scripts/link-packages.ts",
     "release": "npm run build && npm run publish",
-    "test": "node --loader ts-node/esm scripts/tests.ts",
+    "test": "node --import ts-node/esm scripts/tests.ts",
     "test:wallet": "cd packages/wallet && npm run test",
     "test:crosschain": "cd packages/crosschain && npm run test",
     "test:smart-contract": "cd packages/smart-contract && npm run test",
-    "wallet:fix": "node --loader ts-node/esm scripts/deleteme.ts",
-    "version": "node --loader ts-node/esm scripts/version.ts"
+    "wallet:fix": "node --import ts-node/esm scripts/deleteme.ts",
+    "version": "node --import ts-node/esm scripts/version.ts"
   },
   "dependencies": {
     "@vitest/ui": "^3.2.4",
