@@ -25,6 +25,7 @@
     "test:crosschain": "cd packages/crosschain && npm run test",
     "test:smart-contract": "cd packages/smart-contract && npm run test",
     "wallet:fix": "node --loader ts-node/esm scripts/deleteme.ts",
+    "detect:changed": "node --loader ts-node/esm scripts/detect-changed-packages.ts",
     "version": "node --loader ts-node/esm scripts/version.ts"
   },
   "dependencies": {
