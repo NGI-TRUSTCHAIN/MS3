@@ -272,76 +272,77 @@ describe('ERC721 Options Tests', () => {
   let walletAdapter: IEVMWallet;
   let contractHandler: IBaseContractHandler;
 
-    const waitForReceipt = async (txHash: string, timeout = 120_000): Promise<ethers.TransactionReceipt | null> => {
-      const provider = (walletAdapter as any).provider;
-      console.log('PROVIDER', provider);
-      if (!provider) throw new Error("Provider not accessible");
-      if (!txHash) throw new Error("Transaction hash is required");
+  const waitForReceipt = async (txHash: string, timeout = 120_000): Promise<ethers.TransactionReceipt | null> => {
+    const provider = (walletAdapter as any).provider;
+    console.log('PROVIDER', provider);
+    if (!provider) throw new Error("Provider not accessible");
+    if (!txHash) throw new Error("Transaction hash is required");
 
-      // 1) Try provider.waitForTransaction (ethers built-in polling)
+    // 1) Try provider.waitForTransaction (ethers built-in polling)
+    try {
+      const receipt = await (provider as any).waitForTransaction(txHash, undefined, timeout);
+      if (receipt) {
+        console.log(`Receipt found for ${txHash}. Status: ${receipt.status === 1 ? 'Success' : 'Failed'}`);
+        return receipt;
+      }
+    } catch (e) {
+      // fallthrough to manual diagnostics/poll
+    }
+
+    // 2) Poll getTransactionReceipt until timeout (more reliable on some RPCs)
+    const start = Date.now();
+    const pollInterval = 1000;
+    while (Date.now() - start < timeout) {
       try {
-        const receipt = await (provider as any).waitForTransaction(txHash, undefined, timeout);
-        if (receipt) {
-          console.log(`Receipt found for ${txHash}. Status: ${receipt.status === 1 ? 'Success' : 'Failed'}`);
-          return receipt;
+        const r = await provider.getTransactionReceipt(txHash);
+        if (r) {
+          console.log(`Polled receipt found for ${txHash}. Status: ${r.status === 1 ? 'Success' : 'Failed'}`);
+          return r;
         }
-      } catch (e) {
-        // fallthrough to manual diagnostics/poll
-      }
+      } catch { /* ignore and retry */ }
+      await new Promise((res) => setTimeout(res, pollInterval));
+    }
 
-      // 2) Poll getTransactionReceipt until timeout (more reliable on some RPCs)
-      const start = Date.now();
-      const pollInterval = 1000;
-      while (Date.now() - start < timeout) {
-        try {
-          const r = await provider.getTransactionReceipt(txHash);
-          if (r) {
-            console.log(`Polled receipt found for ${txHash}. Status: ${r.status === 1 ? 'Success' : 'Failed'}`);
-            return r;
-          }
-        } catch { /* ignore and retry */ }
-        await new Promise((res) => setTimeout(res, pollInterval));
-      }
+    // 3) Timeout reached — gather diagnostics for debugging
+    console.error(`⏰ Timeout waiting for tx ${txHash} (after ${timeout}ms). Gathering diagnostics...`);
+    try {
+      const tx = await provider.getTransaction(txHash);
+      const receipt = await provider.getTransactionReceipt(txHash);
+      const pendingBlock = await provider.getBlock('pending').catch(() => null);
+      const feeData = await provider.getFeeData();
+      const acct = (await walletAdapter.getAccounts())[0];
+      const balance = await provider.getBalance(acct).catch(() => null);
+      const noncePending = await provider.getTransactionCount(acct, 'pending').catch(() => null);
+      const nonceLatest = await provider.getTransactionCount(acct, 'latest').catch(() => null);
 
-      // 3) Timeout reached — gather diagnostics for debugging
-      console.error(`⏰ Timeout waiting for tx ${txHash} (after ${timeout}ms). Gathering diagnostics...`);
-      try {
-        const tx = await provider.getTransaction(txHash);
-        const receipt = await provider.getTransactionReceipt(txHash);
-        const pendingBlock = await provider.getBlock('pending').catch(() => null);
-        const feeData = await provider.getFeeData();
-        const acct = (await walletAdapter.getAccounts())[0];
-        const balance = await provider.getBalance(acct).catch(() => null);
-        const noncePending = await provider.getTransactionCount(acct, 'pending').catch(() => null);
-        const nonceLatest = await provider.getTransactionCount(acct, 'latest').catch(() => null);
+      logger.error('⏺️ TX DIAGNOSTICS', {
+        txHash,
+        tx,
+        receipt,
+        pendingBlockBaseFee: pendingBlock?.baseFeePerGas?.toString?.(),
+        feeData,
+        balance: balance?.toString?.(),
+        noncePending,
+        nonceLatest
+      });
+    } catch (diagErr) {
+      console.error('⚠️ Failed collecting diagnostics:', diagErr);
+    }
 
-        logger.error('⏺️ TX DIAGNOSTICS', {
-          txHash,
-          tx,
-          receipt,
-          pendingBlockBaseFee: pendingBlock?.baseFeePerGas?.toString?.(),
-          feeData,
-          balance: balance?.toString?.(),
-          noncePending,
-          nonceLatest
-        });
-      } catch (diagErr) {
-        console.error('⚠️ Failed collecting diagnostics:', diagErr);
-      }
-
-      return null;
-    };
+    return null;
+  };
 
   beforeEach(async () => {
     const networkHelper = NetworkHelper.getInstance();
     await networkHelper.ensureInitialized();
 
-    const testNetworkName = 'holesky';
+    const testNetworkName = 'sepolia';
 
     if (!INFURA_API_KEY) {
       throw new Error("INFURA_API_KEY is not set in config.js. Cannot run integration tests that require a specific RPC.");
     }
-    const preferredRpcUrl = `https://eth-holesky.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
+
+    const preferredRpcUrl = `https://sepolia.infura.io/v3/${INFURA_API_KEY}`;
 
     const networkConfig = await networkHelper.getNetworkConfig(testNetworkName, [preferredRpcUrl]);
 

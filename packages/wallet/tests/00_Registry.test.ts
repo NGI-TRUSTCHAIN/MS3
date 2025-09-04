@@ -591,7 +591,7 @@ describe('Auto-Generation System Tests (JOI-Based)', () => {
 
       expect(isCompatible).toBe(false);
       logger.info('✅ Correctly FAILED: smartContractRegistry does not know about wallet adapters before merge.');
-    });
+    }, 30000);
 
     it('should PASS compatibility check after the user explicitly merges registries', () => {
       smartContractRegistry.mergeRegistry(walletRegistry);

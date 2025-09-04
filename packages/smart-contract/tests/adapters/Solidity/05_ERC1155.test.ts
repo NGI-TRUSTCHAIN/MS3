@@ -252,13 +252,14 @@ describe('ERC1155 Options Tests', () => {
   beforeEach(async () => {
     const networkHelper = NetworkHelper.getInstance();
     await networkHelper.ensureInitialized();
-
-    const testNetworkName = 'holesky';
+    
+    const testNetworkName = 'sepolia';
 
     if (!INFURA_API_KEY) {
       throw new Error("INFURA_API_KEY is not set in config.js. Cannot run integration tests that require a specific RPC.");
     }
-    const preferredRpcUrl = `https://eth-holesky.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
+
+    const preferredRpcUrl = `https://sepolia.infura.io/v3/${INFURA_API_KEY}`;
 
     const networkConfig = await networkHelper.getNetworkConfig(testNetworkName, [preferredRpcUrl]);
 

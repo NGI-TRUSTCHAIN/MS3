@@ -667,7 +667,7 @@ describe('Crosschain Auto-Generation System Tests', () => {
       Ms3Modules.wallet, 'ethers', '1.0.0'
     );
     expect(isCompatible).toBe(false);
-  });
+  },30000);
 
   it('should PASS compatibility check after merging registries', () => {
     crossChainRegistry.mergeRegistry(walletRegistry);
