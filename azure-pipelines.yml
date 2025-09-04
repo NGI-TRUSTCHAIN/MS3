@@ -76,7 +76,7 @@ jobs:
 
       - script: |
           echo "Install dependencies for version job (ts-node etc.)"
-          npm ci --legacy-peer-deps
+          npm install --legacy-peer-deps
         displayName: 'Install dependencies (version job)'
 
       - script: npm run detect:changed
