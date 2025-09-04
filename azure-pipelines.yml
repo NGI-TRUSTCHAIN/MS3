@@ -24,7 +24,7 @@ jobs:
       # Use Node 20
       - task: NodeTool@0
         inputs:
-          versionSpec: '20.x'
+          versionSpec: '23.11.0'
         displayName: 'Use Node 20'
 
       # Install dependencies
