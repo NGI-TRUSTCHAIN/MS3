@@ -21,11 +21,11 @@ jobs:
       - script: echo Test suit started!
         displayName: 'Starting tests...'
         
-      # Use Node 20
+      # Use Node 22.19.0
       - task: NodeTool@0
         inputs:
-          versionSpec: '23.11.0'
-        displayName: 'Use Node 20'
+          versionSpec: '22.19.0'
+        displayName: 'Use Node 22.19.0'
 
       - script: |
           echo "Cleaning lockfile and node_modules to avoid npm optional-deps bug"
