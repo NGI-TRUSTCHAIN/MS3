@@ -53,6 +53,7 @@ jobs:
       - script: npm run test
         displayName: 'Running tests...'
         env:
+          LOG_LEVEL: info
           WEB3AUTH_CLIENT_ID: $(WEB3AUTH_CLIENT_ID)
           INFURA_API_KEY: $(INFURA_API_KEY)
           ALCHEMY_API_KEY: $(ALCHEMY_API_KEY)
