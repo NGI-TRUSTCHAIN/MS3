@@ -2,13 +2,8 @@ import { execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import {logger} from '../logger.js';
+import { Ms3Modules } from '@m3s/shared';
 
-enum Ms3Modules {
-  'shared' = 'shared',
-  'wallet' = 'wallet',
-  'smartcontract' = 'smart-contract',
-  'crosschain' = 'crosschain'
-}
 // Define packages to test in order
 const packages = [Ms3Modules.wallet, Ms3Modules.smartcontract, Ms3Modules.crosschain];
 const requestedPackages = process.argv.slice(2);
