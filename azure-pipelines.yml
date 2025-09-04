@@ -27,6 +27,12 @@ jobs:
           versionSpec: '23.11.0'
         displayName: 'Use Node 20'
 
+      - script: |
+          echo "Cleaning lockfile and node_modules to avoid npm optional-deps bug"
+          rm -rf node_modules package-lock.json
+          npm install --legacy-peer-deps
+        displayName: 'Clean+Install dependencies (workaround for rollup optional deps)'
+        
       # Install dependencies
       - script: npm install --legacy-peer-deps
         displayName: 'Installing dependencies...'
