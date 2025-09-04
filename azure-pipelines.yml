@@ -65,24 +65,24 @@ jobs:
           TMP: $(Build.SourcesDirectory)/.tmp
           TEMP: $(Build.SourcesDirectory)/.tmp
 
-  - job: version_control
-    dependsOn: tests
-    condition: succeeded()
-    steps:
-      - task: NodeTool@0
-        inputs:
-          versionSpec: '22.19.0'
-        displayName: 'Use Node 22.19.0'
+  # - job: version_control
+  #   dependsOn: tests
+  #   condition: succeeded()
+  #   steps:
+  #     - task: NodeTool@0
+  #       inputs:
+  #         versionSpec: '22.19.0'
+  #       displayName: 'Use Node 22.19.0'
 
-      - script: |
-          echo "Install dependencies for version job (ts-node etc.)"
-          npm install --legacy-peer-deps
-        displayName: 'Install dependencies (version job)'
+  #     - script: |
+  #         echo "Install dependencies for version job (ts-node etc.)"
+  #         npm install --legacy-peer-deps
+  #       displayName: 'Install dependencies (version job)'
 
-      - script: npm run detect:changed
-        displayName: 'Detect changed packages'
+  #     - script: npm run detect:changed
+  #       displayName: 'Detect changed packages'
 
-      - script: |
-          echo "Changed packages: $(CHANGED_PACKAGES)"
-          # ...rest of versioning logic...
-        displayName: 'Conditionally bump versions for changed packages'   
+  #     - script: |
+  #         echo "Changed packages: $(CHANGED_PACKAGES)"
+  #         # ...rest of versioning logic...
+  #       displayName: 'Conditionally bump versions for changed packages'   
