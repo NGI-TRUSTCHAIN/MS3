@@ -21,20 +21,33 @@ jobs:
       - script: echo Test suit started!
         displayName: 'Starting tests...'
         
+      # Use Node 20
       - task: NodeTool@0
         inputs:
           versionSpec: '20.x'
         displayName: 'Use Node 20'
 
+      # Install dependencies
       - script: npm install --legacy-peer-deps
         displayName: 'Installing dependencies...'
 
+      # Manually build the shared package first to ensure it's up-to-date
+      - script: |
+          echo "Building shared package..."
+          cd packages/shared
+          npm install --legacy-peer-deps
+          npm run build
+        displayName: 'Building Shared Package...'
+
+       # After shared is built, continue with building the rest
       - script: npm run build
         displayName: 'Building internal dependencies...'
 
+      # Prepare tmp directory for tests
       - script: mkdir -p .tmp
         displayName: 'Prepare tmp directory'
 
+       # Run the tests
       - script: npm run test
         displayName: 'Running tests...'
         env:
@@ -43,10 +56,8 @@ jobs:
           ALCHEMY_API_KEY: $(ALCHEMY_API_KEY)
           TEST_PRIVATE_KEY: $(TEST_PRIVATE_KEY)
           LIFI_API_KEY: $(LIFI_API_KEY)
-
           RUN_REAL_EXECUTION: $(RUN_REAL_EXECUTION)
           RUN_SC_INTEGRATION_TESTS: $(RUN_SC_INTEGRATION_TESTS)
-
           TMPDIR: $(Build.SourcesDirectory)/.tmp
           TMP: $(Build.SourcesDirectory)/.tmp
           TEMP: $(Build.SourcesDirectory)/.tmp
