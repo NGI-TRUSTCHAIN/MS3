@@ -5,7 +5,7 @@
   "private": true,
   "workspaces": [
     "packages/*"
-  ],
+  ],  
   "scripts": {
     "clean": "node --loader ts-node/esm scripts/clean.ts",
     "prebuild": "cd packages/shared && npm install --legacy-peer-deps && npm run build",
@@ -30,7 +30,7 @@
   "dependencies": {
     "@vitest/ui": "^3.2.4",
     "dotenv": "^16.4.7",
-    "glob": "^11.0.3",
+    "glob": "8.1.0",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0"
   },

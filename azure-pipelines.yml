@@ -1,0 +1,93 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - name: RUN_REAL_EXECUTION
+    value: true
+  - name: RUN_SC_INTEGRATION_TESTS
+    value: false
+
+jobs:
+  - job: tests
+    steps:
+      - script: echo Test suit started!
+        displayName: 'Starting tests...'
+        
+      # Use Node 22.19.0
+      - task: NodeTool@0
+        inputs:
+          versionSpec: '22.19.0'
+        displayName: 'Use Node 22.19.0'
+
+      - script: |
+          echo "Cleaning lockfile and node_modules to avoid npm optional-deps bug"
+          rm -rf node_modules package-lock.json
+          npm install --legacy-peer-deps
+        displayName: 'Clean+Install dependencies (workaround for rollup optional deps)'
+        
+      # Manually build the shared package first to ensure it's up-to-date
+      - script: |
+          echo "Building shared package..."
+          cd packages/shared
+          npm install --legacy-peer-deps
+          npm run build
+        displayName: 'Building Shared Package...'
+
+       # After shared is built, continue with building the rest
+      - script: npm run build
+        displayName: 'Building internal dependencies...'
+
+      # Prepare tmp directory for tests
+      - script: mkdir -p .tmp
+        displayName: 'Prepare tmp directory'
+
+       # Run the tests
+      - script: npm run test
+        displayName: 'Running tests...'
+        env:
+          LOG_LEVEL: info
+          WEB3AUTH_CLIENT_ID: $(WEB3AUTH_CLIENT_ID)
+          INFURA_API_KEY: $(INFURA_API_KEY)
+          ALCHEMY_API_KEY: $(ALCHEMY_API_KEY)
+          TEST_PRIVATE_KEY: $(TEST_PRIVATE_KEY)
+          LIFI_API_KEY: $(LIFI_API_KEY)
+          RUN_REAL_EXECUTION: $(RUN_REAL_EXECUTION)
+          RUN_SC_INTEGRATION_TESTS: $(RUN_SC_INTEGRATION_TESTS)
+          TMPDIR: $(Build.SourcesDirectory)/.tmp
+          TMP: $(Build.SourcesDirectory)/.tmp
+          TEMP: $(Build.SourcesDirectory)/.tmp
+
+  - job: version_control
+    dependsOn: tests
+    condition: succeeded()
+    steps:
+      - script: node --loader ts-node/esm scripts/detect-changed-packages.ts
+        displayName: 'Detect changed packages'
+      - script: |
+          echo "Changed packages: $(CHANGED_PACKAGES)"
+          if [ -z "$(CHANGED_PACKAGES)" ]; then
+            echo "No package changes detected. Skipping automated version bump. Please bump manually if needed."
+            exit 0
+          fi
+          IFS=',' read -ra PKGS <<< "$(CHANGED_PACKAGES)"
+          for pkg in "${PKGS[@]}"; do
+            case "$pkg" in
+              wallet|crosschain|smart-contract|shared)
+                echo "Running version bump for package: $pkg"
+                npm run version -- $pkg --minor
+                ;;
+              *)
+                echo "Package $pkg not in versioning list, skipping."
+                ;;
+            esac
+          done
+        displayName: 'Conditionally bump versions for changed packages'
+        
