@@ -24,8 +24,8 @@ function detectPackageName(): string {
   return match ? match[1] : "shared";
 }
 
-const isDev = process.env.NODE_ENV !== "production";
-const level = isDev ? LOG_LEVEL.debug : LOG_LEVEL.info;
+const rawLevel = process.env.LOG_LEVEL ?? 'info';
+const level = typeof rawLevel === 'string' ? rawLevel.toUpperCase() : String(rawLevel).toUpperCase();
 const logDir = process.env.LOG_DIR || "logs";
 const packageName = detectPackageName();
 

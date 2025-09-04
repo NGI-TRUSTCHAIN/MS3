@@ -9,8 +9,11 @@ if (isServer) {
     const _path = path.resolve(process.cwd(), '../../', '.env');
     console.log('DIR FOR .ENV', _path)
     dotenv.config({ path: _path });
-    currentLevel = process.env.LOG_LVL as string
-
+    // Prefer LOG_LVL, fallback to LOG_LEVEL, and only override if a non-empty string is provided.
+    const envLevel = (process.env.LOG_LVL ?? process.env.LOG_LEVEL) as string | undefined;
+    if (typeof envLevel === 'string' && envLevel.trim().length > 0) {
+      currentLevel = envLevel.toLowerCase();
+    }
   } catch (e) {
     console.error('Failed to load server-side logging configuration.');
   }
@@ -27,31 +30,31 @@ const logLevelMap = {
 
 const numericLevel = logLevelMap[currentLevel as keyof typeof logLevelMap] ?? logLevelMap['info'];
 const logPrefix = '🤖 [MS3-PKG]';
-console.log(`${logPrefix} Logging level set to: ${currentLevel.toUpperCase()}`);
+console.log(`${logPrefix} Logging level set to: ${(currentLevel || 'info').toUpperCase()}`);
 const shouldLog = (level: number) => level <= numericLevel;
 
 if (!shouldLog(logLevelMap.debug)) {
-  console.debug = () => {};
+  console.debug = () => { };
 } else {
   console.debug = (...args) => originalConsole.debug(`${logPrefix} [DEBUG]`, ...args);
 }
 
 if (!shouldLog(logLevelMap.info)) {
-  console.info = () => {};
-  console.log = () => {};
+  console.info = () => { };
+  console.log = () => { };
 } else {
   console.info = (...args) => originalConsole.info(`${logPrefix} [INFO]`, ...args);
   console.log = (...args) => originalConsole.log(`${logPrefix} [INFO]`, ...args);
 }
 
 if (!shouldLog(logLevelMap.warn)) {
-  console.warn = () => {};
+  console.warn = () => { };
 } else {
   console.warn = (...args) => originalConsole.warn(`${logPrefix} [WARN]`, ...args);
 }
 
 if (!shouldLog(logLevelMap.error)) {
-  console.error = () => {};
+  console.error = () => { };
 } else {
   console.error = (...args) => originalConsole.error(`${logPrefix} [ERROR]`, ...args);
 }

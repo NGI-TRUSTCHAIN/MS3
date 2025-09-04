@@ -1,6 +1,7 @@
 // FOR THIS TO WORK, FIRST BUILD SHARED PACKAGE.
-import { Ms3Modules } from '@m3s/shared';
-import {logger} from '../logger.js';
+// import { Ms3Modules } from '@m3s/shared';
+let Ms3Modules: any = undefined;
+import { logger } from '../logger.js';
 import fs from 'fs';
 import { join } from 'path';
 
@@ -19,7 +20,7 @@ async function runBuildProcess() {
   logger.debug("path module imported.");
 
   const urlModule = await import("url");
-  const { fileURLToPath } = urlModule;
+  const { fileURLToPath, pathToFileURL } = urlModule;
   logger.debug("url module imported.");
 
   const childProcessModule = await import("child_process");
@@ -30,6 +31,42 @@ async function runBuildProcess() {
   const currentDir = dirname(scriptPath);
   const rootDir = resolve(currentDir, '..');
   logger.debug(`Paths initialized. rootDir: ${rootDir}`);
+
+  try {
+    const sharedDistIndex = join(rootDir, 'packages', 'shared', 'dist', 'index.js');
+    logger.debug(`[build] Checking for built shared at: ${sharedDistIndex}`);
+    if (fs.existsSync(sharedDistIndex)) {
+      logger.debug('[build] Found built @m3s/shared. Attempting dynamic import.');
+      try {
+        const sharedModule = await import(pathToFileURL(sharedDistIndex).href);
+        Ms3Modules = sharedModule.Ms3Modules ?? sharedModule.default?.Ms3Modules;
+        if (!Ms3Modules) {
+          logger.warning('[build] Built @m3s/shared loaded but Ms3Modules export not found.');
+        } else {
+          logger.notice('[build] Ms3Modules loaded from built @m3s/shared.');
+        }
+      } catch (err: any) {
+        logger.error(`[build] Dynamic import of built @m3s/shared failed: ${err?.message || err}`);
+        logger.debug(err?.stack || 'no-stack');
+      }
+    } else {
+      logger.debug('[build] Built @m3s/shared not found on disk.');
+    }
+  } catch (err: any) {
+    logger.error(`[build] Error while checking/importing built @m3s/shared: ${err?.message || err}`);
+    logger.debug(err?.stack || 'no-stack');
+  }
+
+  // Fallback to inline enum to allow the build script to continue and emit clearer logs.
+  if (!Ms3Modules) {
+    logger.warning('[build] Falling back to inline Ms3Modules enum (shared not resolvable).');
+    Ms3Modules = {
+      shared: 'shared',
+      wallet: 'wallet',
+      smartcontract: 'smart-contract',
+      crosschain: 'crosschain'
+    };
+  }
 
   async function buildPackage(packageName: string) {
     logger.info(`Building package: ${packageName}`);
@@ -130,14 +167,14 @@ async function runBuildProcess() {
         externalDependencies.push(...Object.keys(pkgJson.peerDependenciesMeta));
       }
 
-if (packageName !== Ms3Modules.shared) {
-  // Read shared package.json dependencies
-  const sharedPkgJsonPath = join(rootDir, 'packages/shared/package.json');
-  const sharedPkgJson = JSON.parse(fs.readFileSync(sharedPkgJsonPath, 'utf-8'));
-  const sharedDeps = Object.keys(sharedPkgJson.dependencies || {});
-  // Add all shared dependencies as externals (except @m3s/shared itself)
-  externalDependencies.push(...sharedDeps.filter(dep => dep !== '@m3s/shared'));
-}
+      if (packageName !== Ms3Modules.shared) {
+        // Read shared package.json dependencies
+        const sharedPkgJsonPath = join(rootDir, 'packages/shared/package.json');
+        const sharedPkgJson = JSON.parse(fs.readFileSync(sharedPkgJsonPath, 'utf-8'));
+        const sharedDeps = Object.keys(sharedPkgJson.dependencies || {});
+        // Add all shared dependencies as externals (except @m3s/shared itself)
+        externalDependencies.push(...sharedDeps.filter(dep => dep !== '@m3s/shared'));
+      }
 
       const externalArgs = externalDependencies.map(dep => `--external:${dep}`).join(' ');
 
@@ -196,6 +233,15 @@ if (packageName !== Ms3Modules.shared) {
 
   // Main module execution logic
   logger.debug("Checking main module condition.");
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  });
+
+  process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+    process.exit(1);
+  });
+
   if (process.argv[1] === scriptPath) {
     logger.debug("Script is main module.");
     const packageNameArg = process.argv[2];
