@@ -69,7 +69,7 @@ jobs:
     dependsOn: tests
     condition: succeeded()
     steps:
-      - script: node scripts/detect-changed-packages.js
+      - script: node --loader ts-node/esm scripts/detect-changed-packages.ts
         displayName: 'Detect changed packages'
       - script: |
           echo "Changed packages: $(CHANGED_PACKAGES)"
