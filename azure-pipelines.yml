@@ -65,12 +65,24 @@ jobs:
           TMP: $(Build.SourcesDirectory)/.tmp
           TEMP: $(Build.SourcesDirectory)/.tmp
 
+# ...existing code...
   - job: version_control
     dependsOn: tests
     condition: succeeded()
     steps:
+      - task: NodeTool@0
+        inputs:
+          versionSpec: '22.19.0'
+        displayName: 'Use Node 22.19.0'
+
+      - script: |
+          echo "Install devDependencies for version step (ts-node etc.)"
+          npm ci --legacy-peer-deps
+        displayName: 'Install dependencies (version job)'
+
       - script: node --loader ts-node/esm scripts/detect-changed-packages.ts
         displayName: 'Detect changed packages'
+        
       - script: |
           echo "Changed packages: $(CHANGED_PACKAGES)"
           if [ -z "$(CHANGED_PACKAGES)" ]; then
