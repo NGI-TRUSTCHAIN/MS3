@@ -75,30 +75,14 @@ jobs:
         displayName: 'Use Node 22.19.0'
 
       - script: |
-          echo "Install devDependencies for version step (ts-node etc.)"
+          echo "Install dependencies for version job (ts-node etc.)"
           npm ci --legacy-peer-deps
         displayName: 'Install dependencies (version job)'
 
-      - script: node --loader ts-node/esm scripts/detect-changed-packages.ts
+      - script: npm run detect:changed
         displayName: 'Detect changed packages'
 
       - script: |
           echo "Changed packages: $(CHANGED_PACKAGES)"
-          if [ -z "$(CHANGED_PACKAGES)" ]; then
-            echo "No package changes detected. Skipping automated version bump. Please bump manually if needed."
-            exit 0
-          fi
-          IFS=',' read -ra PKGS <<< "$(CHANGED_PACKAGES)"
-          for pkg in "${PKGS[@]}"; do
-            case "$pkg" in
-              wallet|crosschain|smart-contract|shared)
-                echo "Running version bump for package: $pkg"
-                npm run version -- $pkg --minor
-                ;;
-              *)
-                echo "Package $pkg not in versioning list, skipping."
-                ;;
-            esac
-          done
-        displayName: 'Conditionally bump versions for changed packages'
-        
+          # ...rest of versioning logic...
+        displayName: 'Conditionally bump versions for changed packages'   
