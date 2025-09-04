@@ -65,7 +65,6 @@ jobs:
           TMP: $(Build.SourcesDirectory)/.tmp
           TEMP: $(Build.SourcesDirectory)/.tmp
 
-# ...existing code...
   - job: version_control
     dependsOn: tests
     condition: succeeded()
@@ -82,7 +81,7 @@ jobs:
 
       - script: node --loader ts-node/esm scripts/detect-changed-packages.ts
         displayName: 'Detect changed packages'
-        
+
       - script: |
           echo "Changed packages: $(CHANGED_PACKAGES)"
           if [ -z "$(CHANGED_PACKAGES)" ]; then
