@@ -1,11 +1,5 @@
+import { Ms3Modules } from '@m3s/shared';
 import {logger} from '../logger.js';
-
-enum Ms3Modules {
-  'shared' = 'shared',
-  'wallet' = 'wallet',
-  'smartcontract' = 'smart-contract',
-  'crosschain' = 'crosschain'
-}
 
 logger.notice("Publish.ts: Script execution started - Top Level Log");
 
