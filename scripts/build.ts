@@ -1,6 +1,5 @@
-// FOR THIS TO WORK, FIRST BUILD SHARED PACKAGE.
-// import { Ms3Modules } from '@m3s/shared';
 let Ms3Modules: any = undefined;
+
 import { logger } from '../logger.js';
 import fs from 'fs';
 import { join } from 'path';

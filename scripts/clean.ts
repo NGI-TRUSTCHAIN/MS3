@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { globSync } from 'glob'; // Default import
+import { globSync } from 'glob';
 import {logger} from '../logger.js';
 
 // Determine the root directory of the monorepo.
