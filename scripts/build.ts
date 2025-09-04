@@ -1,6 +1,6 @@
 // FOR THIS TO WORK, FIRST BUILD SHARED PACKAGE.
 import { Ms3Modules } from '@m3s/shared';
-import {logger} from '../logger.js';
+import { logger } from '../logger.js';
 import fs from 'fs';
 import { join } from 'path';
 
@@ -130,14 +130,14 @@ async function runBuildProcess() {
         externalDependencies.push(...Object.keys(pkgJson.peerDependenciesMeta));
       }
 
-if (packageName !== Ms3Modules.shared) {
-  // Read shared package.json dependencies
-  const sharedPkgJsonPath = join(rootDir, 'packages/shared/package.json');
-  const sharedPkgJson = JSON.parse(fs.readFileSync(sharedPkgJsonPath, 'utf-8'));
-  const sharedDeps = Object.keys(sharedPkgJson.dependencies || {});
-  // Add all shared dependencies as externals (except @m3s/shared itself)
-  externalDependencies.push(...sharedDeps.filter(dep => dep !== '@m3s/shared'));
-}
+      if (packageName !== Ms3Modules.shared) {
+        // Read shared package.json dependencies
+        const sharedPkgJsonPath = join(rootDir, 'packages/shared/package.json');
+        const sharedPkgJson = JSON.parse(fs.readFileSync(sharedPkgJsonPath, 'utf-8'));
+        const sharedDeps = Object.keys(sharedPkgJson.dependencies || {});
+        // Add all shared dependencies as externals (except @m3s/shared itself)
+        externalDependencies.push(...sharedDeps.filter(dep => dep !== '@m3s/shared'));
+      }
 
       const externalArgs = externalDependencies.map(dep => `--external:${dep}`).join(' ');
 
@@ -196,6 +196,15 @@ if (packageName !== Ms3Modules.shared) {
 
   // Main module execution logic
   logger.debug("Checking main module condition.");
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  });
+
+  process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+    process.exit(1);
+  });
+
   if (process.argv[1] === scriptPath) {
     logger.debug("Script is main module.");
     const packageNameArg = process.argv[2];
