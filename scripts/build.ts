@@ -1,14 +1,8 @@
 // FOR THIS TO WORK, FIRST BUILD SHARED PACKAGE.
 import { logger } from '../logger.js';
 import fs from 'fs';
+import { Ms3Modules } from 'packages/shared/src/types/index.js';
 import { join } from 'path';
-
-enum Ms3Modules {
-  'shared' = 'shared',
-  'wallet' = 'wallet',
-  'smartcontract' = 'smart-contract',
-  'crosschain' = 'crosschain'
-}
 
 logger.debug("Script execution started.");
 
