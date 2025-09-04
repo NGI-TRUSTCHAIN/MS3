@@ -69,6 +69,25 @@ jobs:
     dependsOn: tests
     condition: succeeded()
     steps:
-      - script: npm run version -- wallet --minor
-        displayName: 'Version Updated.'
+      - script: node scripts/detect-changed-packages.js
+        displayName: 'Detect changed packages'
+      - script: |
+          echo "Changed packages: $(CHANGED_PACKAGES)"
+          if [ -z "$(CHANGED_PACKAGES)" ]; then
+            echo "No package changes detected. Skipping automated version bump. Please bump manually if needed."
+            exit 0
+          fi
+          IFS=',' read -ra PKGS <<< "$(CHANGED_PACKAGES)"
+          for pkg in "${PKGS[@]}"; do
+            case "$pkg" in
+              wallet|crosschain|smart-contract|shared)
+                echo "Running version bump for package: $pkg"
+                npm run version -- $pkg --minor
+                ;;
+              *)
+                echo "Package $pkg not in versioning list, skipping."
+                ;;
+            esac
+          done
+        displayName: 'Conditionally bump versions for changed packages'
         
