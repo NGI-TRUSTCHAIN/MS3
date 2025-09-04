@@ -33,10 +33,6 @@ jobs:
           npm install --legacy-peer-deps
         displayName: 'Clean+Install dependencies (workaround for rollup optional deps)'
         
-      # Install dependencies
-      - script: npm install --legacy-peer-deps
-        displayName: 'Installing dependencies...'
-
       # Manually build the shared package first to ensure it's up-to-date
       - script: |
           echo "Building shared package..."
