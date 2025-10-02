@@ -1,0 +1,76 @@
+name: Bug Report
+description: Report a reproducible error or unexpected behavior in the M3S framework.
+title: "[BUG] Brief description of the issue"
+labels: [bug, triage]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this bug! Please fill out the details below completely.
+  
+  - type: input
+    id: affected-package
+    attributes:
+      label: Affected Module/Package
+      description: Which M3S package is affected (e.g., @m3s/wallet, @m3s/shared)?
+      placeholder: e.g., @m3s/crosschain
+    validations:
+      required: true
+
+  - type: input
+    id: affected-version
+    attributes:
+      label: Affected Adapter and Version
+      description: Which adapter and version are you using? (e.g., ethers@1.0.0, lido-staking@0.9.2)
+      placeholder: e.g., ethers@1.0.0
+    validations:
+      required: true
+      
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Provide clear, numbered steps to reproduce the error. Include all relevant code snippets.
+      placeholder: |
+        1. Call createWallet with these specific options...
+        2. Execute adapterInstance.transfer(...)
+        3. The error occurs when...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: Describe what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior / Error Output
+      description: Paste the full error message, stack trace, or description of the incorrect output.
+    validations:
+      required: true
+  
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Runtime Environment
+      description: Where did you encounter this bug?
+      options:
+        - Node.js (Server)
+        - Browser (Web application)
+        - CI/CD Environment
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other information (e.g., browser type, OS, specific chain used) that might be helpful.
+    validations:
+      required: false
