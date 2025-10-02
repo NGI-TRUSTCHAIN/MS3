@@ -1,2 +1,5 @@
 blank_issues_enabled: false
-contact_links: []
+contact_links:
+  - name: 🛡️ Report a Security Vulnerability
+    url: .github/SECURITY.md
+    about: Please read our security policy before reporting sensitive issues.
