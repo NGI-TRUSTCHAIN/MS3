@@ -85,15 +85,9 @@ const adapterMetadata: AdapterMetadata = {
 };
 export { adapterMetadata as ethersAdapterMetadata };
 
-// registry.registerAdapter(Ms3Modules.wallet, adapterMetadata);
-
 // ✅ REPLACE: Use static compatibility matrix
 const compatibilityMatrix = getStaticCompatibilityMatrix(Ms3Modules.wallet, 'ethers', '1.0.0');
 export { compatibilityMatrix as ethersCompatibilityMatrix };
-
-// if (compatibilityMatrix) {
-//   registry.registerCompatibilityMatrix(Ms3Modules.wallet, compatibilityMatrix);
-// }
 
 console.debug('✅ Ethers wallet adapter registered with static compatibility matrix');
 console.debug('📋 Generated requirements:', ethersRequirements);

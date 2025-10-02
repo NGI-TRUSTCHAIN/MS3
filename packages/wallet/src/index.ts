@@ -37,9 +37,6 @@ walletRegistry.registerInterfaceShape('IEVMWallet', [
 export async function createWallet<T extends ICoreWallet = ICoreWallet>(params: IWalletOptions): Promise<T> {
   const { name, version } = params;
 
-  // try {
-    // await loadAdapter(name)
-
     const adapterInfo = version
       ? walletRegistry.getAdapter(Ms3Modules.wallet, name, version)
       : walletRegistry.getLatestAdapter(Ms3Modules.wallet, name);
@@ -91,12 +88,5 @@ export async function createWallet<T extends ICoreWallet = ICoreWallet>(params: 
       undefined,
       `WalletAdapter(${name})`
     ) as T;
-  // } catch (error) {
-  //   if (error instanceof AdapterError) {
-  //     // Re-throw the original AdapterError to preserve its code and details.
-  //     throw error;
-  //   }
-  //   // For other types of errors, wrap them in a generic AdapterError.
-  //   throw new AdapterError(`Adapter '${name}' failed to be created: ${error}`);
-  // }
+
 }
