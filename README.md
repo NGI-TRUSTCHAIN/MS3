@@ -2,7 +2,7 @@
   <img src="./logo.png" alt="MS3 Banner" width="300"/>
 </div>
 
-# M3S - Modular Multi-chain Suite
+# M3S - Modular Web3 Suite.
 
 > IMPORTANT: active development. See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution workflow.
 
